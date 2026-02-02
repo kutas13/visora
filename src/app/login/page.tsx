@@ -1,0 +1,487 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Button, Input, Card, Modal, Badge } from "@/components/ui";
+import { STAFF_USERS } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
+import type { VisaFile } from "@/lib/supabase/types";
+
+type SelectedUser = typeof STAFF_USERS[0] | null;
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function getStatusInfo(file: VisaFile) {
+  if (file.sonuc === "vize_onay") return { text: "Vize Çıktı", variant: "success" as const };
+  if (file.sonuc === "red") return { text: "Red", variant: "error" as const };
+  if (file.islemden_cikti) return { text: "İşlemden Çıktı", variant: "info" as const };
+  if (file.basvuru_yapildi) return { text: "İşlemde", variant: "info" as const };
+  if (file.dosya_hazir) return { text: "Dosya Hazır", variant: "warning" as const };
+  return { text: "Yeni", variant: "default" as const };
+}
+
+export default function LoginPage() {
+  const router = useRouter();
+  
+  // Login state
+  const [selectedUser, setSelectedUser] = useState<SelectedUser>(null);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Password reset state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  // Passport query state
+  const [passportNo, setPassportNo] = useState("");
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [queryResult, setQueryResult] = useState<VisaFile[] | null>(null);
+  const [queryError, setQueryError] = useState<string | null>(null);
+
+  const handleUserSelect = (user: typeof STAFF_USERS[0]) => {
+    setSelectedUser(user);
+    setPassword("");
+    setError(null);
+  };
+
+  const handleBack = () => {
+    setSelectedUser(null);
+    setPassword("");
+    setError(null);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser || isLoading) return;
+    
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: selectedUser.email,
+        password,
+      });
+
+      if (authError) throw new Error("Şifre hatalı");
+
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", data.user.id)
+          .single();
+
+        if (profile?.role === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/app");
+        }
+        router.refresh();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Giriş yapılamadı");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!selectedUser || resetLoading) return;
+
+    setResetLoading(true);
+    setResetError(null);
+    setResetSuccess(false);
+
+    try {
+      const supabase = createClient();
+      
+      // Get the current URL for the redirect
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(selectedUser.email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (error) throw error;
+
+      setResetSuccess(true);
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "Şifre sıfırlama e-postası gönderilemedi");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setResetSuccess(false);
+    setResetError(null);
+  };
+
+  const handlePassportQuery = async () => {
+    if (!passportNo.trim() || queryLoading) return;
+
+    setQueryLoading(true);
+    setQueryError(null);
+    setQueryResult(null);
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("visa_files")
+        .select("id, musteri_ad, hedef_ulke, pasaport_no, islem_tipi, randevu_tarihi, evrak_durumu, evrak_eksik_mi, dosya_hazir, basvuru_yapildi, islemden_cikti, sonuc, sonuc_tarihi, vize_bitis_tarihi, odeme_plani, odeme_durumu, ucret, ucret_currency")
+        .ilike("pasaport_no", passportNo.trim());
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        setQueryError("Bu pasaport numarasıyla kayıt bulunamadı.");
+      } else {
+        setQueryResult(data as VisaFile[]);
+      }
+    } catch (err) {
+      setQueryError("Sorgulama sırasında bir hata oluştu.");
+    } finally {
+      setQueryLoading(false);
+    }
+  };
+
+  const handleClearQuery = () => {
+    setPassportNo("");
+    setQueryResult(null);
+    setQueryError(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Sol Kolon - Pasaport Sorgulama */}
+        <Card className="p-6 order-2 lg:order-1" variant="elevated">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-navy-900">Pasaport Sorgulama</h2>
+              <p className="text-sm text-navy-500">Dosya durumunu görüntüleyin</p>
+            </div>
+          </div>
+
+          <p className="text-navy-600 text-sm mb-4">
+            Pasaport numarasını girerek vize dosyanızın güncel durumunu öğrenebilirsiniz.
+          </p>
+
+          <div className="space-y-4">
+            <Input
+              label="Pasaport Numarası"
+              placeholder="Örn: U12345678"
+              value={passportNo}
+              onChange={(e) => setPassportNo(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && handlePassportQuery()}
+            />
+
+            <div className="flex gap-3">
+              <Button 
+                onClick={handlePassportQuery} 
+                disabled={!passportNo.trim() || queryLoading}
+                className="flex-1"
+              >
+                {queryLoading ? "Sorgulanıyor..." : "Sorgula"}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleClearQuery}
+                disabled={queryLoading}
+              >
+                Temizle
+              </Button>
+            </div>
+          </div>
+
+          {/* Sonuç Alanı */}
+          <div className="mt-6 min-h-[200px]">
+            {queryError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <p className="text-red-700">{queryError}</p>
+              </div>
+            )}
+
+            {queryResult && queryResult.length > 0 && (
+              <div className="space-y-4">
+                {queryResult.map((file) => {
+                  const status = getStatusInfo(file);
+                  return (
+                    <div key={file.id} className="bg-gradient-to-r from-navy-50 to-navy-100 rounded-xl p-4 border border-navy-200">
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-bold text-navy-900 text-lg">{file.musteri_ad}</h3>
+                          <p className="text-sm text-navy-500">{file.pasaport_no}</p>
+                        </div>
+                        <Badge variant={status.variant}>{status.text}</Badge>
+                      </div>
+
+                      {/* Info Grid */}
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="bg-white rounded-lg p-2">
+                          <p className="text-navy-400 text-xs">Hedef Ülke</p>
+                          <p className="font-medium text-navy-800">{file.hedef_ulke}</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2">
+                          <p className="text-navy-400 text-xs">İşlem Tipi</p>
+                          <p className="font-medium text-navy-800">
+                            {file.islem_tipi === "randevulu" ? "Randevulu" : "Randevusuz"}
+                          </p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2">
+                          <p className="text-navy-400 text-xs">Ödeme Planı</p>
+                          <p className="font-medium text-navy-800">
+                            {file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
+                          </p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2">
+                          <p className="text-navy-400 text-xs">Ödeme Durumu</p>
+                          <Badge variant={file.odeme_durumu === "odendi" ? "success" : "warning"} size="sm">
+                            {file.odeme_durumu === "odendi" ? "Ödendi" : "Ödenmedi"}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Evrak Durumu */}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge variant={file.evrak_durumu === "geldi" ? "success" : "warning"} size="sm">
+                          Evrak: {file.evrak_durumu === "geldi" ? "Geldi" : "Gelmedi"}
+                        </Badge>
+                        {file.evrak_eksik_mi && (
+                          <Badge variant="error" size="sm">Eksik Evrak Var</Badge>
+                        )}
+                      </div>
+
+                      {/* Randevu Bilgisi */}
+                      {file.islem_tipi === "randevulu" && file.randevu_tarihi && (
+                        <div className="mt-3 bg-blue-50 rounded-lg p-2 border border-blue-100">
+                          <p className="text-xs text-blue-600">Randevu Tarihi</p>
+                          <p className="font-medium text-blue-800">{formatDate(file.randevu_tarihi)}</p>
+                        </div>
+                      )}
+
+                      {/* Vize Bitiş Tarihi */}
+                      {file.sonuc === "vize_onay" && file.vize_bitis_tarihi && (
+                        <div className="mt-3 bg-green-50 rounded-lg p-2 border border-green-100">
+                          <p className="text-xs text-green-600">Vize Bitiş Tarihi</p>
+                          <p className="font-medium text-green-800">{formatDate(file.vize_bitis_tarihi)}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {!queryError && !queryResult && (
+              <div className="bg-navy-50 rounded-xl p-6 text-center border border-navy-200">
+                <div className="w-16 h-16 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-navy-500">Henüz sorgu yapılmadı</p>
+                <p className="text-navy-400 text-sm mt-1">Pasaport numarasını girin ve sorgula butonuna basın</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Sağ Kolon - Kullanıcı Girişi */}
+        <Card className="p-6 order-1 lg:order-2" variant="elevated">
+          {/* Logo */}
+          <div className="text-center mb-6">
+            <div className="relative w-40 h-28 mx-auto mb-4">
+              <Image
+                src="/fox-logo.png"
+                alt="Fox Turizm"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <p className="text-navy-500">Vize Yönetim Sistemi</p>
+          </div>
+
+          {!selectedUser ? (
+            /* Kullanıcı Seçimi */
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-navy-700 text-center mb-4">Personel Girişi</h2>
+              <div className="grid grid-cols-1 gap-3">
+                {STAFF_USERS.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => handleUserSelect(user)}
+                    className="flex items-center gap-4 p-4 bg-gradient-to-r from-navy-50 to-navy-100 hover:from-primary-50 hover:to-primary-100 border-2 border-navy-200 hover:border-primary-400 rounded-xl transition-all duration-200 group"
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
+                      <span className="text-white font-bold text-lg">{user.name.charAt(0)}</span>
+                    </div>
+                    <div className="text-left flex-1">
+                      <p className="font-bold text-navy-900">{user.name}</p>
+                      <p className="text-xs text-navy-500">Personel</p>
+                    </div>
+                    <svg className="w-5 h-5 text-navy-400 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+              <div className="pt-4 text-center border-t border-navy-200">
+                <a href="/admin" className="text-sm text-navy-500 hover:text-primary-600 hover:underline">
+                  Yönetici girişi için tıklayın
+                </a>
+              </div>
+            </div>
+          ) : (
+            /* Şifre Girişi */
+            <div className="space-y-5">
+              {/* Seçili Kullanıcı */}
+              <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-4 border border-primary-200">
+                <p className="text-sm text-primary-600 mb-1">Seçili Kullanıcı</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md">
+                    <span className="text-white font-bold">{selectedUser.name.charAt(0)}</span>
+                  </div>
+                  <p className="font-bold text-navy-900 text-lg">{selectedUser.name}</p>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative">
+                  <Input
+                    label="Şifre"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Şifrenizi girin"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-9 text-navy-400 hover:text-navy-600 transition-colors"
+                  >
+                    {showPassword ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(true)}
+                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                >
+                  Şifremi Unuttum
+                </button>
+
+                <div className="flex gap-3 pt-2">
+                  <Button type="button" variant="outline" onClick={handleBack} className="flex-1">
+                    ← Geri
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={isLoading}>
+                    {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Şifremi Unuttum Modal */}
+      <Modal isOpen={showForgotModal} onClose={closeForgotModal} title="Şifre Sıfırlama" size="sm">
+        <div className="py-4">
+          {!resetSuccess ? (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </div>
+                {selectedUser && (
+                  <div className="bg-navy-50 rounded-xl p-3 mb-4">
+                    <p className="text-sm text-navy-500">Kullanıcı</p>
+                    <p className="font-semibold text-navy-900">{selectedUser.name}</p>
+                    <p className="text-xs text-navy-400">{selectedUser.email}</p>
+                  </div>
+                )}
+                <p className="text-navy-700 text-sm">
+                  E-posta adresinize şifre sıfırlama bağlantısı gönderilecektir.
+                </p>
+              </div>
+
+              {resetError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                  {resetError}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={closeForgotModal} className="flex-1">
+                  İptal
+                </Button>
+                <Button onClick={handlePasswordReset} className="flex-1" disabled={resetLoading}>
+                  {resetLoading ? "Gönderiliyor..." : "E-posta Gönder"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-navy-900">E-posta Gönderildi!</h3>
+              <p className="text-sm text-navy-600">
+                Şifre sıfırlama bağlantısı <strong>{selectedUser?.email}</strong> adresine gönderildi.
+              </p>
+              <p className="text-xs text-navy-400">
+                E-postanızdaki bağlantıya tıklayarak yeni şifrenizi belirleyebilirsiniz.
+              </p>
+              <Button onClick={closeForgotModal} className="w-full">Tamam</Button>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </div>
+  );
+}

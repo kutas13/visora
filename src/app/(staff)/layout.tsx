@@ -1,0 +1,75 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { StaffSidebar, TopBar } from "@/components/layout";
+import { createClient } from "@/lib/supabase/client";
+import type { Profile } from "@/lib/supabase/types";
+
+const pageTitles: Record<string, string> = {
+  "/app": "Ana Sayfa",
+  "/app/files": "Vize Dosyaları",
+  "/app/calendar": "Randevu Takvimi",
+  "/app/vize-bitisi": "Vize Bitiş Takibi",
+  "/app/groups": "Gruplar",
+  "/app/payments": "Ödemeler",
+  "/app/bildirimler": "Bildirimler",
+};
+
+export default function StaffLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const title = pageTitles[pathname] || "Fox Turizm";
+  
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(profileData);
+      }
+      setLoading(false);
+    }
+
+    loadProfile();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-navy-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/30 animate-pulse">
+            <span className="text-white font-bold text-2xl">F</span>
+          </div>
+          <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+          <p className="text-navy-500">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-navy-50">
+      <StaffSidebar />
+      <div className="ml-72">
+        <TopBar title={title} userName={profile?.name || "Kullanıcı"} variant="staff" />
+        <main className="p-6">{children}</main>
+      </div>
+    </div>
+  );
+}
