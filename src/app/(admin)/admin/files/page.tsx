@@ -84,7 +84,7 @@ export default function AdminFilesPage() {
         .from("profiles")
         .select("name")
         .eq("id", user.id)
-        .single();
+        .single<{ name: string }>();
       const adminName = adminProfile?.name || "Admin";
 
       const oldAssigneeId = selectedFile.assigned_user_id;
@@ -92,13 +92,13 @@ export default function AdminFilesPage() {
       const newOwnerName = newProfile?.name || "Personel";
 
       // Dosyayı güncelle
-      await supabase
+      await (supabase as any)
         .from("visa_files")
         .update({ assigned_user_id: newAssignee })
         .eq("id", selectedFile.id);
 
       // Activity log
-      await supabase.from("activity_logs").insert({
+      await (supabase as any).from("activity_logs").insert({
         type: "transfer",
         message: `${selectedFile.musteri_ad} dosyasını ${newOwnerName} personeline atadı`,
         file_id: selectedFile.id,

@@ -59,11 +59,11 @@ export default function AdminLogsPage() {
       const supabase = createClient();
       
       // Staff listesi
-      const { data: staff } = await supabase.from("profiles").select("*").eq("role", "staff");
+      const { data: staff } = await (supabase as any).from("profiles").select("*").eq("role", "staff") as { data: Profile[] | null };
       setStaffList(staff || []);
       
       // Loglar
-      let query = supabase
+      let query = (supabase as any)
         .from("activity_logs")
         .select("*, profiles:actor_id(name), visa_files(musteri_ad, hedef_ulke)")
         .order("created_at", { ascending: false })
@@ -76,7 +76,7 @@ export default function AdminLogsPage() {
         query = query.eq("actor_id", filterStaff);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query as { data: ActivityLogWithProfile[] | null; error: any };
 
       if (error) {
         console.error("Loglar yüklenirken hata:", error);

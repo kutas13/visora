@@ -8,6 +8,11 @@ import type { VisaFile, Group, Profile } from "@/lib/supabase/types";
 
 type VisaFileWithProfile = VisaFile & { profiles: Pick<Profile, "name"> | null };
 
+interface GroupMemberWithFile {
+  group_id: string;
+  visa_files: VisaFileWithProfile | null;
+}
+
 interface GroupWithStats extends Group {
   fileCount: number;
   unpaidCount: number;
@@ -77,17 +82,17 @@ export default function AdminGroupsPage() {
     setAllFiles(files || []);
 
     // Tüm grupları al
-    const { data: groupsData } = await supabase.from("visa_groups").select("*").order("created_at", { ascending: false });
+    const { data: groupsData } = await (supabase as any).from("visa_groups").select("*").order("created_at", { ascending: false }) as { data: Group[] | null };
 
     // Grup üyelerini al
-    const { data: members } = await supabase.from("visa_group_members").select("*, visa_files(*, profiles:assigned_user_id(name))");
+    const { data: members } = await (supabase as any).from("visa_group_members").select("*, visa_files(*, profiles:assigned_user_id(name))") as { data: GroupMemberWithFile[] | null };
 
     const groupsWithStats: GroupWithStats[] = [];
 
     for (const group of groupsData || []) {
       const groupFiles = (members || [])
-        .filter(m => m.group_id === group.id && m.visa_files)
-        .map(m => m.visa_files as VisaFileWithProfile);
+        .filter((m: GroupMemberWithFile) => m.group_id === group.id && m.visa_files)
+        .map((m: GroupMemberWithFile) => m.visa_files as VisaFileWithProfile);
 
       const unpaidCount = groupFiles.filter(f => f.odeme_plani === "cari" && f.odeme_durumu === "odenmedi").length;
       const appointmentFiles = groupFiles
@@ -116,7 +121,7 @@ export default function AdminGroupsPage() {
 
     try {
       const supabase = createClient();
-      await supabase.from("visa_groups").insert({
+      await (supabase as any).from("visa_groups").insert({
         grup_adi: grupAdi.trim(),
         aciklama: grupNot || null,
         created_by: currentUserId,
@@ -138,7 +143,7 @@ export default function AdminGroupsPage() {
     if (!selectedGroup) return;
     try {
       const supabase = createClient();
-      await supabase.from("visa_group_members").insert({
+      await (supabase as any).from("visa_group_members").insert({
         group_id: selectedGroup.id,
         visa_file_id: fileId,
       });
@@ -154,7 +159,7 @@ export default function AdminGroupsPage() {
     if (!selectedGroup) return;
     try {
       const supabase = createClient();
-      await supabase.from("visa_group_members")
+      await (supabase as any).from("visa_group_members")
         .delete()
         .eq("group_id", selectedGroup.id)
         .eq("visa_file_id", fileId);
@@ -168,7 +173,7 @@ export default function AdminGroupsPage() {
     if (!selectedGroup || !confirm("Bu grubu silmek istediğinize emin misiniz?")) return;
     try {
       const supabase = createClient();
-      await supabase.from("visa_groups").delete().eq("id", selectedGroup.id);
+      await (supabase as any).from("visa_groups").delete().eq("id", selectedGroup.id);
       setShowDetailModal(false);
       setSelectedGroup(null);
       loadData();

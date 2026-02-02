@@ -202,7 +202,7 @@ export interface Database {
         };
         Update: Partial<Group>;
       };
-      group_members: {
+      visa_group_members: {
         Row: GroupMember;
         Insert: {
           id?: string;

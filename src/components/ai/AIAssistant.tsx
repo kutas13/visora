@@ -173,19 +173,23 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
 
   // Check for new incoming messages
   const checkNewMessages = async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data: newMsgs, error } = await supabase
-      .from("internal_messages")
-      .select("*, sender:sender_id(name)")
-      .eq("receiver_id", user.id)
-      .eq("is_read", false)
-      .order("created_at", { ascending: false });
+      const { data: newMsgs, error } = await supabase
+        .from("internal_messages")
+        .select("*, sender:sender_id(name)")
+        .eq("receiver_id", user.id)
+        .eq("is_read", false)
+        .order("created_at", { ascending: false });
 
-    if (!error && newMsgs) {
-      setUnreadMessages(newMsgs.length);
+      if (!error && newMsgs) {
+        setUnreadMessages(newMsgs.length);
+      }
+    } catch (e) {
+      // Table might not exist, ignore error
     }
   };
 
@@ -217,16 +221,21 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
 
     const { data: files } = await query;
 
-    // Check for incoming messages
-    const { data: incomingMessages } = await supabase
-      .from("internal_messages")
-      .select("*, sender:sender_id(name)")
-      .eq("receiver_id", user.id)
-      .eq("is_read", false)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    setUnreadMessages(incomingMessages?.length || 0);
+    // Check for incoming messages (table might not exist)
+    let incomingMessages: any[] | null = null;
+    try {
+      const { data } = await supabase
+        .from("internal_messages")
+        .select("*, sender:sender_id(name)")
+        .eq("receiver_id", user.id)
+        .eq("is_read", false)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      incomingMessages = data;
+      setUnreadMessages(incomingMessages?.length || 0);
+    } catch (e) {
+      // Table might not exist, ignore
+    }
 
     const welcomeMessages: Message[] = [];
     
@@ -499,43 +508,52 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
     
     // Show messages
     if (queryLower.includes('mesaj') && (queryLower.includes('goster') || queryLower.includes('oku') || queryLower.includes('goruntule') || queryLower.includes('bak'))) {
-      const { data: allMessages } = await supabase
-        .from("internal_messages")
-        .select("*, sender:sender_id(name)")
-        .eq("receiver_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
+      try {
+        const { data: allMessages } = await supabase
+          .from("internal_messages")
+          .select("*, sender:sender_id(name)")
+          .eq("receiver_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10);
 
-      if (!allMessages || allMessages.length === 0) {
+        if (!allMessages || allMessages.length === 0) {
+          return {
+            id: Date.now().toString(),
+            type: "ai",
+            content: "📭 Hiç mesajınız bulunmuyor.",
+            timestamp: new Date(),
+          };
+        }
+
+        // Mark messages as read
+        const unreadIds = allMessages.filter((m: any) => !m.is_read).map((m: any) => m.id);
+        if (unreadIds.length > 0) {
+          await supabase
+            .from("internal_messages")
+            .update({ is_read: true, read_at: new Date().toISOString() })
+            .in("id", unreadIds);
+          setUnreadMessages(0);
+        }
+
         return {
           id: Date.now().toString(),
           type: "ai",
-          content: "📭 Hiç mesajınız bulunmuyor.",
+          content: `📬 **Mesajlarınız** (${allMessages.length} adet)\n\n` +
+            allMessages.map((m: any) => {
+              const date = new Date(m.created_at).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+              const readStatus = m.is_read ? "" : "🔴 ";
+              return `${readStatus}**${m.sender?.name || "?"}** (${date}):\n"${m.message}"`;
+            }).join("\n\n"),
+          timestamp: new Date(),
+        };
+      } catch (e) {
+        return {
+          id: Date.now().toString(),
+          type: "ai",
+          content: "📭 Mesajlaşma sistemi henüz aktif değil.",
           timestamp: new Date(),
         };
       }
-
-      // Mark messages as read
-      const unreadIds = allMessages.filter((m: any) => !m.is_read).map((m: any) => m.id);
-      if (unreadIds.length > 0) {
-        await supabase
-          .from("internal_messages")
-          .update({ is_read: true, read_at: new Date().toISOString() })
-          .in("id", unreadIds);
-        setUnreadMessages(0);
-      }
-
-      return {
-        id: Date.now().toString(),
-        type: "ai",
-        content: `📬 **Mesajlarınız** (${allMessages.length} adet)\n\n` +
-          allMessages.map((m: any) => {
-            const date = new Date(m.created_at).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-            const readStatus = m.is_read ? "" : "🔴 ";
-            return `${readStatus}**${m.sender?.name || "?"}** (${date}):\n"${m.message}"`;
-          }).join("\n\n"),
-        timestamp: new Date(),
-      };
     }
 
     // Send message - detect intent

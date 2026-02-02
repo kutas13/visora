@@ -1,9 +1,9 @@
 import { createBrowserClient } from "@supabase/ssr";
-import type { Database } from "./types";
 
 // Browser (client component) için Supabase client
+// Type inference issues nedeniyle generic typing kaldırıldı
 export function createClient() {
-  return createBrowserClient<Database>(
+  return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );

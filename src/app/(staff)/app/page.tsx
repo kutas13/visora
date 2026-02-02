@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import type { VisaFile, ActivityLog } from "@/lib/supabase/types";
+import type { ActivityLog } from "@/lib/supabase/types";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", {
@@ -25,6 +25,13 @@ function getDaysUntil(dateStr: string | null) {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Günaydın";
+  if (hour < 18) return "İyi Günler";
+  return "İyi Akşamlar";
+}
+
 export default function StaffDashboard() {
   const [userName, setUserName] = useState("Kullanıcı");
   const [stats, setStats] = useState({
@@ -37,6 +44,8 @@ export default function StaffDashboard() {
   });
   const [recentLogs, setRecentLogs] = useState<(ActivityLog & { visa_files?: { musteri_ad: string; hedef_ulke: string } | null })[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const timeGreeting = useMemo(() => getTimeGreeting(), []);
 
   useEffect(() => {
     async function loadData() {
@@ -52,9 +61,9 @@ export default function StaffDashboard() {
         .from("profiles")
         .select("name")
         .eq("id", user.id)
-        .single();
+        .single<any>();
 
-      if (profile?.name) {
+      if (profile && typeof profile.name === "string") {
         setUserName(profile.name);
       }
 
@@ -65,9 +74,6 @@ export default function StaffDashboard() {
         .eq("arsiv_mi", false);
 
       if (myFiles) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
         let randevu15 = 0;
         let randevu2 = 0;
         let islemde = 0;
@@ -75,7 +81,7 @@ export default function StaffDashboard() {
         let aktif = 0;
         let tamamlanan = 0;
 
-        myFiles.forEach((file) => {
+        (myFiles as Array<any>).forEach((file) => {
           if (file.islem_tipi === "randevulu" && file.randevu_tarihi && !file.sonuc) {
             const daysUntil = getDaysUntil(file.randevu_tarihi);
             if (daysUntil !== null) {
@@ -113,12 +119,6 @@ export default function StaffDashboard() {
       </div>
     );
   }
-
-  const greetingTime = new Date().getHours();
-  let timeGreeting = "Merhaba";
-  if (greetingTime < 12) timeGreeting = "Günaydın";
-  else if (greetingTime < 18) timeGreeting = "İyi Günler";
-  else timeGreeting = "İyi Akşamlar";
 
   return (
     <div className="space-y-8">

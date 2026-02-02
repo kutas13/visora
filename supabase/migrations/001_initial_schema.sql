@@ -236,6 +236,7 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   body TEXT NOT NULL,
   scheduled_for TIMESTAMPTZ NULL,
   sent_at TIMESTAMPTZ NULL,
+  is_read BOOLEAN DEFAULT false,
   read_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   unique_key TEXT NULL
@@ -280,7 +281,38 @@ CREATE POLICY "Staff can insert notifications" ON public.notifications
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 -- ============================================
--- 6. İNDEXLER
+-- 6. INTERNAL_MESSAGES TABLOSU (İç Mesajlaşma)
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.internal_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  receiver_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  read_at TIMESTAMPTZ NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Internal Messages için RLS
+ALTER TABLE public.internal_messages ENABLE ROW LEVEL SECURITY;
+
+-- Kullanıcı aldığı veya gönderdiği mesajları görebilir
+CREATE POLICY "Users can view own messages" ON public.internal_messages
+  FOR SELECT USING (sender_id = auth.uid() OR receiver_id = auth.uid());
+
+-- Kullanıcı mesaj gönderebilir
+CREATE POLICY "Users can send messages" ON public.internal_messages
+  FOR INSERT WITH CHECK (sender_id = auth.uid());
+
+-- Kullanıcı aldığı mesajları güncelleyebilir (okundu işareti)
+CREATE POLICY "Users can update received messages" ON public.internal_messages
+  FOR UPDATE USING (receiver_id = auth.uid());
+
+CREATE INDEX IF NOT EXISTS internal_messages_sender_idx ON public.internal_messages(sender_id);
+CREATE INDEX IF NOT EXISTS internal_messages_receiver_idx ON public.internal_messages(receiver_id);
+
+-- ============================================
+-- 7. İNDEXLER
 -- ============================================
 CREATE INDEX IF NOT EXISTS visa_files_assigned_user_idx ON public.visa_files(assigned_user_id);
 CREATE INDEX IF NOT EXISTS visa_files_randevu_tarihi_idx ON public.visa_files(randevu_tarihi);

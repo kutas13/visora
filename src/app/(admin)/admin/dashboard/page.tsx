@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import type { VisaFile, Profile, ActivityLog } from "@/lib/supabase/types";
+import type { VisaFile, Profile, ActivityLog, Payment } from "@/lib/supabase/types";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", {
@@ -55,24 +55,27 @@ export default function AdminDashboard() {
           .from("profiles")
           .select("name")
           .eq("id", user.id)
-          .single();
+          .single<{ name: string }>();
         if (profile?.name) setAdminName(profile.name);
       }
 
       const { data: files } = await supabase
         .from("visa_files")
         .select("*")
-        .eq("arsiv_mi", false);
+        .eq("arsiv_mi", false)
+        .returns<VisaFile[]>();
 
       const { data: staffData } = await supabase
         .from("profiles")
         .select("*")
-        .eq("role", "staff");
+        .eq("role", "staff")
+        .returns<Profile[]>();
 
       const { data: payments } = await supabase
         .from("payments")
         .select("*")
-        .eq("durum", "odendi");
+        .eq("durum", "odendi")
+        .returns<Payment[]>();
 
       if (files && staffData) {
         const today = new Date();

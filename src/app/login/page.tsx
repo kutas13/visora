@@ -8,7 +8,7 @@ import { STAFF_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile } from "@/lib/supabase/types";
 
-type SelectedUser = typeof STAFF_USERS[0] | null;
+type SelectedUser = typeof STAFF_USERS[number] | null;
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -45,7 +45,7 @@ export default function LoginPage() {
   const [queryResult, setQueryResult] = useState<VisaFile[] | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
 
-  const handleUserSelect = (user: typeof STAFF_USERS[0]) => {
+  const handleUserSelect = (user: typeof STAFF_USERS[number]) => {
     setSelectedUser(user);
     setPassword("");
     setError(null);

@@ -1,12 +1,12 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { Database } from "./types";
 
 // Server component / API route için Supabase client
+// Type inference issues nedeniyle generic typing kaldırıldı
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
