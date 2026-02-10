@@ -68,12 +68,15 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // /admin/dashboard ve altı için admin rolü gerekli
+  // /admin/* rotaları için admin rolü gerekli
   if (pathname.startsWith("/admin/dashboard") || 
       pathname.startsWith("/admin/files") || 
       pathname.startsWith("/admin/groups") || 
       pathname.startsWith("/admin/payments") || 
-      pathname.startsWith("/admin/logs")) {
+      pathname.startsWith("/admin/logs") ||
+      pathname.startsWith("/admin/raporlar") ||
+      pathname.startsWith("/admin/atamalar") ||
+      pathname.startsWith("/admin/cari-hesap")) {
     if (!user) {
       return NextResponse.redirect(new URL("/admin", request.url));
     }

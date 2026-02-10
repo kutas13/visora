@@ -57,21 +57,19 @@ export default function StaffDashboard() {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", user.id)
-        .single<any>();
+      // Tüm sorguları paralel çalıştır (hız optimizasyonu)
+      const [profileRes, filesRes, logsRes] = await Promise.all([
+        supabase.from("profiles").select("name").eq("id", user.id).single<any>(),
+        supabase.from("visa_files").select("*").eq("assigned_user_id", user.id).eq("arsiv_mi", false),
+        supabase.from("activity_logs").select("*, visa_files(musteri_ad, hedef_ulke)").eq("actor_id", user.id).order("created_at", { ascending: false }).limit(10),
+      ]);
 
-      if (profile && typeof profile.name === "string") {
-        setUserName(profile.name);
+      if (profileRes.data && typeof profileRes.data.name === "string") {
+        setUserName(profileRes.data.name);
       }
 
-      const { data: myFiles } = await supabase
-        .from("visa_files")
-        .select("*")
-        .eq("assigned_user_id", user.id)
-        .eq("arsiv_mi", false);
+      const myFiles = filesRes.data;
+      setRecentLogs(logsRes.data || []);
 
       if (myFiles) {
         let randevu15 = 0;
@@ -98,14 +96,6 @@ export default function StaffDashboard() {
         setStats({ randevu15Gun: randevu15, randevu2Gun: randevu2, islemde, odenmedi, aktif, tamamlanan });
       }
 
-      const { data: logs } = await supabase
-        .from("activity_logs")
-        .select("*, visa_files(musteri_ad, hedef_ulke)")
-        .eq("actor_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      setRecentLogs(logs || []);
       setLoading(false);
     }
 

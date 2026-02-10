@@ -50,32 +50,18 @@ export default function AdminDashboard() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("name")
-          .eq("id", user.id)
-          .single<{ name: string }>();
-        if (profile?.name) setAdminName(profile.name);
-      }
+      // Tüm sorguları paralel çalıştır (hız optimizasyonu)
+      const [profileRes, filesRes, staffRes, paymentsRes] = await Promise.all([
+        user ? supabase.from("profiles").select("name").eq("id", user.id).single<{ name: string }>() : null,
+        supabase.from("visa_files").select("*").eq("arsiv_mi", false).returns<VisaFile[]>(),
+        supabase.from("profiles").select("*").eq("role", "staff").returns<Profile[]>(),
+        supabase.from("payments").select("*").eq("durum", "odendi").returns<Payment[]>(),
+      ]);
 
-      const { data: files } = await supabase
-        .from("visa_files")
-        .select("*")
-        .eq("arsiv_mi", false)
-        .returns<VisaFile[]>();
-
-      const { data: staffData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "staff")
-        .returns<Profile[]>();
-
-      const { data: payments } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("durum", "odendi")
-        .returns<Payment[]>();
+      if (profileRes?.data?.name) setAdminName(profileRes.data.name);
+      const files = filesRes.data;
+      const staffData = staffRes.data;
+      const payments = paymentsRes.data;
 
       if (files && staffData) {
         const today = new Date();

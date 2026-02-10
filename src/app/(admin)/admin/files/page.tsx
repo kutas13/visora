@@ -50,19 +50,14 @@ export default function AdminFilesPage() {
   const loadData = async () => {
     const supabase = createClient();
     
-    const { data: filesData } = await supabase
-      .from("visa_files")
-      .select("*, profiles:assigned_user_id(name)")
-      .eq("arsiv_mi", false)
-      .order("created_at", { ascending: false });
-    
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("role", "staff");
+    // Paralel sorgular (hız optimizasyonu)
+    const [filesRes, profilesRes] = await Promise.all([
+      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("arsiv_mi", false).order("created_at", { ascending: false }),
+      supabase.from("profiles").select("*").eq("role", "staff"),
+    ]);
 
-    setFiles(filesData || []);
-    setProfiles(profilesData || []);
+    setFiles(filesRes.data || []);
+    setProfiles(profilesRes.data || []);
     setLoading(false);
   };
 

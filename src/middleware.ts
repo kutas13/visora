@@ -7,12 +7,16 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Korumalı rotalar
+    // Korumalı rotalar - personel
     "/app/:path*",
+    // Korumalı rotalar - admin
     "/admin/dashboard/:path*",
     "/admin/files/:path*",
     "/admin/groups/:path*",
     "/admin/payments/:path*",
     "/admin/logs/:path*",
+    "/admin/raporlar/:path*",
+    "/admin/atamalar/:path*",
+    "/admin/cari-hesap/:path*",
   ],
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button, Input, Card, Modal } from "@/components/ui";
@@ -14,11 +14,28 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Password reset state
+  // Password change state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+
+  // Remember me
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Beni hatırla: sayfa yüklendiğinde kayıtlı şifreyi yükle
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("fox_remember_admin");
+      if (saved) {
+        setPassword(atob(saved));
+        setRememberMe(true);
+      }
+    } catch { /* localStorage erişim hatası */ }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +53,15 @@ export default function AdminLoginPage() {
 
       if (authError) throw new Error("Şifre hatalı");
 
+      // Beni hatırla: şifreyi kaydet veya sil
+      try {
+        if (rememberMe) {
+          localStorage.setItem("fox_remember_admin", btoa(password));
+        } else {
+          localStorage.removeItem("fox_remember_admin");
+        }
+      } catch { /* localStorage erişim hatası */ }
+
       if (data.user) {
         router.push("/admin/dashboard");
         router.refresh();
@@ -47,8 +73,29 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handlePasswordReset = async () => {
+  const handlePasswordChange = async () => {
     if (resetLoading) return;
+
+    if (!oldPassword.trim()) {
+      setResetError("Mevcut şifrenizi girin.");
+      return;
+    }
+    if (!newPassword.trim()) {
+      setResetError("Yeni şifrenizi girin.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setResetError("Yeni şifre en az 6 karakter olmalıdır.");
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      setResetError("Yeni şifreler eşleşmiyor.");
+      return;
+    }
+    if (oldPassword === newPassword) {
+      setResetError("Yeni şifre eski şifreyle aynı olamaz.");
+      return;
+    }
 
     setResetLoading(true);
     setResetError(null);
@@ -57,18 +104,38 @@ export default function AdminLoginPage() {
     try {
       const supabase = createClient();
       
-      // Get the current URL for the redirect
-      const redirectUrl = `${window.location.origin}/reset-password`;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(ADMIN_USER.email, {
-        redirectTo: redirectUrl,
+      // Önce eski şifreyle giriş yaparak doğrula
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: ADMIN_USER.email,
+        password: oldPassword,
       });
 
-      if (error) throw error;
+      if (signInError) {
+        setResetError("Mevcut şifre hatalı.");
+        setResetLoading(false);
+        return;
+      }
+
+      // Şifreyi güncelle
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      // Beni hatırla aktifse yeni şifreyi kaydet
+      try {
+        if (rememberMe) {
+          localStorage.setItem("fox_remember_admin", btoa(newPassword));
+        }
+      } catch { /* localStorage erişim hatası */ }
+
+      // Oturumu kapat
+      await supabase.auth.signOut();
 
       setResetSuccess(true);
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : "Şifre sıfırlama e-postası gönderilemedi");
+      setResetError(err instanceof Error ? err.message : "Şifre değiştirilemedi.");
     } finally {
       setResetLoading(false);
     }
@@ -78,6 +145,9 @@ export default function AdminLoginPage() {
     setShowForgotModal(false);
     setResetSuccess(false);
     setResetError(null);
+    setOldPassword("");
+    setNewPassword("");
+    setNewPasswordConfirm("");
   };
 
   return (
@@ -100,8 +170,14 @@ export default function AdminLoginPage() {
         {/* Admin Bilgisi */}
         <div className="bg-gradient-to-r from-navy-50 to-navy-100 rounded-2xl p-4 mb-6 border border-navy-200">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-xl">D</span>
+            <div className="w-14 h-14 rounded-xl overflow-hidden shadow-md ring-2 ring-primary-200">
+              <Image
+                src="/davut-avatar.png"
+                alt={ADMIN_USER.name}
+                width={56}
+                height={56}
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
               <p className="font-bold text-navy-900 text-lg">{ADMIN_USER.name}</p>
@@ -144,17 +220,28 @@ export default function AdminLoginPage() {
             </button>
           </div>
           
-          <button
-            type="button"
-            onClick={() => setShowForgotModal(true)}
-            className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-          >
-            Şifremi Unuttum
-          </button>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-navy-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+              />
+              <span className="text-sm text-navy-600">Beni Hatırla</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowForgotModal(true)}
+              className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+            >
+              Şifre Değiştir
+            </button>
+          </div>
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => router.push("/login")} className="flex-1">
-              ← Geri
+              {"← Geri"}
             </Button>
             <Button type="submit" className="flex-1" disabled={isLoading}>
               {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
@@ -163,25 +250,45 @@ export default function AdminLoginPage() {
         </form>
       </Card>
 
-      {/* Şifremi Unuttum Modal */}
-      <Modal isOpen={showForgotModal} onClose={closeForgotModal} title="Şifre Sıfırlama" size="sm">
+      {/* Şifre Değiştirme Modal */}
+      <Modal isOpen={showForgotModal} onClose={closeForgotModal} title="Şifre Değiştir" size="sm">
         <div className="py-4">
           {!resetSuccess ? (
             <div className="space-y-4">
-              <div className="text-center">
+              <div className="text-center mb-2">
                 <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                   </svg>
                 </div>
-                <div className="bg-navy-50 rounded-xl p-3 mb-4">
-                  <p className="text-sm text-navy-500">Yönetici</p>
+                <div className="bg-navy-50 rounded-xl p-3 mb-2">
                   <p className="font-semibold text-navy-900">{ADMIN_USER.name}</p>
                   <p className="text-xs text-navy-400">{ADMIN_USER.email}</p>
                 </div>
-                <p className="text-navy-700 text-sm">
-                  E-posta adresinize şifre sıfırlama bağlantısı gönderilecektir.
-                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Input
+                  label="Mevcut Şifre"
+                  type="password"
+                  placeholder="Eski şifrenizi girin"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                />
+                <Input
+                  label="Yeni Şifre"
+                  type="password"
+                  placeholder="Yeni şifrenizi girin"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <Input
+                  label="Yeni Şifre (Tekrar)"
+                  type="password"
+                  placeholder="Yeni şifrenizi tekrar girin"
+                  value={newPasswordConfirm}
+                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                />
               </div>
 
               {resetError && (
@@ -190,12 +297,12 @@ export default function AdminLoginPage() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <Button type="button" variant="outline" onClick={closeForgotModal} className="flex-1">
                   İptal
                 </Button>
-                <Button onClick={handlePasswordReset} className="flex-1" disabled={resetLoading}>
-                  {resetLoading ? "Gönderiliyor..." : "E-posta Gönder"}
+                <Button onClick={handlePasswordChange} className="flex-1" disabled={resetLoading}>
+                  {resetLoading ? "Değiştiriliyor..." : "Şifreyi Değiştir"}
                 </Button>
               </div>
             </div>
@@ -206,12 +313,9 @@ export default function AdminLoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-navy-900">E-posta Gönderildi!</h3>
+              <h3 className="text-lg font-semibold text-navy-900">Şifre Değiştirildi!</h3>
               <p className="text-sm text-navy-600">
-                Şifre sıfırlama bağlantısı <strong>{ADMIN_USER.email}</strong> adresine gönderildi.
-              </p>
-              <p className="text-xs text-navy-400">
-                E-postanızdaki bağlantıya tıklayarak yeni şifrenizi belirleyebilirsiniz.
+                Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
               </p>
               <Button onClick={closeForgotModal} className="w-full">Tamam</Button>
             </div>

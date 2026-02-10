@@ -36,3 +36,8 @@ next-env.d.ts
 # IDE
 .idea
 .vscode
+
+# WhatsApp Baileys oturum verisi (hassas!)
+whatsapp-service/auth_info/
+whatsapp-service/node_modules/
+whatsapp-service/sent_today.json

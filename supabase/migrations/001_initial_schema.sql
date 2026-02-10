@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   file_id UUID NOT NULL REFERENCES public.visa_files(id) ON DELETE CASCADE,
   tutar NUMERIC NOT NULL,
-  yontem TEXT NOT NULL CHECK (yontem IN ('nakit', 'cari')),
+  yontem TEXT NOT NULL CHECK (yontem IN ('nakit', 'hesaba', 'cari')),
   durum TEXT NOT NULL DEFAULT 'odendi' CHECK (durum IN ('odendi', 'odenmedi')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID NOT NULL REFERENCES public.profiles(id)

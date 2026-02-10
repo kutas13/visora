@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/notify?secret=fox-turizm-cron-secret-2024",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/whatsapp-reminder?secret=fox-turizm-cron-secret-2024",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}

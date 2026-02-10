@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import AIAssistant from "@/components/ai/AIAssistant";
+import dynamic from "next/dynamic";
+
+const AIAssistant = dynamic(() => import("@/components/ai/AIAssistant"), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-white/[0.06] rounded-2xl h-full flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-primary-400/30 border-t-primary-400 rounded-full animate-spin mx-auto mb-2" />
+        <p className="text-[10px] text-slate-500">AI yükleniyor...</p>
+      </div>
+    </div>
+  ),
+});
 
 const menuItems = [
   {
@@ -61,11 +73,38 @@ const menuItems = [
     ),
   },
   {
+    href: "/admin/raporlar",
+    label: "Raporlar",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/payments",
     label: "Ödemeler",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/atamalar",
+    label: "iDATA Atamaları",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/cari-hesap",
+    label: "Cari Hesap",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       </svg>
     ),
   },
@@ -84,7 +123,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-72 bg-gradient-to-b from-navy-950 to-navy-900 z-40 shadow-2xl flex flex-col">
+    <aside className="h-full w-72 bg-gradient-to-b from-navy-950 to-navy-900 shadow-2xl flex flex-col">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-navy-800 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -122,8 +161,8 @@ export default function AdminSidebar() {
         </ul>
       </nav>
 
-      {/* FOX AI Asistan - Genişletilmiş Alan */}
-      <div className="flex-1 p-3 pt-0 min-h-0">
+      {/* FOX AI Asistan */}
+      <div className="flex-1 p-3 pt-0 min-h-0 flex flex-col justify-end">
         <AIAssistant isAdmin={true} />
       </div>
 

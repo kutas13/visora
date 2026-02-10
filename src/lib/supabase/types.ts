@@ -103,6 +103,25 @@ export interface ActivityLog {
   created_at: string;
 }
 
+// iDATA Randevu Ataması
+export type IdataAssignmentDurum = "yeni" | "randevu_alindi" | "iptal" | "suresi_doldu";
+
+export interface IdataAssignment {
+  id: string;
+  musteri_ad: string;
+  pnr: string;
+  ulke_amac: string | null;
+  ofis: string | null;
+  randevu_baslangic: string | null;
+  randevu_bitis: string | null;
+  son_kayit_tarihi: string | null;
+  email_hesabi: string;
+  email_uid: string;
+  durum: IdataAssignmentDurum;
+  whatsapp_bildirim: boolean;
+  created_at: string;
+}
+
 // Bildirim
 export interface Notification {
   id: string;
@@ -238,6 +257,25 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<ActivityLog>;
+      };
+      idata_assignments: {
+        Row: IdataAssignment;
+        Insert: {
+          id?: string;
+          musteri_ad: string;
+          pnr: string;
+          ulke_amac?: string | null;
+          ofis?: string | null;
+          randevu_baslangic?: string | null;
+          randevu_bitis?: string | null;
+          son_kayit_tarihi?: string | null;
+          email_hesabi: string;
+          email_uid: string;
+          durum?: IdataAssignmentDurum;
+          whatsapp_bildirim?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<IdataAssignment>;
       };
       notifications: {
         Row: Notification;

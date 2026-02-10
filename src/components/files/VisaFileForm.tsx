@@ -146,6 +146,26 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
               file_id: newFile.id,
               actor_id: user.id,
             });
+
+            // Peşin satış otomatik email (Muhasebe'ye)
+            try {
+              await fetch("/api/send-tahsilat-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  senderEmail: user.email,
+                  senderName: userName,
+                  musteriAd: musteriAd.trim(),
+                  hedefUlke: finalUlke,
+                  tutar: ucretNum,
+                  currency: ucretCurrency,
+                  yontem: "nakit",
+                  emailType: "pesin_satis",
+                }),
+              });
+            } catch (emailErr) {
+              console.error("Pesin satis email gonderilemedi:", emailErr);
+            }
           }
 
           await notifyFileCreated(newFile.id, musteriAd.trim(), finalUlke, user.id, userName);

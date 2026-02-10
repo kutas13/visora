@@ -1,12 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Button, Input, Card, Modal, Badge } from "@/components/ui";
 import { STAFF_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile } from "@/lib/supabase/types";
+
+// Lazy load PhotoTools (ssr: false → no server-side rendering for heavy tools)
+const PhotoTools = dynamic(() => import("@/components/tools/PhotoTools"), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-white rounded-xl shadow-xl p-6 h-full flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-10 h-10 border-[3px] border-primary-200 border-t-primary-500 rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-navy-500">Araçlar yükleniyor...</p>
+      </div>
+    </div>
+  ),
+});
+
+// Profil fotosu olan kullanicilar
+const USER_AVATARS: Record<string, string> = {
+  YUSUF: "/yusuf-avatar.png",
+  DAVUT: "/davut-avatar.png",
+};
 
 type SelectedUser = typeof STAFF_USERS[number] | null;
 
@@ -33,11 +53,17 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Password reset state
+  // Password change state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+
+  // Remember me state
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Passport query state
   const [passportNo, setPassportNo] = useState("");
@@ -47,8 +73,21 @@ export default function LoginPage() {
 
   const handleUserSelect = (user: typeof STAFF_USERS[number]) => {
     setSelectedUser(user);
-    setPassword("");
     setError(null);
+    // Beni hatırla: kayıtlı şifreyi yükle
+    try {
+      const saved = localStorage.getItem(`fox_remember_${user.id}`);
+      if (saved) {
+        setPassword(atob(saved));
+        setRememberMe(true);
+      } else {
+        setPassword("");
+        setRememberMe(false);
+      }
+    } catch {
+      setPassword("");
+      setRememberMe(false);
+    }
   };
 
   const handleBack = () => {
@@ -73,6 +112,17 @@ export default function LoginPage() {
 
       if (authError) throw new Error("Şifre hatalı");
 
+      // Beni hatırla: şifreyi kaydet veya sil
+      if (selectedUser) {
+        try {
+          if (rememberMe) {
+            localStorage.setItem(`fox_remember_${selectedUser.id}`, btoa(password));
+          } else {
+            localStorage.removeItem(`fox_remember_${selectedUser.id}`);
+          }
+        } catch { /* localStorage erişim hatası */ }
+      }
+
       if (data.user) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -94,8 +144,30 @@ export default function LoginPage() {
     }
   };
 
-  const handlePasswordReset = async () => {
+  const handlePasswordChange = async () => {
     if (!selectedUser || resetLoading) return;
+
+    // Doğrulamalar
+    if (!oldPassword.trim()) {
+      setResetError("Mevcut şifrenizi girin.");
+      return;
+    }
+    if (!newPassword.trim()) {
+      setResetError("Yeni şifrenizi girin.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setResetError("Yeni şifre en az 6 karakter olmalıdır.");
+      return;
+    }
+    if (newPassword !== newPasswordConfirm) {
+      setResetError("Yeni şifreler eşleşmiyor.");
+      return;
+    }
+    if (oldPassword === newPassword) {
+      setResetError("Yeni şifre eski şifreyle aynı olamaz.");
+      return;
+    }
 
     setResetLoading(true);
     setResetError(null);
@@ -104,18 +176,38 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
       
-      // Get the current URL for the redirect
-      const redirectUrl = `${window.location.origin}/reset-password`;
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(selectedUser.email, {
-        redirectTo: redirectUrl,
+      // Önce eski şifreyle giriş yaparak doğrula
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: selectedUser.email,
+        password: oldPassword,
       });
 
-      if (error) throw error;
+      if (signInError) {
+        setResetError("Mevcut şifre hatalı.");
+        setResetLoading(false);
+        return;
+      }
+
+      // Şifreyi güncelle
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      // Beni hatırla aktifse yeni şifreyi kaydet
+      try {
+        if (rememberMe) {
+          localStorage.setItem(`fox_remember_${selectedUser.id}`, btoa(newPassword));
+        }
+      } catch { /* localStorage erişim hatası */ }
+
+      // Oturumu kapat (yeni şifreyle tekrar giriş yapsın)
+      await supabase.auth.signOut();
 
       setResetSuccess(true);
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : "Şifre sıfırlama e-postası gönderilemedi");
+      setResetError(err instanceof Error ? err.message : "Şifre değiştirilemedi.");
     } finally {
       setResetLoading(false);
     }
@@ -125,6 +217,9 @@ export default function LoginPage() {
     setShowForgotModal(false);
     setResetSuccess(false);
     setResetError(null);
+    setOldPassword("");
+    setNewPassword("");
+    setNewPasswordConfirm("");
   };
 
   const handlePassportQuery = async () => {
@@ -135,21 +230,26 @@ export default function LoginPage() {
     setQueryResult(null);
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("visa_files")
-        .select("id, musteri_ad, hedef_ulke, pasaport_no, islem_tipi, randevu_tarihi, evrak_durumu, evrak_eksik_mi, dosya_hazir, basvuru_yapildi, islemden_cikti, sonuc, sonuc_tarihi, vize_bitis_tarihi, odeme_plani, odeme_durumu, ucret, ucret_currency")
-        .ilike("pasaport_no", passportNo.trim());
+      // API route kullan (RLS bypass - login sayfasında kullanıcı giriş yapmamış)
+      const res = await fetch("/api/passport-query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passportNo: passportNo.trim() }),
+      });
 
-      if (error) throw error;
+      const json = await res.json();
 
-      if (!data || data.length === 0) {
+      if (!res.ok) {
+        throw new Error(json.error || "Sorgulama hatası");
+      }
+
+      if (!json.data || json.data.length === 0) {
         setQueryError("Bu pasaport numarasıyla kayıt bulunamadı.");
       } else {
-        setQueryResult(data as VisaFile[]);
+        setQueryResult(json.data as VisaFile[]);
       }
     } catch (err) {
-      setQueryError("Sorgulama sırasında bir hata oluştu.");
+      setQueryError(err instanceof Error ? err.message : "Sorgulama sırasında bir hata oluştu.");
     } finally {
       setQueryLoading(false);
     }
@@ -163,10 +263,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         
         {/* Sol Kolon - Pasaport Sorgulama */}
-        <Card className="p-6 order-2 lg:order-1" variant="elevated">
+        <Card className="p-6 order-2 lg:order-1 max-h-[85vh] overflow-y-auto" variant="elevated">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +409,7 @@ export default function LoginPage() {
           </div>
         </Card>
 
-        {/* Sağ Kolon - Kullanıcı Girişi */}
+        {/* Orta Kolon - Kullanıcı Girişi */}
         <Card className="p-6 order-1 lg:order-2" variant="elevated">
           {/* Logo */}
           <div className="text-center mb-6">
@@ -336,9 +436,21 @@ export default function LoginPage() {
                     onClick={() => handleUserSelect(user)}
                     className="flex items-center gap-4 p-4 bg-gradient-to-r from-navy-50 to-navy-100 hover:from-primary-50 hover:to-primary-100 border-2 border-navy-200 hover:border-primary-400 rounded-xl transition-all duration-200 group"
                   >
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
-                      <span className="text-white font-bold text-lg">{user.name.charAt(0)}</span>
-                    </div>
+                    {USER_AVATARS[user.name] ? (
+                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all ring-2 ring-primary-200">
+                        <Image
+                          src={USER_AVATARS[user.name]}
+                          alt={user.name}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
+                        <span className="text-white font-bold text-lg">{user.name.charAt(0)}</span>
+                      </div>
+                    )}
                     <div className="text-left flex-1">
                       <p className="font-bold text-navy-900">{user.name}</p>
                       <p className="text-xs text-navy-500">Personel</p>
@@ -360,11 +472,23 @@ export default function LoginPage() {
             <div className="space-y-5">
               {/* Seçili Kullanıcı */}
               <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-4 border border-primary-200">
-                <p className="text-sm text-primary-600 mb-1">Seçili Kullanıcı</p>
+                <p className="text-sm text-primary-600 mb-1">{"Seçili Kullanıcı"}</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md">
-                    <span className="text-white font-bold">{selectedUser.name.charAt(0)}</span>
-                  </div>
+                  {USER_AVATARS[selectedUser.name] ? (
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md ring-2 ring-primary-200">
+                      <Image
+                        src={USER_AVATARS[selectedUser.name]}
+                        alt={selectedUser.name}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md">
+                      <span className="text-white font-bold">{selectedUser.name.charAt(0)}</span>
+                    </div>
+                  )}
                   <p className="font-bold text-navy-900 text-lg">{selectedUser.name}</p>
                 </div>
               </div>
@@ -403,13 +527,24 @@ export default function LoginPage() {
                   </button>
                 </div>
                 
-                <button
-                  type="button"
-                  onClick={() => setShowForgotModal(true)}
-                  className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-                >
-                  Şifremi Unuttum
-                </button>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded border-navy-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                    />
+                    <span className="text-sm text-navy-600">Beni Hatırla</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(true)}
+                    className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                  >
+                    Şifre Değiştir
+                  </button>
+                </div>
 
                 <div className="flex gap-3 pt-2">
                   <Button type="button" variant="outline" onClick={handleBack} className="flex-1">
@@ -423,29 +558,54 @@ export default function LoginPage() {
             </div>
           )}
         </Card>
+
+        {/* Sağ Kolon - Görsel & PDF Araçları */}
+        <div className="order-3 max-h-[85vh]">
+          <PhotoTools />
+        </div>
       </div>
 
-      {/* Şifremi Unuttum Modal */}
-      <Modal isOpen={showForgotModal} onClose={closeForgotModal} title="Şifre Sıfırlama" size="sm">
+      {/* Şifre Değiştirme Modal */}
+      <Modal isOpen={showForgotModal} onClose={closeForgotModal} title="Şifre Değiştir" size="sm">
         <div className="py-4">
           {!resetSuccess ? (
             <div className="space-y-4">
-              <div className="text-center">
+              <div className="text-center mb-2">
                 <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                   </svg>
                 </div>
                 {selectedUser && (
-                  <div className="bg-navy-50 rounded-xl p-3 mb-4">
-                    <p className="text-sm text-navy-500">Kullanıcı</p>
+                  <div className="bg-navy-50 rounded-xl p-3 mb-2">
                     <p className="font-semibold text-navy-900">{selectedUser.name}</p>
                     <p className="text-xs text-navy-400">{selectedUser.email}</p>
                   </div>
                 )}
-                <p className="text-navy-700 text-sm">
-                  E-posta adresinize şifre sıfırlama bağlantısı gönderilecektir.
-                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Input
+                  label="Mevcut Şifre"
+                  type="password"
+                  placeholder="Eski şifrenizi girin"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                />
+                <Input
+                  label="Yeni Şifre"
+                  type="password"
+                  placeholder="Yeni şifrenizi girin"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <Input
+                  label="Yeni Şifre (Tekrar)"
+                  type="password"
+                  placeholder="Yeni şifrenizi tekrar girin"
+                  value={newPasswordConfirm}
+                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                />
               </div>
 
               {resetError && (
@@ -454,12 +614,12 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <Button type="button" variant="outline" onClick={closeForgotModal} className="flex-1">
                   İptal
                 </Button>
-                <Button onClick={handlePasswordReset} className="flex-1" disabled={resetLoading}>
-                  {resetLoading ? "Gönderiliyor..." : "E-posta Gönder"}
+                <Button onClick={handlePasswordChange} className="flex-1" disabled={resetLoading}>
+                  {resetLoading ? "Değiştiriliyor..." : "Şifreyi Değiştir"}
                 </Button>
               </div>
             </div>
@@ -470,12 +630,9 @@ export default function LoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-navy-900">E-posta Gönderildi!</h3>
+              <h3 className="text-lg font-semibold text-navy-900">Şifre Değiştirildi!</h3>
               <p className="text-sm text-navy-600">
-                Şifre sıfırlama bağlantısı <strong>{selectedUser?.email}</strong> adresine gönderildi.
-              </p>
-              <p className="text-xs text-navy-400">
-                E-postanızdaki bağlantıya tıklayarak yeni şifrenizi belirleyebilirsiniz.
+                Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
               </p>
               <Button onClick={closeForgotModal} className="w-full">Tamam</Button>
             </div>

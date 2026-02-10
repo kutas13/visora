@@ -134,6 +134,26 @@ export default function PaymentsPage() {
 
       await notifyPaymentReceived(selectedFile.id, selectedFile.musteri_ad, amount, yontem, user.id, userName);
 
+      // Otomatik email gönder (Muhasebe'ye)
+      try {
+        await fetch("/api/send-tahsilat-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            senderEmail: user.email,
+            senderName: userName,
+            musteriAd: selectedFile.musteri_ad,
+            hedefUlke: selectedFile.hedef_ulke,
+            tutar: amount,
+            currency: currency,
+            yontem: yontem,
+            emailType: "tahsilat",
+          }),
+        });
+      } catch (emailErr) {
+        console.error("Tahsilat email gonderilemedi:", emailErr);
+      }
+
       setShowConfirmModal(false);
       setSelectedFile(null);
       setTutar("");

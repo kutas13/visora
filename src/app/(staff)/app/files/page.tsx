@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Input, Select, Checkbox, Modal, Badge } from "@/components/ui";
-import { VisaFileForm, FileActions, FileDetailModal } from "@/components/files";
+import VisaFileForm from "@/components/files/VisaFileForm";
+import FileActions from "@/components/files/FileActions";
+import FileDetailModal from "@/components/files/FileDetailModal";
 import { TARGET_COUNTRIES, ISLEM_TIPLERI, PARA_BIRIMLERI } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, VisaFileWithProfile } from "@/lib/supabase/types";

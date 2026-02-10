@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Card, Button, Badge, Modal, Select } from "@/components/ui";
-import { VisaFileForm } from "@/components/files";
+import VisaFileForm from "@/components/files/VisaFileForm";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
 
