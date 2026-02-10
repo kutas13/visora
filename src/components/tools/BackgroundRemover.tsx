@@ -8,164 +8,89 @@ interface ProcessedResult {
 }
 
 const MAX_SIZE = 1024;
-const MEDIAPIPE_VERSION = "0.1.1675465747";
 
 export default function BackgroundRemover() {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ProcessedResult | null>(null);
-  const [modelLoading, setModelLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const segmenterRef = useRef<any>(null);
 
-  const ensureModel = useCallback(async (): Promise<boolean> => {
-    if (segmenterRef.current) return true;
-
-    setModelLoading(true);
+  const processImage = useCallback(async (file: File) => {
     setError(null);
+    setResult(null);
+
+    if (!file.type.startsWith("image/")) {
+      setError("Lütfen JPG veya PNG dosyası seçin.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("Dosya boyutu 10MB'dan küçük olmalıdır.");
+      return;
+    }
+
+    setIsProcessing(true);
+    setProgress("Model yükleniyor...");
 
     try {
-      const { SelfieSegmentation } = await import("@mediapipe/selfie_segmentation");
+      const { removeBackground } = await import("@imgly/background-removal");
 
-      const segmenter = new SelfieSegmentation({
-        locateFile: (file: string) =>
-          `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@${MEDIAPIPE_VERSION}/${file}`,
+      // Orijinal resmi al
+      const originalUrl = URL.createObjectURL(file);
+
+      setProgress("Arka plan kaldırılıyor...");
+
+      const blob = await removeBackground(file, {
+        progress: (key: string, current: number, total: number) => {
+          if (key === "compute:inference") {
+            const pct = Math.round((current / total) * 100);
+            setProgress(`İşleniyor... %${pct}`);
+          }
+        },
       });
 
-      segmenter.setOptions({ modelSelection: 1, selfieMode: false });
+      // Beyaz arka plan uygula
+      const img = new Image();
+      const processedUrl = URL.createObjectURL(blob);
 
-      // Timeout: 30 saniye
-      await Promise.race([
-        segmenter.initialize(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000)),
-      ]);
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          let w = img.width;
+          let h = img.height;
+          if (Math.max(w, h) > MAX_SIZE) {
+            const scale = MAX_SIZE / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
 
-      segmenterRef.current = segmenter;
-      return true;
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d")!;
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+
+          setResult({
+            original: originalUrl,
+            processed: canvas.toDataURL("image/png"),
+          });
+          URL.revokeObjectURL(processedUrl);
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = processedUrl;
+      });
     } catch (err) {
-      console.error("MediaPipe yükleme hatası:", err);
-      setError(
-        "Arka plan kaldırma modeli yüklenemedi. İnternet bağlantınızı kontrol edin ve tekrar deneyin."
-      );
-      return false;
+      console.error("Arka plan kaldırma hatası:", err);
+      setError("İşlem sırasında hata oluştu. Lütfen tekrar deneyin.");
     } finally {
-      setModelLoading(false);
+      setIsProcessing(false);
+      setProgress("");
     }
   }, []);
-
-  const loadImage = useCallback((file: File): Promise<HTMLImageElement> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }, []);
-
-  const processImage = useCallback(
-    async (file: File) => {
-      setError(null);
-      setResult(null);
-
-      if (!file.type.startsWith("image/")) {
-        setError("Lütfen JPG veya PNG dosyası seçin.");
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("Dosya boyutu 10MB'dan küçük olmalıdır.");
-        return;
-      }
-
-      // Model yoksa ilk yükle
-      const ready = await ensureModel();
-      if (!ready) return;
-
-      setIsProcessing(true);
-
-      try {
-        const img = await loadImage(file);
-
-        let w = img.width;
-        let h = img.height;
-        if (Math.max(w, h) > MAX_SIZE) {
-          const scale = MAX_SIZE / Math.max(w, h);
-          w = Math.round(w * scale);
-          h = Math.round(h * scale);
-        }
-
-        const srcCanvas = document.createElement("canvas");
-        srcCanvas.width = w;
-        srcCanvas.height = h;
-        srcCanvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-
-        const originalUrl = srcCanvas.toDataURL("image/jpeg", 0.9);
-
-        await new Promise<void>((resolve, reject) => {
-          const segmenter = segmenterRef.current;
-
-          const timeout = setTimeout(() => {
-            reject(new Error("İşlem zaman aşımına uğradı."));
-          }, 30000);
-
-          segmenter.onResults((results: any) => {
-            clearTimeout(timeout);
-            try {
-              const maskCanvas = document.createElement("canvas");
-              maskCanvas.width = w;
-              maskCanvas.height = h;
-              const maskCtx = maskCanvas.getContext("2d")!;
-              maskCtx.drawImage(results.segmentationMask, 0, 0, w, h);
-
-              // Feather: iki kez hafif blur
-              maskCtx.filter = "blur(2px)";
-              maskCtx.drawImage(maskCanvas, 0, 0);
-              maskCtx.filter = "blur(1px)";
-              maskCtx.drawImage(maskCanvas, 0, 0);
-              maskCtx.filter = "none";
-
-              const personCanvas = document.createElement("canvas");
-              personCanvas.width = w;
-              personCanvas.height = h;
-              const personCtx = personCanvas.getContext("2d")!;
-              personCtx.drawImage(srcCanvas, 0, 0);
-              personCtx.globalCompositeOperation = "destination-in";
-              personCtx.drawImage(maskCanvas, 0, 0);
-
-              const finalCanvas = document.createElement("canvas");
-              finalCanvas.width = w;
-              finalCanvas.height = h;
-              const finalCtx = finalCanvas.getContext("2d")!;
-              finalCtx.fillStyle = "#FFFFFF";
-              finalCtx.fillRect(0, 0, w, h);
-              finalCtx.drawImage(personCanvas, 0, 0);
-
-              setResult({
-                original: originalUrl,
-                processed: finalCanvas.toDataURL("image/png"),
-              });
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          });
-
-          segmenter.send({ image: srcCanvas });
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "İşlem sırasında hata oluştu.");
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [loadImage, ensureModel]
-  );
 
   const download = useCallback(
     (format: "jpg" | "png") => {
@@ -217,10 +142,7 @@ export default function BackgroundRemover() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
           <p className="text-sm text-red-700">{error}</p>
           <button
-            onClick={() => {
-              setError(null);
-              segmenterRef.current = null;
-            }}
+            onClick={() => setError(null)}
             className="text-xs text-red-500 underline mt-1"
           >
             Tekrar Dene
@@ -228,7 +150,7 @@ export default function BackgroundRemover() {
         </div>
       )}
 
-      {!result && !isProcessing && !modelLoading && (
+      {!result && !isProcessing && (
         <div
           onDrop={handleDrop}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -252,15 +174,11 @@ export default function BackgroundRemover() {
         </div>
       )}
 
-      {(isProcessing || modelLoading) && (
+      {isProcessing && (
         <div className="text-center py-10">
           <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-navy-600">
-            {modelLoading ? "Model yükleniyor..." : "Arka plan kaldırılıyor..."}
-          </p>
-          {modelLoading && (
-            <p className="text-[11px] text-navy-400 mt-1">İlk kullanımda biraz bekleyebilir</p>
-          )}
+          <p className="text-sm text-navy-600">{progress || "İşleniyor..."}</p>
+          <p className="text-[11px] text-navy-400 mt-1">İlk kullanımda model indirme biraz sürebilir</p>
         </div>
       )}
 
@@ -297,6 +215,12 @@ export default function BackgroundRemover() {
           </button>
         </div>
       )}
+
+      <div className="text-center">
+        <p className="text-[10px] text-navy-300">
+          Dosyalarınız sunucuya yüklenmez &bull; Tüm işlemler tarayıcınızda yapılır
+        </p>
+      </div>
     </div>
   );
 }

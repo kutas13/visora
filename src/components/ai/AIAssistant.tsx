@@ -80,71 +80,7 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
     const role = profile?.role || "staff";
     setUserName(name);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const weekLater = new Date(today);
-    weekLater.setDate(weekLater.getDate() + 7);
-
-    let query = supabase.from("visa_files").select("*").eq("arsiv_mi", false);
-    if (role !== "admin") {
-      query = query.eq("assigned_user_id", user.id);
-    }
-    const { data: files } = await query;
-
-    const welcomeMessages: Message[] = [];
-
-    const hour = new Date().getHours();
-    let greeting = "Merhaba";
-    if (hour < 12) greeting = "Günaydın";
-    else if (hour < 18) greeting = "İyi günler";
-    else greeting = "İyi akşamlar";
-
-    welcomeMessages.push({
-      id: "greeting",
-      type: "ai",
-      content: `${greeting} ${name}! 🦊\n\nBen FOX AI, kişisel yapay zeka asistanınızım. Dosyalarınız, randevularınız, ödemeleriniz hakkında her şeyi sorun, müşteri isimlerini ve detayları size söyleyeyim.\n\n💡 Örnek: "Ödemesini aldığım dosyalar kimler?", "Yaklaşan randevularım", "Davut Bey'e mesaj gönder"`,
-      timestamp: new Date(),
-    });
-
-    if (files && files.length > 0) {
-      const alerts: string[] = [];
-
-      const todayAppts = files.filter(f => {
-        if (!f.randevu_tarihi) return false;
-        const d = new Date(f.randevu_tarihi);
-        return d >= today && d < tomorrow;
-      });
-      if (todayAppts.length > 0) alerts.push(`🔴 ${todayAppts.length} randevu BUGÜN!`);
-
-      const upcoming = files.filter(f => {
-        if (!f.randevu_tarihi) return false;
-        const d = new Date(f.randevu_tarihi);
-        return d >= tomorrow && d <= weekLater;
-      });
-      if (upcoming.length > 0) alerts.push(`📅 ${upcoming.length} yaklaşan randevu (bu hafta)`);
-
-      const missingDocs = files.filter(f => f.evrak_eksik_mi === true);
-      if (missingDocs.length > 0) alerts.push(`📋 ${missingDocs.length} eksik evraklı dosya`);
-
-      const unpaid = files.filter(f => f.odeme_durumu === "odenmedi" && !f.arsiv_mi);
-      if (unpaid.length > 0) alerts.push(`💰 ${unpaid.length} ödenmemiş dosya`);
-
-      const active = files.filter(f => !f.sonuc && !f.arsiv_mi);
-      alerts.push(`📁 ${active.length} aktif dosya`);
-
-      if (alerts.length > 0) {
-        welcomeMessages.push({
-          id: "alerts",
-          type: "system",
-          content: "📊 Güncel Durum:\n\n" + alerts.join("\n"),
-          timestamp: new Date(),
-        });
-      }
-    }
-
-    setMessages(welcomeMessages);
+    setMessages([]);
   };
 
   // Dahili mesaj gönderme
