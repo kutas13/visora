@@ -46,6 +46,9 @@ export async function POST(request: NextRequest) {
       port: 465,
       secure: true,
       auth: { user: senderEmail, pass: smtpPass },
+      connectionTimeout: 8000, // 8 saniye bağlantı timeout (Vercel 10s limiti)
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
 
     const amt = Number(tutar).toLocaleString("tr-TR");

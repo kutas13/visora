@@ -138,7 +138,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Menü */}
-      <nav className="p-3 flex-shrink-0">
+      <nav className="p-3 flex-shrink-0 overflow-y-auto max-h-[calc(100vh-380px)]">
         <ul className="space-y-0.5">
           {menuItems.map((item) => {
             const isActive = pathname.startsWith(item.href);
@@ -162,7 +162,7 @@ export default function AdminSidebar() {
       </nav>
 
       {/* FOX AI Asistan */}
-      <div className="flex-1 p-3 pt-0 min-h-0 flex flex-col justify-end">
+      <div className="flex-1 p-3 pt-0 min-h-[260px] flex flex-col justify-end">
         <AIAssistant isAdmin={true} />
       </div>
 

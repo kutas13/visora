@@ -19,9 +19,9 @@ const nextConfig = {
     ],
   },
   
-  // Production optimizasyonları
+  // Production optimizasyonları - error ve warn loglarını koru (hata ayıklama için)
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
   
   // Poweredby header'ı kaldır (güvenlik)
@@ -76,11 +76,12 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net 'wasm-unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://cdn.jsdelivr.net",
+              "worker-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

@@ -136,7 +136,7 @@ export default function PaymentsPage() {
 
       // Otomatik email gönder (Muhasebe'ye)
       try {
-        await fetch("/api/send-tahsilat-email", {
+        const emailRes = await fetch("/api/send-tahsilat-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -150,6 +150,10 @@ export default function PaymentsPage() {
             emailType: "tahsilat",
           }),
         });
+        if (!emailRes.ok) {
+          const errData = await emailRes.json().catch(() => ({}));
+          console.error("Tahsilat email hatasi:", errData);
+        }
       } catch (emailErr) {
         console.error("Tahsilat email gonderilemedi:", emailErr);
       }

@@ -89,15 +89,6 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
         <StaffSidebar />
-        {/* Mobilde kapat butonu */}
-        <button
-          onClick={() => setSidebarOpen(false)}
-          className="lg:hidden absolute top-4 right-[-44px] w-10 h-10 bg-navy-800 text-white rounded-r-xl flex items-center justify-center shadow-lg"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
       </div>
 
       {/* Main Content */}
@@ -107,6 +98,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           userName={profile?.name || "Kullanıcı"}
           variant="staff"
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          sidebarOpen={sidebarOpen}
         />
         <main className="p-4 md:p-6">{children}</main>
       </div>

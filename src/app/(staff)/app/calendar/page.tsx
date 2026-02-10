@@ -28,9 +28,19 @@ function getDaysUntil(dateStr: string) {
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function toLocalDateKey(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function getWeekDates(date: Date) {
   const start = new Date(date);
-  start.setDate(start.getDate() - start.getDay() + 1);
+  const day = start.getDay();
+  // getDay: 0=Pazar, 1=Pazartesi... Pazartesi'ye git
+  start.setDate(start.getDate() - ((day + 6) % 7));
+  start.setHours(0, 0, 0, 0);
   const days = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
@@ -101,11 +111,11 @@ export default function CalendarPage() {
   const appointmentsByWeekDay = useMemo(() => {
     const map: Record<string, VisaFileWithProfile[]> = {};
     weekDates.forEach(d => {
-      const key = d.toISOString().split("T")[0];
+      const key = toLocalDateKey(d);
       map[key] = [];
     });
     appointments.forEach(a => {
-      const key = a.randevu_tarihi!.split("T")[0];
+      const key = toLocalDateKey(new Date(a.randevu_tarihi!));
       if (map[key]) map[key].push(a);
     });
     return map;
@@ -316,7 +326,7 @@ export default function CalendarPage() {
           <div className="p-4">
             <div className="grid grid-cols-7 gap-2">
               {weekDates.map(date => {
-                const key = date.toISOString().split("T")[0];
+                const key = toLocalDateKey(date);
                 const dayAppts = appointmentsByWeekDay[key] || [];
                 const isToday = new Date().toDateString() === date.toDateString();
                 const dayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];

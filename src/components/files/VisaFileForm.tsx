@@ -149,7 +149,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
             // Peşin satış otomatik email (Muhasebe'ye)
             try {
-              await fetch("/api/send-tahsilat-email", {
+              const emailRes = await fetch("/api/send-tahsilat-email", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -163,6 +163,10 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   emailType: "pesin_satis",
                 }),
               });
+              if (!emailRes.ok) {
+                const errData = await emailRes.json().catch(() => ({}));
+                console.error("Pesin satis email hatasi:", errData);
+              }
             } catch (emailErr) {
               console.error("Pesin satis email gonderilemedi:", emailErr);
             }

@@ -16,9 +16,10 @@ interface TopBarProps {
   userName?: string;
   variant?: "staff" | "admin";
   onMenuToggle?: () => void;
+  sidebarOpen?: boolean;
 }
 
-export default function TopBar({ title, userName = "Kullanıcı", variant = "staff", onMenuToggle }: TopBarProps) {
+export default function TopBar({ title, userName = "Kullanıcı", variant = "staff", onMenuToggle, sidebarOpen = false }: TopBarProps) {
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -55,16 +56,22 @@ export default function TopBar({ title, userName = "Kullanıcı", variant = "sta
   return (
     <header className="h-16 bg-white border-b border-navy-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-sm">
       <div className="flex items-center gap-3">
-        {/* Hamburger - sadece mobilde */}
+        {/* Hamburger / Kapat - sadece mobilde */}
         {onMenuToggle && (
           <button
             onClick={onMenuToggle}
-            className="lg:hidden p-2 -ml-2 text-navy-600 hover:bg-navy-100 rounded-xl transition-colors"
-            aria-label="Menü"
+            className="lg:hidden p-2 -ml-2 text-navy-600 hover:bg-navy-100 rounded-xl transition-colors relative z-[60]"
+            aria-label={sidebarOpen ? "Menüyü Kapat" : "Menü"}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            {sidebarOpen ? (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
           </button>
         )}
         <h1 className="text-lg md:text-xl font-bold text-navy-900 truncate">{title}</h1>
