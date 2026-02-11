@@ -76,12 +76,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net 'wasm-unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com 'wasm-unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://cdn.jsdelivr.net https://unpkg.com",
-              "worker-src 'self' blob:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://cdn.jsdelivr.net https://unpkg.com https://raw.githubusercontent.com",
+              "worker-src 'self' blob: https://unpkg.com https://cdn.jsdelivr.net",
+              "child-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -92,11 +93,28 @@ const nextConfig = {
     ];
   },
   
-  // Webpack: pdfjs-dist ve mediapipe uyumluluğu
-  webpack: (config) => {
-    // pdfjs-dist Node.js canvas modülünü devre dışı bırak (browser ortamında gereksiz)
+  // Webpack yapılandırması
+  webpack: (config, { isServer }) => {
+    // pdfjs-dist Node.js canvas modülünü devre dışı bırak
     config.resolve.alias.canvas = false;
     config.resolve.alias.encoding = false;
+
+    // Client-side: Node.js modüllerini devre dışı bırak (background-removal uyumu)
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+
+    // WASM dosya desteği
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+    };
+
     return config;
   },
 };

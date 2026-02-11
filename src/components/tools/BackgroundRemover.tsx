@@ -35,57 +35,84 @@ export default function BackgroundRemover() {
     setProgress("Model yükleniyor...");
 
     try {
-      const { removeBackground } = await import("@imgly/background-removal");
-
-      // Orijinal resmi al
+      // Orijinal resmi hazırla
       const originalUrl = URL.createObjectURL(file);
+
+      // Resmi canvas üzerinden küçült (performans için)
+      const imgEl = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = originalUrl;
+      });
+
+      let w = imgEl.width;
+      let h = imgEl.height;
+      if (Math.max(w, h) > MAX_SIZE) {
+        const scale = MAX_SIZE / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+
+      const srcCanvas = document.createElement("canvas");
+      srcCanvas.width = w;
+      srcCanvas.height = h;
+      srcCanvas.getContext("2d")!.drawImage(imgEl, 0, 0, w, h);
+
+      // Canvas'ı blob'a çevir
+      const inputBlob = await new Promise<Blob>((resolve) => {
+        srcCanvas.toBlob((b) => resolve(b!), "image/png");
+      });
 
       setProgress("Arka plan kaldırılıyor...");
 
-      const blob = await removeBackground(file, {
+      const { removeBackground } = await import("@imgly/background-removal");
+
+      const resultBlob = await removeBackground(inputBlob, {
         progress: (key: string, current: number, total: number) => {
-          if (key === "compute:inference") {
+          if (total > 0) {
             const pct = Math.round((current / total) * 100);
-            setProgress(`İşleniyor... %${pct}`);
+            if (key.includes("fetch")) {
+              setProgress(`Model indiriliyor... %${pct}`);
+            } else if (key.includes("inference") || key.includes("compute")) {
+              setProgress(`İşleniyor... %${pct}`);
+            }
           }
         },
       });
 
       // Beyaz arka plan uygula
-      const img = new Image();
-      const processedUrl = URL.createObjectURL(blob);
-
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => {
-          let w = img.width;
-          let h = img.height;
-          if (Math.max(w, h) > MAX_SIZE) {
-            const scale = MAX_SIZE / Math.max(w, h);
-            w = Math.round(w * scale);
-            h = Math.round(h * scale);
-          }
-
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d")!;
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-
-          setResult({
-            original: originalUrl,
-            processed: canvas.toDataURL("image/png"),
-          });
-          URL.revokeObjectURL(processedUrl);
-          resolve();
-        };
-        img.onerror = reject;
-        img.src = processedUrl;
+      const processedImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = URL.createObjectURL(resultBlob);
       });
-    } catch (err) {
+
+      const finalCanvas = document.createElement("canvas");
+      finalCanvas.width = w;
+      finalCanvas.height = h;
+      const ctx = finalCanvas.getContext("2d")!;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(processedImg, 0, 0, w, h);
+
+      URL.revokeObjectURL(processedImg.src);
+
+      setResult({
+        original: originalUrl,
+        processed: finalCanvas.toDataURL("image/png"),
+      });
+    } catch (err: any) {
       console.error("Arka plan kaldırma hatası:", err);
-      setError("İşlem sırasında hata oluştu. Lütfen tekrar deneyin.");
+      const msg = err?.message || String(err);
+      if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed")) {
+        setError("Model dosyaları indirilemedi. İnternet bağlantınızı kontrol edin ve tekrar deneyin.");
+      } else if (msg.includes("wasm") || msg.includes("WASM")) {
+        setError("Tarayıcınız bu özelliği desteklemiyor. Lütfen Chrome veya Edge kullanın.");
+      } else {
+        setError("İşlem sırasında hata oluştu. Lütfen tekrar deneyin.");
+      }
     } finally {
       setIsProcessing(false);
       setProgress("");

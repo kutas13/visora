@@ -80,7 +80,18 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
     const role = profile?.role || "staff";
     setUserName(name);
 
-    setMessages([]);
+    const hour = new Date().getHours();
+    let greeting = "Merhaba";
+    if (hour < 12) greeting = "Günaydın";
+    else if (hour < 18) greeting = "İyi günler";
+    else greeting = "İyi akşamlar";
+
+    setMessages([{
+      id: "greeting",
+      type: "ai",
+      content: `${greeting}, ${name}! 🦊`,
+      timestamp: new Date(),
+    }]);
   };
 
   // Dahili mesaj gönderme
@@ -522,27 +533,6 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
             )}
             <div ref={messagesEndRef} />
           </div>
-
-          {/* Quick Actions */}
-          {chatHistory.length === 0 && !pendingMessage && (
-            <div className="px-3 pb-2 flex-shrink-0">
-              <div className="flex gap-1.5 flex-wrap">
-                {[
-                  "Bugün ne yapmalıyım?",
-                  "Ödenmemiş dosyalarım",
-                  "Yaklaşan randevularım",
-                ].map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => setInput(q)}
-                    className="text-[10px] px-2.5 py-1.5 bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-slate-400 hover:text-slate-200 rounded-full transition-all"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Pending Message Banner */}
           {pendingMessage && (
