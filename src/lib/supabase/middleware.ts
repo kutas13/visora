@@ -93,5 +93,23 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // /muhasebe/* rotaları için muhasebe rolü gerekli
+  if (pathname.startsWith("/muhasebe")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    // Rol kontrolü
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "muhasebe") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
+
   return response;
 }

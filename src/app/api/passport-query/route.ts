@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     if (!passportNo || typeof passportNo !== "string" || passportNo.trim().length < 2) {
       return NextResponse.json(
-        { error: "Geçerli bir pasaport numarası girin." },
+        { error: "Geçerli bir pasaport numarası veya müşteri adı girin." },
         { status: 400 }
       );
     }
@@ -36,11 +36,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Once tam eslestirme dene, yoksa ilike ile
+    const searchTerm = passportNo.trim();
+
+    // Hem pasaport hem müşteri adına göre arama yap + personel bilgisi
     const { data, error } = await supabase
       .from("visa_files")
-      .select("*")
-      .ilike("pasaport_no", passportNo.trim());
+      .select("*, profiles:assigned_user_id(name)")
+      .or(`pasaport_no.ilike.%${searchTerm}%,musteri_ad.ilike.%${searchTerm}%`);
 
     if (error) {
       console.error("Pasaport sorgu hatası:", error.message, error.details);

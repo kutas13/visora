@@ -424,7 +424,7 @@ export default function CalendarPage() {
       </Card>
 
       {/* Edit Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Dosyayı Düzenle" size="lg">
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Dosyayı Düzenle" size="xl">
         <VisaFileForm file={editingFile} onSuccess={handleEditSuccess} onCancel={() => setShowEditModal(false)} />
       </Modal>
     </div>

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const raw = await request.text();
     const body = JSON.parse(raw);
 
-    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType } = body;
+    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType, hesapSahibi, companyInfo, faturaTipi, notlar, onOdemeGecmisi } = body;
 
     if (!senderEmail || !musteriAd || !tutar || !currency) {
       return NextResponse.json({ error: "Eksik alanlar" }, { status: 400 });
@@ -55,26 +55,70 @@ export async function POST(request: NextRequest) {
     const ct = cText(currency);
     const cs = cSym(currency);
     const isPesin = emailType === "pesin_satis";
+    const isOnOdeme = emailType === "on_odeme";
+    const isFirmaCari = emailType === "firma_cari";
     const tarih = new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" });
 
-    const tag = isPesin ? "PE\u015e\u0130N SATI\u015e" : "TAHS\u0130LAT";
+    const tag = isPesin ? "PE\u015e\u0130N SATI\u015e" : isOnOdeme ? "\u00d6N \u00d6DEME" : isFirmaCari ? "F\u0130RMA CAR\u0130" : "TAHS\u0130LAT";
     const subject = `${tag} \u2022 ${musteriAd} \u2022 ${hedefUlke} \u2022 ${amt}${cs}`;
+
+    // Hesap bilgisi
+    const hesapBilgisi = hesapSahibi && hesapSahibi !== "DAVUT_TURGUT" ? ` (${hesapSahibi === "SIRRI_TURGUT" ? "Sırrı Turgut hesabı" : ""})` : "";
+
+    // Firma bilgisi
+    const firmaBilgisi = companyInfo ? ` - ${companyInfo.firma_adi}` : "";
+    const faturaBilgisi = faturaTipi ? ` (${faturaTipi === "isimli" ? "İsimli" : "İsimsiz"} Fatura)` : "";
 
     let plainBody: string;
     if (isPesin) {
-      plainBody = `${musteriAd} ${hedefUlke} vize \u00fccreti ${amt} ${ct} pe\u015fin olarak al\u0131nm\u0131\u015ft\u0131r`;
+      if (yontem === "nakit") {
+        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} peşin nakit olarak alınmıştır${faturaBilgisi}`;
+      } else {
+        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} peşin hesaba ödenmiştir${hesapBilgisi}${faturaBilgisi}`;
+      }
+    } else if (isOnOdeme) {
+      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize işlemi için ${amt} ${ct} ön ödeme alınmıştır (cari hesapta kalan tutar takip edilecek)`;
+    } else if (isFirmaCari) {
+      plainBody = `${musteriAd} ${hedefUlke} vize işlemi${firmaBilgisi} firma cariye eklenmiştir${faturaBilgisi} (${amt} ${ct} - cari hesapta takip edilecek)`;
     } else if (yontem === "nakit") {
-      plainBody = `${musteriAd} ${hedefUlke} vize \u00fccreti ${amt} ${ct} nakit olarak al\u0131nm\u0131\u015ft\u0131r carimden \u00e7\u0131kartabiliriz`;
+      const onOdemeEk = onOdemeGecmisi ? ` (${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde ${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency} ön ödeme alınmıştı)` : "";
+      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} nakit olarak alınmıştır carimden çıkartabiliriz${onOdemeEk}`;
     } else {
-      plainBody = `${musteriAd} ${hedefUlke} vize \u00fccreti ${amt} ${ct} hesaba \u00f6denmi\u015ftir carimden \u00e7\u0131kartabiliriz`;
+      const onOdemeEk = onOdemeGecmisi ? ` (${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde ${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency} ön ödeme alınmıştı)` : "";
+      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} hesaba ödenmiştir${hesapBilgisi} carimden çıkartabiliriz${onOdemeEk}`;
     }
 
-    // Renkler
-    const grad1 = isPesin ? "#2563eb" : "#f97316";
-    const grad2 = isPesin ? "#7c3aed" : "#ef4444";
-    const badgeBg = isPesin ? "rgba(37,99,235,0.12)" : "rgba(249,115,22,0.12)";
-    const badgeClr = isPesin ? "#2563eb" : "#ea580c";
-    const methodLabel = yontem === "nakit" ? "Nakit (Cariden D\u00fc\u015f\u00fc\u015f)" : "Hesaba";
+    // Renkler ve ikonlar
+    let grad1, grad2, badgeBg, badgeClr, methodLabel, icon;
+    
+    if (isPesin) {
+      if (yontem === "nakit") {
+        grad1 = "#16a34a"; grad2 = "#059669"; // yeşil (nakit)
+        badgeBg = "rgba(22,163,74,0.12)"; badgeClr = "#16a34a";
+        methodLabel = "Nakit (Cariden Düşüş)";
+        icon = "&#x1F4B5;"; // 💵 nakit
+      } else {
+        grad1 = "#2563eb"; grad2 = "#3b82f6"; // mavi (hesaba)
+        badgeBg = "rgba(37,99,235,0.12)"; badgeClr = "#2563eb";
+        methodLabel = `Hesaba${hesapBilgisi}`;
+        icon = "&#x1F3E6;"; // 🏦 banka
+      }
+    } else if (isOnOdeme) {
+      grad1 = "#8b5cf6"; grad2 = "#a78bfa"; // mor (ön ödeme)
+      badgeBg = "rgba(139,92,246,0.12)"; badgeClr = "#8b5cf6";
+      methodLabel = "Ön Ödeme";
+      icon = "&#x1F4B3;"; // 💳 kart
+    } else if (isFirmaCari) {
+      grad1 = "#7c3aed"; grad2 = "#8b5cf6"; // mor (firma)
+      badgeBg = "rgba(124,58,237,0.12)"; badgeClr = "#7c3aed";
+      methodLabel = "Firma Cari";
+      icon = "&#x1F3E2;"; // 🏢 şirket
+    } else {
+      grad1 = "#f97316"; grad2 = "#ef4444"; // turuncu (tahsilat)
+      badgeBg = "rgba(249,115,22,0.12)"; badgeClr = "#ea580c";
+      methodLabel = yontem === "nakit" ? "Nakit (Cariden Düşüş)" : `Hesaba${hesapBilgisi}`;
+      icon = companyInfo ? "&#x1F3E2;" : "&#x1F4B0;"; // 🏢 şirket / 💰 tahsilat
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="tr">
@@ -97,7 +141,7 @@ export async function POST(request: NextRequest) {
     <!-- Type Badge + Icon -->
     <div style="text-align:center;padding:36px 32px 8px;">
       <div style="display:inline-block;width:64px;height:64px;line-height:64px;border-radius:20px;background:linear-gradient(135deg,${grad1},${grad2});font-size:28px;text-align:center;box-shadow:0 12px 32px ${grad1}55;">
-        ${isPesin ? "&#x1F4B3;" : "&#x1F4B0;"}
+        ${icon}
       </div>
       <div style="margin-top:16px;">
         <span style="display:inline-block;background:${badgeBg};color:${badgeClr};font-size:10px;font-weight:800;padding:5px 16px;border-radius:20px;letter-spacing:3px;">${tag}</span>
@@ -158,6 +202,40 @@ export async function POST(request: NextRequest) {
             <br><span style="font-size:11px;color:#64748b;">${senderEmail}</span>
           </td>
         </tr>
+        ${companyInfo ? `<tr>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Firma</span>
+          </td>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
+            <span style="font-size:14px;color:#e2e8f0;font-weight:500;">${companyInfo.firma_adi}</span>
+            ${faturaTipi ? `<br><span style="font-size:11px;color:#64748b;">${faturaTipi === "isimli" ? "İsimli" : "İsimsiz"} Fatura</span>` : ""}
+          </td>
+        </tr>` : ""}
+        ${hesapSahibi && yontem === "hesaba" ? `<tr>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Hesap</span>
+          </td>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
+            <span style="font-size:14px;color:#e2e8f0;font-weight:500;">${hesapSahibi === "DAVUT_TURGUT" ? "Davut Turgut" : "Sırrı Turgut"}</span>
+          </td>
+        </tr>` : ""}
+        ${onOdemeGecmisi ? `<tr>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Ön Ödeme</span>
+          </td>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
+            <span style="font-size:13px;color:#e2e8f0;">${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency}</span>
+            <br><span style="font-size:11px;color:#64748b;">${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde alınmıştı</span>
+          </td>
+        </tr>` : ""}
+        ${notlar ? `<tr>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Not</span>
+          </td>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
+            <span style="font-size:13px;color:#e2e8f0;font-style:italic;">"${notlar}"</span>
+          </td>
+        </tr>` : ""}
         <tr>
           <td style="padding:14px 0;">
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Tarih</span>

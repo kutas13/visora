@@ -18,5 +18,7 @@ export const config = {
     "/admin/raporlar/:path*",
     "/admin/atamalar/:path*",
     "/admin/cari-hesap/:path*",
+    // Korumalı rotalar - muhasebe
+    "/muhasebe/:path*",
   ],
 };

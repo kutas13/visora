@@ -9,6 +9,7 @@ import type { Profile } from "@/lib/supabase/types";
 const pageTitles: Record<string, string> = {
   "/app": "Ana Sayfa",
   "/app/files": "Vize Dosyaları",
+  "/app/files/new": "Yeni Vize Dosyası",
   "/app/calendar": "Randevu Takvimi",
   "/app/vize-bitisi": "Vize Bitiş Takibi",
   "/app/groups": "Gruplar",

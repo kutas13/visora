@@ -356,7 +356,7 @@ export default function AdminGroupsPage() {
       </Modal>
 
       {/* Dosya Düzenle Modal */}
-      <Modal isOpen={showEditFileModal} onClose={() => { setShowEditFileModal(false); setEditingFile(null); }} title="Dosyayı Düzenle" size="lg">
+      <Modal isOpen={showEditFileModal} onClose={() => { setShowEditFileModal(false); setEditingFile(null); }} title="Dosyayı Düzenle" size="xl">
         <VisaFileForm file={editingFile} onSuccess={() => { setShowEditFileModal(false); setEditingFile(null); loadData(); }} onCancel={() => { setShowEditFileModal(false); setEditingFile(null); }} />
       </Modal>
     </div>

@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { Card, Button, Badge, Modal, Input, Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { notifyPaymentReceived } from "@/lib/notifications";
-import { ODEME_YONTEMLERI, PARA_BIRIMLERI } from "@/lib/constants";
-import type { Payment, VisaFile, ParaBirimi } from "@/lib/supabase/types";
+import { ODEME_YONTEMLERI, PARA_BIRIMLERI, HESAP_SAHIPLERI } from "@/lib/constants";
+import type { Payment, VisaFile, ParaBirimi, HesapSahibi } from "@/lib/supabase/types";
 
 type PaymentWithFile = Payment & { visa_files: Pick<VisaFile, "musteri_ad" | "hedef_ulke" | "ucret" | "ucret_currency"> | null };
 
@@ -34,6 +34,8 @@ export default function PaymentsPage() {
   const [tutar, setTutar] = useState("");
   const [currency, setCurrency] = useState<ParaBirimi>("TL");
   const [yontem, setYontem] = useState("nakit");
+  const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi>("DAVUT_TURGUT");
+  const [notlar, setNotlar] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [filterCurrency, setFilterCurrency] = useState("all");
@@ -52,6 +54,7 @@ export default function PaymentsPage() {
       .eq("arsiv_mi", false)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
+      .neq("cari_tipi", "firma_cari") // Firma cari dosyaları hariç (muhasebe takibinde)
       .order("created_at", { ascending: false });
 
     setUnpaidFiles(unpaid || []);
@@ -82,9 +85,12 @@ export default function PaymentsPage() {
 
   const handleTahsilatYap = (file: VisaFile) => {
     setSelectedFile(file);
-    setTutar(file.ucret?.toString() || "");
+    // Ön ödeme varsa kalan tutarı, yoksa toplam tutarı göster
+    const tahsilatTutari = file.kalan_tutar || file.ucret;
+    setTutar(tahsilatTutari?.toString() || "");
     setCurrency(file.ucret_currency || "TL");
     setYontem("nakit");
+    setNotlar("");
     setShowModal(true);
   };
 
@@ -147,6 +153,13 @@ export default function PaymentsPage() {
             tutar: amount,
             currency: currency,
             yontem: yontem,
+            hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
+            notlar: notlar.trim() || null,
+            onOdemeGecmisi: selectedFile.on_odeme_tutar ? {
+              tutar: selectedFile.on_odeme_tutar,
+              currency: selectedFile.on_odeme_currency,
+              tarih: selectedFile.created_at
+            } : null,
             emailType: "tahsilat",
           }),
         });
@@ -463,6 +476,48 @@ export default function PaymentsPage() {
 
             <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={yontem} onChange={(e) => setYontem(e.target.value)} />
 
+            {yontem === "hesaba" && (
+              <Select 
+                label="Hesap Sahibi" 
+                options={HESAP_SAHIPLERI} 
+                value={hesapSahibi} 
+                onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} 
+              />
+            )}
+
+            {/* Ön ödeme bilgisi */}
+            {selectedFile?.on_odeme_tutar && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <h4 className="text-sm font-semibold text-blue-800 mb-2">💳 Ön Ödeme Geçmişi</h4>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-blue-700">
+                    {new Date(selectedFile.created_at).toLocaleDateString("tr-TR")} tarihinde
+                  </span>
+                  <span className="font-bold text-blue-800">
+                    {selectedFile.on_odeme_tutar} {selectedFile.on_odeme_currency} alınmıştır
+                  </span>
+                </div>
+                <div className="mt-2 text-xs text-blue-600 bg-blue-100 rounded-lg p-2">
+                  <strong>Toplam:</strong> {selectedFile.ucret} {selectedFile.ucret_currency} • 
+                  <strong> Kalan:</strong> {selectedFile.kalan_tutar} {selectedFile.ucret_currency}
+                </div>
+              </div>
+            )}
+
+            {/* Not Alanı */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-navy-600">
+                Muhasebe Notunuz <span className="text-navy-400">(isteğe bağlı)</span>
+              </label>
+              <textarea
+                value={notlar}
+                onChange={(e) => setNotlar(e.target.value)}
+                placeholder="Ek bilgi veya açıklama..."
+                className="w-full px-4 py-3 border border-navy-300 rounded-xl resize-none text-sm"
+                rows={3}
+              />
+            </div>
+
             <div className="flex gap-3 pt-4 border-t border-navy-200">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">
                 İptal
@@ -491,7 +546,7 @@ export default function PaymentsPage() {
                   {formatCurrency(parseFloat(tutar), currency)}
                 </p>
                 <p className="text-sm text-navy-500 mt-2 bg-white/50 rounded-full px-4 py-1 inline-block">
-                  {yontem === "nakit" ? "Nakit (Cariden Düşüş)" : "Hesaba"}
+                  {yontem === "nakit" ? "Nakit (Cariden Düşüş)" : `Hesaba (${HESAP_SAHIPLERI.find(h => h.value === hesapSahibi)?.label})`}
                 </p>
               </div>
             </div>

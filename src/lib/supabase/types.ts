@@ -18,12 +18,29 @@ export type OdemePlani = "pesin" | "cari";
 // Ödeme tipi
 export type PaymentType = "pesin_satis" | "tahsilat";
 
+// Hesap sahipleri
+export type HesapSahibi = "DAVUT_TURGUT" | "SIRRI_TURGUT";
+
+// Cari tipi
+export type CariTipi = "kullanici_cari" | "firma_cari";
+
+// Fatura tipi
+export type FaturaTipi = "isimli" | "isimsiz";
+
 // Profil
 export interface Profile {
   id: string;
   name: string;
-  role: "admin" | "staff";
+  role: "admin" | "staff" | "muhasebe";
   created_at: string;
+}
+
+// Şirket
+export interface Company {
+  id: string;
+  firma_adi: string;
+  created_at: string;
+  created_by: string;
 }
 
 // Vize dosyası
@@ -54,6 +71,14 @@ export interface VisaFile {
   ucret_currency: ParaBirimi;
   odeme_plani: OdemePlani;
   odeme_durumu: OdemeDurumu;
+  // Yeni ödeme detayları
+  hesap_sahibi: HesapSahibi | null;
+  cari_tipi: CariTipi | null;
+  company_id: string | null;
+  fatura_tipi: FaturaTipi | null;
+  on_odeme_tutar: number | null;
+  on_odeme_currency: ParaBirimi | null;
+  kalan_tutar: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -176,6 +201,13 @@ export interface Database {
           ucret_currency?: ParaBirimi;
           odeme_plani?: OdemePlani;
           odeme_durumu?: OdemeDurumu;
+          hesap_sahibi?: HesapSahibi | null;
+          cari_tipi?: CariTipi | null;
+          company_id?: string | null;
+          fatura_tipi?: FaturaTipi | null;
+          on_odeme_tutar?: number | null;
+          on_odeme_currency?: ParaBirimi | null;
+          kalan_tutar?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -294,6 +326,16 @@ export interface Database {
           unique_key?: string | null;
         };
         Update: Partial<Notification>;
+      };
+      companies: {
+        Row: Company;
+        Insert: {
+          id?: string;
+          firma_adi: string;
+          created_at?: string;
+          created_by: string;
+        };
+        Update: Partial<Company>;
       };
     };
   };

@@ -114,9 +114,20 @@ export default function AdminCariHesapPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-navy-900">{"Cari Hesap Yönetimi"}</h1>
-        <p className="text-navy-500 text-sm mt-1">{"Tüm personellerin cari hesap özeti"}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-navy-900">{"Cari Hesap Yönetimi"}</h1>
+          <p className="text-navy-500 text-sm mt-1">{"Tüm personellerin cari hesap özeti"}</p>
+        </div>
+        <button
+          onClick={() => window.location.href = "/admin/cari-hesap/firmalar"}
+          className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
+          </svg>
+          Firma Cari Hesapları
+        </button>
       </div>
 
       {/* Genel Toplam KPI */}

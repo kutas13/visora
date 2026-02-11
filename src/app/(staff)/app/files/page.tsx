@@ -156,7 +156,7 @@ export default function FilesPage() {
           </h1>
           <p className="text-navy-500 mt-1">Müşteri dosyalarını yönetin ve takip edin</p>
         </div>
-        <Button onClick={() => { setEditingFile(null); setShowForm(true); }} className="shadow-lg hover:shadow-xl transition-shadow">
+        <Button onClick={() => window.location.href = "/app/files/new"} className="shadow-lg hover:shadow-xl transition-shadow">
           <span className="mr-2">+</span> Yeni Dosya
         </Button>
       </div>
@@ -364,7 +364,7 @@ export default function FilesPage() {
         </div>
       </Card>
 
-      <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditingFile(null); }} title={editingFile ? "Dosyayı Düzenle" : "Yeni Vize Dosyası"} size="lg">
+      <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditingFile(null); }} title={editingFile ? "Dosyayı Düzenle" : "Yeni Vize Dosyası"} size="xl">
         <VisaFileForm file={editingFile} onSuccess={handleFormSuccess} onCancel={() => { setShowForm(false); setEditingFile(null); }} />
       </Modal>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button, Input, Card, Modal, Badge } from "@/components/ui";
-import { STAFF_USERS } from "@/lib/constants";
+import { STAFF_USERS, MUHASEBE_USER } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile } from "@/lib/supabase/types";
 
@@ -117,8 +117,13 @@ export default function LoginPage() {
           .eq("id", data.user.id)
           .single();
 
+        console.log("Login - User role:", profile?.role, "User ID:", data.user.id);
+
         if (profile?.role === "admin") {
           router.push("/admin/dashboard");
+        } else if (profile?.role === "muhasebe") {
+          console.log("Muhasebe rotasına yönlendiriliyor...");
+          router.push("/muhasebe");
         } else {
           router.push("/app");
         }
@@ -260,21 +265,21 @@ export default function LoginPage() {
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-navy-900">Pasaport Sorgulama</h2>
+              <h2 className="text-xl font-bold text-navy-900">Dosya Sorgulama</h2>
               <p className="text-sm text-navy-500">Dosya durumunu görüntüleyin</p>
             </div>
           </div>
 
           <p className="text-navy-600 text-sm mb-4">
-            Pasaport numarasını girerek vize dosyanızın güncel durumunu öğrenebilirsiniz.
+            Pasaport numaranızı veya adınızı girerek vize dosyanızın güncel durumunu öğrenebilirsiniz.
           </p>
 
           <div className="space-y-4">
             <Input
-              label="Pasaport Numarası"
-              placeholder="Örn: U12345678"
+              label="Pasaport Numarası veya Müşteri Adı"
+              placeholder="Örn: U12345678 veya Mehmet Kaya"
               value={passportNo}
-              onChange={(e) => setPassportNo(e.target.value.toUpperCase())}
+              onChange={(e) => setPassportNo(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handlePassportQuery()}
             />
 
@@ -320,6 +325,11 @@ export default function LoginPage() {
                         <div>
                           <h3 className="font-bold text-navy-900 text-lg">{file.musteri_ad}</h3>
                           <p className="text-sm text-navy-500">{file.pasaport_no}</p>
+                          {file.profiles?.name && (
+                            <p className="text-xs text-primary-600 bg-primary-50 inline-block px-2 py-1 rounded-full mt-1">
+                              👤 {file.profiles.name}
+                            </p>
+                          )}
                         </div>
                         <Badge variant={status.variant}>{status.text}</Badge>
                       </div>
@@ -389,7 +399,7 @@ export default function LoginPage() {
                   </svg>
                 </div>
                 <p className="text-navy-500">Henüz sorgu yapılmadı</p>
-                <p className="text-navy-400 text-sm mt-1">Pasaport numarasını girin ve sorgula butonuna basın</p>
+                <p className="text-navy-400 text-sm mt-1">Pasaport numaranızı veya adınızı girin ve sorgula butonuna basın</p>
               </div>
             )}
           </div>
@@ -447,6 +457,26 @@ export default function LoginPage() {
                   </button>
                 ))}
               </div>
+              
+              {/* Muhasebe Girişi */}
+              <div className="pt-3 border-t border-navy-200">
+                <button
+                  onClick={() => handleUserSelect(MUHASEBE_USER)}
+                  className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-2 border-amber-200 hover:border-amber-400 rounded-xl transition-all duration-200 group"
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
+                    <span className="text-white font-bold text-lg">₺</span>
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="font-bold text-navy-900">{MUHASEBE_USER.name}</p>
+                    <p className="text-xs text-amber-600">Muhasebe</p>
+                  </div>
+                  <svg className="w-5 h-5 text-navy-400 group-hover:text-amber-500 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
               <div className="pt-4 text-center border-t border-navy-200">
                 <a href="/admin" className="text-sm text-navy-500 hover:text-primary-600 hover:underline">
                   Yönetici girişi için tıklayın

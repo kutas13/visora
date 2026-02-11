@@ -11,8 +11,14 @@ export const ADMIN_USER = {
   email: "info@foxturizm.com" 
 };
 
+export const MUHASEBE_USER = { 
+  id: "sirri", 
+  name: "SIRRI", 
+  email: "muhasebe@foxturizm.com" 
+};
+
 // Tüm kullanıcılar
-export const ALL_USERS = [...STAFF_USERS, ADMIN_USER];
+export const ALL_USERS = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER];
 
 // Email'den kullanıcı bul
 export function getUserByEmail(email: string) {
@@ -56,10 +62,17 @@ export const PARA_BIRIMLERI = [
   { value: "USD", label: "USD", symbol: "$" },
 ] as const;
 
-// Ödeme planları
+// Ödeme planları  
 export const ODEME_PLANLARI = [
   { value: "pesin", label: "Peşin" },
   { value: "cari", label: "Cari" },
+] as const;
+
+// Genişletilmiş ödeme planları (UI için)
+export const ODEME_PLANLARI_EXTENDED = [
+  { value: "pesin", label: "Peşin" },
+  { value: "cari", label: "Cari" },
+  { value: "firma_cari", label: "Firma Cari" },
 ] as const;
 
 // Vize durumları (filtre için)
@@ -100,3 +113,21 @@ export const FILE_STATUS_BADGES = {
   vize_onay: { label: "Vize Onay", color: "bg-green-100 text-green-700" },
   red: { label: "Reddedildi", color: "bg-red-100 text-red-700" },
 } as const;
+
+// Hesap sahipleri
+export const HESAP_SAHIPLERI = [
+  { value: "DAVUT_TURGUT", label: "Davut Turgut" },
+  { value: "SIRRI_TURGUT", label: "Sırrı Turgut" },
+] as const;
+
+// Cari tipleri
+export const CARI_TIPLERI = [
+  { value: "kullanici_cari", label: "Kullanıcı Cari" },
+  { value: "firma_cari", label: "Firma Cari" },
+] as const;
+
+// Fatura tipleri
+export const FATURA_TIPLERI = [
+  { value: "isimli", label: "İsimli Fatura" },
+  { value: "isimsiz", label: "İsimsiz Fatura" },
+] as const;

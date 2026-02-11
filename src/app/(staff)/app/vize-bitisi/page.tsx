@@ -243,7 +243,7 @@ export default function VizeBitisiPage() {
       </Card>
 
       {/* Edit Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Dosyayı Düzenle" size="lg">
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Dosyayı Düzenle" size="xl">
         <VisaFileForm file={editingFile} onSuccess={() => { setShowEditModal(false); setEditingFile(null); loadData(); }} onCancel={() => setShowEditModal(false)} />
       </Modal>
     </div>
