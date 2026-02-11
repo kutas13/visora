@@ -250,9 +250,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        
-        {/* Sol Kolon - Pasaport Sorgulama */}
+      <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        {/* Sol - Pasaport Sorgulama */}
         <Card className="p-6 order-2 lg:order-1 max-h-[85vh] overflow-y-auto" variant="elevated">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
@@ -396,7 +395,7 @@ export default function LoginPage() {
           </div>
         </Card>
 
-        {/* Orta Kolon - Kullanıcı Girişi */}
+        {/* Sağ - Kullanıcı Girişi */}
         <Card className="p-6 order-1 lg:order-2" variant="elevated">
           {/* Logo */}
           <div className="text-center mb-6">
