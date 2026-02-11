@@ -2,25 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Button, Input, Card, Modal, Badge } from "@/components/ui";
 import { STAFF_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile } from "@/lib/supabase/types";
 
-// Lazy load PhotoTools (ssr: false → no server-side rendering for heavy tools)
-const PhotoTools = dynamic(() => import("@/components/tools/PhotoTools"), {
-  ssr: false,
-  loading: () => (
-    <div className="bg-white rounded-xl shadow-xl p-6 h-full flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-10 h-10 border-[3px] border-primary-200 border-t-primary-500 rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-sm text-navy-500">Araçlar yükleniyor...</p>
-      </div>
-    </div>
-  ),
-});
 
 // Profil fotosu olan kullanicilar
 const USER_AVATARS: Record<string, string> = {
@@ -559,10 +546,6 @@ export default function LoginPage() {
           )}
         </Card>
 
-        {/* Sağ Kolon - Görsel & PDF Araçları */}
-        <div className="order-3 max-h-[85vh]">
-          <PhotoTools />
-        </div>
       </div>
 
       {/* Şifre Değiştirme Modal */}
