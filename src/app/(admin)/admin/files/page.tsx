@@ -133,24 +133,16 @@ export default function AdminFilesPage() {
     setDeleting(true);
     
     try {
-      const supabase = createClient();
-      
-      // Önce ilgili ödemeleri sil
-      await supabase.from("payments").delete().eq("file_id", fileToDelete.id);
-      
-      // İlgili activity logları sil
-      await supabase.from("activity_logs").delete().eq("file_id", fileToDelete.id);
-      
-      // İlgili bildirimleri sil
-      await supabase.from("notifications").delete().eq("file_id", fileToDelete.id);
-      
-      // Grup üyeliklerini sil
-      await supabase.from("visa_group_members").delete().eq("visa_file_id", fileToDelete.id);
-      
-      // Dosyayı sil
-      const { error } = await supabase.from("visa_files").delete().eq("id", fileToDelete.id);
-      
-      if (error) throw error;
+      const res = await fetch("/api/delete-visa-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: fileToDelete.id }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Dosya silinemedi.");
+      }
       
       setShowDeleteModal(false);
       setFileToDelete(null);
