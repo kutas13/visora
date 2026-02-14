@@ -98,27 +98,34 @@ export default function CariHesapPage() {
   return (
     <div className="space-y-6">
       {/* Baslik */}
-      <div>
-        <h1 className="text-2xl font-bold text-navy-900">{"Cari Hesabım"}</h1>
-        <p className="text-navy-500 text-sm mt-1">{"Carili dosyalarınızın borç ve tahsilat özeti"}</p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-navy-800 via-navy-700 to-primary-600 px-6 py-5 shadow-lg">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold text-white tracking-tight">{"Cari Hesabım"}</h1>
+          <p className="text-white/80 text-sm mt-1">{"Carili dosyalarınızın borç ve tahsilat özeti"}</p>
+        </div>
       </div>
 
       {/* KPI Kartlari */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {currencies.length === 0 ? (
-          <Card className="col-span-3 p-8 text-center">
-            <div className="text-navy-400">
-              <svg className="w-12 h-12 mx-auto mb-3 text-navy-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="font-medium">{"Cari hesabınızda borç bulunmuyor."}</p>
+          <div className="col-span-3 relative overflow-hidden rounded-2xl border border-white/20 bg-white/70 p-8 text-center backdrop-blur-xl shadow-xl">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-transparent to-primary-500/10" />
+            <div className="absolute inset-[1px] rounded-[15px] border border-white/40" />
+            <div className="relative text-navy-400">
+              <div className="text-5xl mb-3">✨</div>
+              <p className="font-semibold text-navy-600">{"Cari hesabınızda borç bulunmuyor."}</p>
+              <p className="text-sm mt-1 text-navy-400">{"Tüm ödemeleriniz güncel"}</p>
             </div>
-          </Card>
+          </div>
         ) : (
           currencies.map((c) => {
             const t = totals[c];
             return (
-              <Card key={c} className="p-0 overflow-hidden">
+              <div key={c} className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/70 p-0 backdrop-blur-xl shadow-xl">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-navy-500/20 via-primary-500/10 to-emerald-500/20" />
+                <div className="absolute inset-[1px] rounded-[15px] border border-white/40" />
+                <div className="relative">
                 <div className="bg-gradient-to-r from-navy-800 to-navy-700 px-5 py-3">
                   <div className="flex items-center justify-between">
                     <span className="text-white/70 text-xs font-semibold tracking-wider uppercase">
@@ -153,7 +160,8 @@ export default function CariHesapPage() {
                     {`%${t.borc > 0 ? Math.round((t.tahsilat / t.borc) * 100) : 0} ödendi`}
                   </p>
                 </div>
-              </Card>
+                </div>
+              </div>
             );
           })
         )}
@@ -187,13 +195,18 @@ export default function CariHesapPage() {
 
       {/* Tab Content */}
       {tab === "ozet" && (
-        <Card className="overflow-hidden">
-          <div className="px-5 py-3 bg-navy-50 border-b border-navy-200">
-            <h3 className="font-semibold text-navy-800">{"Tüm Carili Dosyalar"}</h3>
+        <Card className="overflow-hidden rounded-2xl border-0 shadow-xl">
+          <div className="relative">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary-500 via-primary-400 to-emerald-500 rounded-l-2xl" />
+            <div className="px-5 py-4 bg-navy-50/80 border-b border-navy-200/60">
+              <h3 className="font-semibold text-navy-800 text-base tracking-tight">{"Tüm Carili Dosyalar"}</h3>
+            </div>
           </div>
           {cariFiles.length === 0 ? (
-            <div className="p-8 text-center text-navy-400">
-              {"Carili dosya bulunmuyor."}
+            <div className="p-12 text-center">
+              <div className="text-6xl mb-4">📂</div>
+              <p className="font-medium text-navy-600">{"Carili dosya bulunmuyor."}</p>
+              <p className="text-sm text-navy-400 mt-1">{"Cari ödeme planlı dosyalar burada listelenir"}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -209,20 +222,29 @@ export default function CariHesapPage() {
                 </thead>
                 <tbody>
                   {cariFiles.map((f) => (
-                    <tr key={f.id} className="border-b border-navy-50 hover:bg-navy-50/50 transition-colors">
-                      <td className="px-5 py-3 font-medium text-navy-900">{f.musteri_ad}</td>
-                      <td className="px-5 py-3 text-navy-600">{f.hedef_ulke}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-navy-900">
+                    <tr key={f.id} className="group border-b border-navy-50 hover:bg-navy-50/50 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-0.5 h-8 bg-gradient-to-b from-primary-400 to-emerald-400 rounded-full group-hover:from-primary-500 group-hover:to-emerald-500 transition-colors" />
+                          <span className="font-semibold text-navy-900">{f.musteri_ad}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-navy-600 font-medium">{f.hedef_ulke}</td>
+                      <td className="px-5 py-4 text-right font-bold text-navy-900 tabular-nums">
                         {fmt(Number(f.ucret) || 0, f.ucret_currency || "TL")}
                       </td>
-                      <td className="px-5 py-3 text-center">
+                      <td className="px-5 py-4 text-center">
                         {f.odeme_durumu === "odendi" ? (
-                          <Badge variant="success">{"Ödendi"}</Badge>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                            <span>✓</span> {"Ödendi"}
+                          </span>
                         ) : (
-                          <Badge variant="warning">{"Ödenmedi"}</Badge>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                            <span>⏳</span> {"Ödenmedi"}
+                          </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right text-navy-500">{formatDate(f.created_at)}</td>
+                      <td className="px-5 py-4 text-right text-navy-500 text-sm">{formatDate(f.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -233,16 +255,18 @@ export default function CariHesapPage() {
       )}
 
       {tab === "dosyalar" && (
-        <Card className="overflow-hidden">
-          <div className="px-5 py-3 bg-red-50 border-b border-red-100">
-            <h3 className="font-semibold text-red-800">{"Ödenmemiş Dosyalar"}</h3>
+        <Card className="overflow-hidden rounded-2xl border-0 shadow-xl">
+          <div className="relative">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-500 via-red-400 to-rose-500 rounded-l-2xl" />
+            <div className="px-5 py-4 bg-red-50/80 border-b border-red-100/60">
+              <h3 className="font-semibold text-red-800 text-base tracking-tight">{"Ödenmemiş Dosyalar"}</h3>
+            </div>
           </div>
           {unpaidFiles.length === 0 ? (
-            <div className="p-8 text-center text-navy-400">
-              <svg className="w-10 h-10 mx-auto mb-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {"Tüm dosyalar ödenmiş!"}
+            <div className="p-12 text-center">
+              <div className="text-6xl mb-4">🎉</div>
+              <p className="font-semibold text-emerald-700">{"Tüm dosyalar ödenmiş!"}</p>
+              <p className="text-sm text-navy-400 mt-1">{"Harika iş çıkardınız"}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -257,13 +281,18 @@ export default function CariHesapPage() {
                 </thead>
                 <tbody>
                   {unpaidFiles.map((f) => (
-                    <tr key={f.id} className="border-b border-navy-50 hover:bg-red-50/30 transition-colors">
-                      <td className="px-5 py-3 font-medium text-navy-900">{f.musteri_ad}</td>
-                      <td className="px-5 py-3 text-navy-600">{f.hedef_ulke}</td>
-                      <td className="px-5 py-3 text-right font-bold text-red-600">
+                    <tr key={f.id} className="group border-b border-navy-50 hover:bg-red-50/30 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-0.5 h-8 bg-gradient-to-b from-amber-400 to-red-400 rounded-full group-hover:from-amber-500 group-hover:to-red-500 transition-colors" />
+                          <span className="font-semibold text-navy-900">{f.musteri_ad}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-navy-600 font-medium">{f.hedef_ulke}</td>
+                      <td className="px-5 py-4 text-right font-bold text-red-600 tabular-nums">
                         {fmt(Number(f.ucret) || 0, f.ucret_currency || "TL")}
                       </td>
-                      <td className="px-5 py-3 text-right text-navy-500">{formatDate(f.created_at)}</td>
+                      <td className="px-5 py-4 text-right text-navy-500 text-sm">{formatDate(f.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -274,13 +303,18 @@ export default function CariHesapPage() {
       )}
 
       {tab === "tahsilatlar" && (
-        <Card className="overflow-hidden">
-          <div className="px-5 py-3 bg-green-50 border-b border-green-100">
-            <h3 className="font-semibold text-green-800">{"Tahsilat Geçmişi"}</h3>
+        <Card className="overflow-hidden rounded-2xl border-0 shadow-xl">
+          <div className="relative">
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-500 via-green-400 to-teal-500 rounded-l-2xl" />
+            <div className="px-5 py-4 bg-green-50/80 border-b border-green-100/60">
+              <h3 className="font-semibold text-green-800 text-base tracking-tight">{"Tahsilat Geçmişi"}</h3>
+            </div>
           </div>
           {payments.length === 0 ? (
-            <div className="p-8 text-center text-navy-400">
-              {"Henüz tahsilat yapılmamış."}
+            <div className="p-12 text-center">
+              <div className="text-6xl mb-4">💳</div>
+              <p className="font-medium text-navy-600">{"Henüz tahsilat yapılmamış."}</p>
+              <p className="text-sm text-navy-400 mt-1">{"Tahsilatlar burada görünecek"}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -297,21 +331,26 @@ export default function CariHesapPage() {
                 <tbody>
                   {payments.map((p) => (
                     <tr key={p.id} className="border-b border-navy-50 hover:bg-green-50/30 transition-colors">
-                      <td className="px-5 py-3 font-medium text-navy-900">
+                      <td className="px-5 py-4 font-semibold text-navy-900">
                         {p.visa_files?.musteri_ad || "-"}
                       </td>
-                      <td className="px-5 py-3 text-navy-600">
+                      <td className="px-5 py-4 text-navy-600 font-medium">
                         {p.visa_files?.hedef_ulke || "-"}
                       </td>
-                      <td className="px-5 py-3 text-right font-bold text-green-600">
+                      <td className="px-5 py-4 text-right font-bold text-green-600 tabular-nums">
                         {fmt(Number(p.tutar), p.currency || "TL")}
                       </td>
-                      <td className="px-5 py-3 text-center">
-                        <Badge variant={p.yontem === "nakit" ? "info" : "default"}>
+                      <td className="px-5 py-4 text-center">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                          p.yontem === "nakit"
+                            ? "bg-sky-50 text-sky-700"
+                            : "bg-navy-100 text-navy-700"
+                        }`}>
+                          <span>{p.yontem === "nakit" ? "💵" : "🏦"}</span>
                           {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
-                        </Badge>
+                        </span>
                       </td>
-                      <td className="px-5 py-3 text-right text-navy-500">{formatDate(p.created_at)}</td>
+                      <td className="px-5 py-4 text-right text-navy-500 text-sm">{formatDate(p.created_at)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -13,6 +13,9 @@ import type { VisaFile } from "@/lib/supabase/types";
 const USER_AVATARS: Record<string, string> = {
   YUSUF: "/yusuf-avatar.png",
   DAVUT: "/davut-avatar.png",
+  SIRRI: "/sirri-avatar.png",
+  ERCAN: "/ercan-avatar.jpg",
+  BAHAR: "/bahar-avatar.jpg",
 };
 
 type SelectedUser = typeof STAFF_USERS[number] | null;
@@ -411,7 +414,7 @@ export default function LoginPage() {
           <div className="text-center mb-6">
             <div className="relative w-40 h-28 mx-auto mb-4">
               <Image
-                src="/fox-logo.png"
+                src="/fox-logo.jpg"
                 alt="Fox Turizm"
                 fill
                 className="object-contain"

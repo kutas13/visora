@@ -204,19 +204,21 @@ export default function PaymentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {Object.entries(stats).map(([curr, total]) => {
           const gradients: Record<string, string> = {
-            TL: "from-green-500 to-emerald-600",
-            EUR: "from-blue-500 to-blue-600",
-            USD: "from-amber-500 to-orange-500",
+            TL: "from-emerald-500 via-green-500 to-teal-600",
+            EUR: "from-blue-500 via-indigo-500 to-blue-600",
+            USD: "from-amber-500 via-orange-500 to-amber-600",
           };
           return (
-            <Card key={curr} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-              <div className={`p-5 bg-gradient-to-r ${gradients[curr]} text-white`}>
-                <div className="flex items-center justify-between">
+            <Card key={curr} className="overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border-0">
+              <div className={`relative p-6 md:p-8 bg-gradient-to-br ${gradients[curr]} text-white rounded-2xl overflow-hidden border border-white/20`}>
+                <div className="absolute inset-0 bg-white/15 backdrop-blur-md" />
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/10" />
+                <div className="relative flex items-center justify-between">
                   <div>
-                    <p className="text-white/80 text-sm">Toplam Tahsilat</p>
-                    <p className="text-3xl font-bold mt-1">{formatCurrency(total, curr)}</p>
+                    <p className="text-white/95 text-xs font-semibold uppercase tracking-widest">Toplam Tahsilat</p>
+                    <p className="text-4xl md:text-6xl font-extrabold mt-3 tracking-tight drop-shadow-lg">{formatCurrency(total, curr)}</p>
                   </div>
-                  <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center text-3xl font-bold">
+                  <div className="w-16 h-16 md:w-20 md:h-20 bg-white/30 backdrop-blur-xl rounded-2xl flex items-center justify-center text-4xl md:text-5xl font-bold border border-white/40 shadow-xl">
                     {getCurrencySymbol(curr)}
                   </div>
                 </div>
@@ -227,26 +229,26 @@ export default function PaymentsPage() {
       </div>
 
       {/* Tab Seçimi */}
-      <div className="bg-navy-100 p-1 rounded-xl inline-flex gap-1">
+      <div className="inline-flex p-1.5 rounded-full bg-navy-100/80 backdrop-blur-sm border border-navy-200/50 shadow-inner">
         <button
           onClick={() => setActiveTab("odenmemis")}
-          className={`px-6 py-3 font-medium rounded-lg transition-all ${
+          className={`px-6 py-3 font-semibold rounded-full transition-all duration-300 ${
             activeTab === "odenmemis" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-gradient-to-r from-navy-700 to-navy-800 text-white shadow-lg" 
+              : "text-navy-600 hover:text-navy-900 hover:bg-white/50"
           }`}
         >
           Ödenmemişler
           {unpaidFiles.length > 0 && (
-            <span className="ml-2 px-2 py-0.5 text-xs bg-red-500 text-white rounded-full">{unpaidFiles.length}</span>
+            <span className="ml-2 px-2.5 py-0.5 text-xs font-bold bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-full shadow-sm">{unpaidFiles.length}</span>
           )}
         </button>
         <button
           onClick={() => setActiveTab("tahsilatlar")}
-          className={`px-6 py-3 font-medium rounded-lg transition-all ${
+          className={`px-6 py-3 font-semibold rounded-full transition-all duration-300 ${
             activeTab === "tahsilatlar" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-gradient-to-r from-navy-700 to-navy-800 text-white shadow-lg" 
+              : "text-navy-600 hover:text-navy-900 hover:bg-white/50"
           }`}
         >
           Tahsilatlarım
@@ -258,14 +260,14 @@ export default function PaymentsPage() {
           <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
         </div>
       ) : activeTab === "odenmemis" ? (
-        <Card className="overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4">
+        <Card className="overflow-hidden shadow-lg rounded-2xl">
+          <div className="bg-gradient-to-r from-red-500 via-rose-500 to-red-600 px-6 py-4">
             <h3 className="text-white font-semibold flex items-center gap-2">
               <span className="text-xl">⏳</span>
               Bekleyen Tahsilatlar
             </h3>
           </div>
-          <div className="p-6">
+          <div className="p-6 md:p-8">
             {unpaidFiles.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -277,21 +279,21 @@ export default function PaymentsPage() {
             ) : (
               <>
                 {/* Desktop */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto rounded-2xl overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b-2 border-navy-200">
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Müşteri</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Ülke</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Ücret</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Durum</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">İşlem</th>
+                      <tr className="bg-gradient-to-r from-navy-700 to-navy-800">
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Müşteri</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Ülke</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Ücret</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Durum</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">İşlem</th>
                       </tr>
                     </thead>
                     <tbody>
                       {unpaidFiles.map((file, index) => (
-                        <tr key={file.id} className={`border-b border-navy-100 hover:bg-primary-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-navy-50/50'}`}>
-                          <td className="py-4 px-4">
+                        <tr key={file.id} className={`border-b border-navy-100 hover:bg-primary-50/80 transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-navy-50/50'}`}>
+                          <td className="py-4 px-5">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center">
                                 <span className="font-bold text-primary-600">{file.musteri_ad.charAt(0)}</span>
@@ -302,19 +304,19 @@ export default function PaymentsPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-5">
                             <Badge variant="info">{file.hedef_ulke}</Badge>
                           </td>
-                          <td className="py-4 px-4">
-                            <p className="font-bold text-lg text-navy-900">{formatCurrency(file.ucret || 0, file.ucret_currency || "TL")}</p>
+                          <td className="py-4 px-5">
+                            <p className="font-bold text-xl text-navy-900">{formatCurrency(file.ucret || 0, file.ucret_currency || "TL")}</p>
                           </td>
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-5">
                             <div className="flex gap-1">
-                              <Badge variant="warning">Cari</Badge>
-                              <Badge variant="error">Ödenmedi</Badge>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-400 to-orange-500 text-white">Cari</span>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-500 to-rose-500 text-white">Ödenmedi</span>
                             </div>
                           </td>
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-5">
                             <Button size="sm" onClick={() => handleTahsilatYap(file)} className="shadow-md">
                               💰 Tahsilat Yap
                             </Button>
@@ -327,8 +329,12 @@ export default function PaymentsPage() {
 
                 {/* Mobile */}
                 <div className="md:hidden space-y-4">
-                  {unpaidFiles.map((file) => (
-                    <Card key={file.id} className="p-4 border-l-4 border-l-red-500">
+                  {unpaidFiles.map((file) => {
+                    const curr = file.ucret_currency || "TL";
+                    const accentGradients: Record<string, string> = { TL: "from-emerald-500 to-teal-600", EUR: "from-blue-500 to-indigo-600", USD: "from-amber-500 to-orange-600" };
+                    return (
+                    <Card key={file.id} className="relative p-5 pl-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b ${accentGradients[curr] || accentGradients.TL}`} />
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center">
@@ -344,9 +350,9 @@ export default function PaymentsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-2xl font-bold text-navy-900">{formatCurrency(file.ucret || 0, file.ucret_currency || "TL")}</p>
-                          <div className="flex gap-1 mt-1">
-                            <Badge variant="warning" size="sm">Cari</Badge>
-                            <Badge variant="error" size="sm">Ödenmedi</Badge>
+                          <div className="flex gap-1.5 mt-2">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-amber-400 to-orange-500 text-white">Cari</span>
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gradient-to-r from-red-500 to-rose-500 text-white">Ödenmedi</span>
                           </div>
                         </div>
                         <Button size="sm" onClick={() => handleTahsilatYap(file)}>
@@ -361,8 +367,8 @@ export default function PaymentsPage() {
           </div>
         </Card>
       ) : (
-        <Card className="overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4">
+        <Card className="overflow-hidden shadow-lg rounded-2xl">
+          <div className="bg-gradient-to-r from-green-500 via-emerald-500 to-teal-600 px-6 py-4">
             <div className="flex items-center justify-between">
               <h3 className="text-white font-semibold flex items-center gap-2">
                 <span className="text-xl">📋</span>
@@ -376,7 +382,7 @@ export default function PaymentsPage() {
               />
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-6 md:p-8">
             {filteredPayments.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -387,36 +393,36 @@ export default function PaymentsPage() {
             ) : (
               <>
                 {/* Desktop */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto rounded-2xl overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b-2 border-navy-200">
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Müşteri</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Tutar</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Tip</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Yöntem</th>
-                        <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Tarih</th>
+                      <tr className="bg-gradient-to-r from-navy-700 to-navy-800">
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Müşteri</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Tutar</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Tip</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Yöntem</th>
+                        <th className="text-left py-4 px-5 text-sm font-bold text-white">Tarih</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredPayments.map((p, index) => (
-                        <tr key={p.id} className={`border-b border-navy-100 hover:bg-primary-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-navy-50/50'}`}>
-                          <td className="py-4 px-4">
+                        <tr key={p.id} className={`border-b border-navy-100 hover:bg-primary-50/80 transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-navy-50/50'}`}>
+                          <td className="py-4 px-5">
                             <p className="font-semibold text-navy-900">{p.visa_files?.musteri_ad || "-"}</p>
                             <p className="text-xs text-navy-500">{p.visa_files?.hedef_ulke}</p>
                           </td>
-                          <td className="py-4 px-4 font-bold text-lg text-navy-900">{formatCurrency(Number(p.tutar), p.currency || "TL")}</td>
-                          <td className="py-4 px-4">
-                            <Badge variant={p.payment_type === "pesin_satis" ? "success" : "info"}>
+                          <td className="py-4 px-5 font-bold text-xl text-navy-900">{formatCurrency(Number(p.tutar), p.currency || "TL")}</td>
+                          <td className="py-4 px-5">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${p.payment_type === "pesin_satis" ? "bg-gradient-to-r from-emerald-500 to-teal-600" : "bg-gradient-to-r from-blue-500 to-indigo-500"} text-white`}>
                               {p.payment_type === "pesin_satis" ? "Peşin Satış" : "Tahsilat"}
-                            </Badge>
+                            </span>
                           </td>
-                          <td className="py-4 px-4">
-                            <Badge variant={p.yontem === "nakit" ? "success" : "info"}>
+                          <td className="py-4 px-5">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${p.yontem === "nakit" ? "bg-gradient-to-r from-emerald-500 to-teal-600" : "bg-gradient-to-r from-blue-500 to-indigo-500"} text-white`}>
                               {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
-                            </Badge>
+                            </span>
                           </td>
-                          <td className="py-4 px-4 text-sm text-navy-500">{formatDate(p.created_at)}</td>
+                          <td className="py-4 px-5 text-sm text-navy-500">{formatDate(p.created_at)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -424,29 +430,34 @@ export default function PaymentsPage() {
                 </div>
 
                 {/* Mobile */}
-                <div className="md:hidden space-y-3">
-                  {filteredPayments.map((p) => (
-                    <Card key={p.id} className="p-4 border-l-4 border-l-green-500">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-semibold text-navy-900">{p.visa_files?.musteri_ad || "-"}</p>
-                          <p className="text-xs text-navy-500">{p.visa_files?.hedef_ulke}</p>
+                <div className="md:hidden space-y-4">
+                  {filteredPayments.map((p) => {
+                    const curr = p.currency || "TL";
+                    const accentGradients: Record<string, string> = { TL: "from-emerald-500 to-teal-600", EUR: "from-blue-500 to-indigo-600", USD: "from-amber-500 to-orange-600" };
+                    return (
+                      <Card key={p.id} className="relative p-5 pl-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                        <div className={`absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b ${accentGradients[curr] || accentGradients.TL}`} />
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold text-navy-900">{p.visa_files?.musteri_ad || "-"}</p>
+                            <p className="text-xs text-navy-500">{p.visa_files?.hedef_ulke}</p>
+                          </div>
+                          <p className="font-bold text-xl text-navy-900">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
                         </div>
-                        <p className="font-bold text-lg text-navy-900">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex gap-1">
-                          <Badge variant={p.payment_type === "pesin_satis" ? "success" : "info"} size="sm">
-                            {p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat"}
-                          </Badge>
-                          <Badge variant={p.yontem === "nakit" ? "success" : "info"} size="sm">
-                            {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
-                          </Badge>
+                        <div className="flex items-center justify-between">
+                          <div className="flex gap-1.5">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${p.payment_type === "pesin_satis" ? "bg-gradient-to-r from-emerald-500 to-teal-600" : "bg-gradient-to-r from-blue-500 to-indigo-500"} text-white`}>
+                              {p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat"}
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${p.yontem === "nakit" ? "bg-gradient-to-r from-emerald-500 to-teal-600" : "bg-gradient-to-r from-blue-500 to-indigo-500"} text-white`}>
+                              {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-navy-500">{formatDate(p.created_at)}</p>
                         </div>
-                        <p className="text-xs text-navy-500">{formatDate(p.created_at)}</p>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                 </div>
               </>
             )}

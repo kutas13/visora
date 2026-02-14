@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "Fox Turizm - Vize Yönetim Sistemi",
   description: "Fox Turizm Vize Dosyası Takip ve Yönetim Sistemi",
   icons: {
-    icon: "/fox-logo.png",
+    icon: "/fox-logo.jpg",
     apple: "/fox-logo.png",
   },
 };

@@ -50,6 +50,7 @@ export default function StaffAtamalarPage() {
   const [staffName, setStaffName] = useState("");
   const [countdown, setCountdown] = useState(CHECK_INTERVAL);
   const countdownRef = useRef(CHECK_INTERVAL);
+  const [lastServerCheck, setLastServerCheck] = useState<number>(Date.now());
 
   // Kullanicinin email hesabini bul
   useEffect(() => {
@@ -150,6 +151,7 @@ export default function StaffAtamalarPage() {
   const durumOptions = [
     { value: "all", label: "Tümü" },
     { value: "yeni", label: "Yeni" },
+    { value: "randevu_geldi", label: "Randevu Geldi" },
     { value: "randevu_alindi", label: "Randevu Alındı" },
     { value: "iptal", label: "İptal" },
     { value: "suresi_doldu", label: "Süresi Doldu" },
@@ -265,6 +267,7 @@ export default function StaffAtamalarPage() {
               )}
               Şimdi Kontrol Et
             </button>
+
           </div>
         </div>
       </div>
@@ -316,6 +319,7 @@ export default function StaffAtamalarPage() {
           {filtered.map((a) => {
             const remaining = a.durum === "yeni" ? getRemainingTime(a.son_kayit_tarihi) : null;
             const isNew = a.durum === "yeni";
+            const isRandevuGeldi = a.durum === "randevu_geldi";
             const isDone = a.durum === "randevu_alindi";
             const isCancelled = a.durum === "iptal";
 
@@ -323,92 +327,111 @@ export default function StaffAtamalarPage() {
               <div
                 key={a.id}
                 className={`group bg-white rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden ${
-                  isNew ? "border-amber-200/80" : isDone ? "border-emerald-200/80" : isCancelled ? "border-red-200/80" : "border-navy-200/80"
+                  isNew ? "border-amber-200/80" : isRandevuGeldi ? "border-blue-200/80" : isDone ? "border-emerald-200/80" : isCancelled ? "border-red-200/80" : "border-navy-200/80"
                 }`}
               >
                 {/* Color accent bar */}
                 <div className={`h-1 ${
                   isNew ? "bg-gradient-to-r from-amber-400 to-orange-400" :
+                  isRandevuGeldi ? "bg-gradient-to-r from-blue-400 to-indigo-400" :
                   isDone ? "bg-gradient-to-r from-emerald-400 to-teal-400" :
                   isCancelled ? "bg-gradient-to-r from-red-400 to-rose-400" :
                   "bg-gradient-to-r from-navy-300 to-navy-400"
                 }`} />
 
                 <div className="p-5">
-                  {/* Top Row */}
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3.5">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-base shadow-lg ${
-                        isNew ? "bg-gradient-to-br from-amber-500 to-orange-600" :
-                        isDone ? "bg-gradient-to-br from-emerald-500 to-teal-600" :
-                        "bg-gradient-to-br from-violet-500 to-indigo-600"
+                  {/* Top Row - Modern */}
+                  <div className="flex items-start justify-between gap-4 mb-5">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white text-lg shadow-xl ring-2 ring-white ${
+                        isNew ? "bg-gradient-to-br from-amber-400 to-orange-500" :
+                        isRandevuGeldi ? "bg-gradient-to-br from-blue-400 to-indigo-500" :
+                        isDone ? "bg-gradient-to-br from-emerald-400 to-teal-500" :
+                        isCancelled ? "bg-gradient-to-br from-red-400 to-rose-500" :
+                        "bg-gradient-to-br from-navy-400 to-navy-600"
                       }`}>
                         {a.musteri_ad.charAt(0)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-navy-900 text-base leading-tight">{a.musteri_ad}</h4>
-                        <code className="text-xs font-mono bg-navy-50 text-navy-600 px-1.5 py-0.5 rounded mt-0.5 inline-block">{a.pnr}</code>
+                        <h4 className="font-bold text-navy-900 text-lg leading-tight">{a.musteri_ad}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <code className="text-xs font-mono bg-gradient-to-r from-violet-50 to-indigo-50 text-violet-700 px-2 py-0.5 rounded-md border border-violet-100">{a.pnr}</code>
+                          {remaining && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              remaining.urgent ? "bg-red-100 text-red-700 animate-pulse" : "bg-blue-50 text-blue-600"
+                            }`}>
+                              ⏱ {remaining.text}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1.5">
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
-                        isNew ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                        isDone ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                        isCancelled ? "bg-red-50 text-red-700 border border-red-200" :
-                        "bg-navy-50 text-navy-600 border border-navy-200"
-                      }`}>
-                        {isNew ? "Yeni" : isDone ? "Randevu Alındı" : isCancelled ? "İptal" : "Süresi Doldu"}
-                      </span>
-                      {remaining && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          remaining.urgent ? "bg-red-100 text-red-700 animate-pulse" : "bg-blue-50 text-blue-600"
-                        }`}>
-                          {remaining.text}
-                        </span>
-                      )}
-                    </div>
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${
+                      isNew ? "bg-gradient-to-r from-amber-400 to-orange-400 text-white" :
+                      isRandevuGeldi ? "bg-gradient-to-r from-blue-400 to-indigo-400 text-white" :
+                      isDone ? "bg-gradient-to-r from-emerald-400 to-teal-400 text-white" :
+                      isCancelled ? "bg-gradient-to-r from-red-400 to-rose-400 text-white" :
+                      "bg-navy-200 text-navy-600"
+                    }`}>
+                      {isNew ? "🔔 Yeni Atama" : isRandevuGeldi ? "📅 Randevu Geldi" : isDone ? "✅ Onaylandı" : isCancelled ? "❌ İptal" : "⏰ Süresi Doldu"}
+                    </span>
                   </div>
 
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
-                    <div className="bg-navy-50/50 rounded-xl p-3 border border-navy-100/50">
-                      <p className="text-[9px] text-navy-400 uppercase font-bold tracking-wider mb-1">Ülke / Amaç</p>
-                      <p className="text-sm font-semibold text-navy-800">{a.ulke_amac || "-"}</p>
+                  {/* Info Cards - Modern glassmorphism */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+                    <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-xl p-3.5 border border-violet-100">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="text-base">🌍</span>
+                        <p className="text-[10px] text-violet-500 uppercase font-bold tracking-wider">Ülke / Amaç</p>
+                      </div>
+                      <p className="text-sm font-bold text-navy-900">{a.ulke_amac || "Belirtilmemiş"}</p>
                     </div>
-                    <div className="bg-navy-50/50 rounded-xl p-3 border border-navy-100/50">
-                      <p className="text-[9px] text-navy-400 uppercase font-bold tracking-wider mb-1">Ofis</p>
-                      <p className="text-sm font-semibold text-navy-800">{a.ofis || "-"}</p>
+                    <div className="bg-gradient-to-br from-sky-50 to-blue-50 rounded-xl p-3.5 border border-sky-100">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="text-base">🏢</span>
+                        <p className="text-[10px] text-sky-500 uppercase font-bold tracking-wider">Ofis</p>
+                      </div>
+                      <p className="text-sm font-bold text-navy-900">{a.ofis || "Belirtilmemiş"}</p>
                     </div>
-                    <div className="bg-navy-50/50 rounded-xl p-3 border border-navy-100/50">
-                      <p className="text-[9px] text-navy-400 uppercase font-bold tracking-wider mb-1">Randevu</p>
-                      <p className="text-sm font-semibold text-navy-800">
+                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-3.5 border border-emerald-100">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="text-base">📅</span>
+                        <p className="text-[10px] text-emerald-500 uppercase font-bold tracking-wider">Randevu Aralığı</p>
+                      </div>
+                      <p className="text-sm font-bold text-navy-900">
                         {a.randevu_baslangic && a.randevu_bitis
                           ? `${formatDate(a.randevu_baslangic)} - ${formatDate(a.randevu_bitis)}`
-                          : "-"}
+                          : "Belirtilmemiş"}
                       </p>
                     </div>
-                    <div className="bg-navy-50/50 rounded-xl p-3 border border-navy-100/50">
-                      <p className="text-[9px] text-navy-400 uppercase font-bold tracking-wider mb-1">Son Kayıt</p>
-                      <p className="text-sm font-semibold text-navy-800">{formatDateTime(a.son_kayit_tarihi)}</p>
+                    <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-xl p-3.5 border border-rose-100">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="text-base">⏰</span>
+                        <p className="text-[10px] text-rose-500 uppercase font-bold tracking-wider">Son Kayıt</p>
+                      </div>
+                      <p className="text-sm font-bold text-navy-900">{formatDateTime(a.son_kayit_tarihi) || "Belirtilmemiş"}</p>
                     </div>
                   </div>
 
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-3 border-t border-navy-100/50">
-                    <span className="text-[10px] text-navy-400">{formatDateTime(a.created_at)}</span>
+                  {/* Footer - Modern */}
+                  <div className="flex items-center justify-between pt-4 border-t border-navy-100">
+                    <span className="text-xs text-navy-400 flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      {formatDateTime(a.created_at)}
+                    </span>
                     <div className="flex gap-2">
-                      {isNew && (
+                      {(isNew || isRandevuGeldi) && (
                         <>
                           <button
                             onClick={() => handleUpdateDurum(a.id, "randevu_alindi")}
-                            className="text-xs font-semibold px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
+                            className="text-xs font-bold px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
                           >
-                            Randevu Alındı
+                            ✓ Randevu Onaylandı
                           </button>
                           <button
                             onClick={() => handleUpdateDurum(a.id, "iptal")}
-                            className="text-xs font-semibold px-3.5 py-1.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors"
+                            className="text-xs font-bold px-4 py-2 text-red-600 hover:bg-red-50 border-2 border-red-200 rounded-xl transition-all"
                           >
                             İptal
                           </button>
@@ -417,9 +440,9 @@ export default function StaffAtamalarPage() {
                       {(isDone || isCancelled) && (
                         <button
                           onClick={() => handleUpdateDurum(a.id, "yeni")}
-                          className="text-xs font-medium px-3 py-1.5 text-navy-500 hover:bg-navy-50 rounded-lg transition-colors"
+                          className="text-xs font-medium px-3 py-2 text-navy-500 hover:bg-navy-50 border border-navy-200 rounded-xl transition-all"
                         >
-                          Geri Al
+                          ↩ Geri Al
                         </button>
                       )}
                     </div>

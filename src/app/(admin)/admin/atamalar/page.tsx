@@ -54,6 +54,7 @@ export default function AdminAtamalarPage() {
   const [filterDurum, setFilterDurum] = useState("all");
   const [countdown, setCountdown] = useState(CHECK_INTERVAL);
   const countdownRef = useRef(CHECK_INTERVAL);
+  const [lastServerCheck, setLastServerCheck] = useState<number>(Date.now());
 
   const loadData = useCallback(async () => {
     const supabase = createClient();
@@ -67,6 +68,25 @@ export default function AdminAtamalarPage() {
 
   useEffect(() => {
     loadData();
+    
+    // Son email check zamanını al
+    const fetchLastCheck = async () => {
+      try {
+        const res = await fetch("/api/idata/last-check");
+        if (res.ok) {
+          const data = await res.json();
+          const timeSinceLastCheck = Math.floor((Date.now() - data.lastCheckTime) / 1000);
+          const remainingTime = Math.max(0, CHECK_INTERVAL - timeSinceLastCheck);
+          countdownRef.current = remainingTime;
+          setCountdown(remainingTime);
+          setLastServerCheck(data.lastCheckTime);
+        }
+      } catch (err) {
+        console.log("Son check zamanı alınamadı, varsayılan timer başlatılıyor");
+      }
+    };
+    
+    fetchLastCheck();
   }, [loadData]);
 
   const handleCheckEmails = useCallback(async (silent = false) => {
@@ -90,8 +110,16 @@ export default function AdminAtamalarPage() {
       if (!silent) setCheckResult("Bağlantı hatası oluştu");
     } finally {
       setChecking(false);
+      
+      // Server'a son check zamanını bildir
+      try {
+        await fetch("/api/idata/last-check", { method: "POST" });
+      } catch {}
+      
+      // Timer'ı sıfırla
       countdownRef.current = CHECK_INTERVAL;
       setCountdown(CHECK_INTERVAL);
+      setLastServerCheck(Date.now());
     }
   }, [loadData]);
 
@@ -124,6 +152,7 @@ export default function AdminAtamalarPage() {
   const durumOptions = [
     { value: "all", label: "Tümü" },
     { value: "yeni", label: "Yeni" },
+    { value: "randevu_geldi", label: "Randevu Geldi" },
     { value: "randevu_alindi", label: "Randevu Alındı" },
     { value: "iptal", label: "İptal" },
     { value: "suresi_doldu", label: "Süresi Doldu" },
@@ -229,6 +258,7 @@ export default function AdminAtamalarPage() {
               )}
               Şimdi Kontrol Et
             </button>
+
           </div>
         </div>
       </div>
@@ -293,6 +323,7 @@ export default function AdminAtamalarPage() {
           {filtered.map((a) => {
             const remaining = a.durum === "yeni" ? getRemainingTime(a.son_kayit_tarihi) : null;
             const isNew = a.durum === "yeni";
+            const isRandevuGeldi = a.durum === "randevu_geldi"; 
             const isDone = a.durum === "randevu_alindi";
             const isCancelled = a.durum === "iptal";
 
@@ -334,11 +365,12 @@ export default function AdminAtamalarPage() {
                     <div className="flex flex-col items-end gap-1.5">
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
                         isNew ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                        isRandevuGeldi ? "bg-blue-50 text-blue-700 border border-blue-200" :
                         isDone ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
                         isCancelled ? "bg-red-50 text-red-700 border border-red-200" :
                         "bg-navy-50 text-navy-600 border border-navy-200"
                       }`}>
-                        {isNew ? "Yeni" : isDone ? "Randevu Alındı" : isCancelled ? "İptal" : "Süresi Doldu"}
+                        {isNew ? "Yeni" : isRandevuGeldi ? "Randevu Geldi" : isDone ? "Randevu Alındı" : isCancelled ? "İptal" : "Süresi Doldu"}
                       </span>
                       {remaining && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -386,13 +418,13 @@ export default function AdminAtamalarPage() {
                       )}
                     </div>
                     <div className="flex gap-2">
-                      {isNew && (
+                      {(isNew || isRandevuGeldi) && (
                         <>
                           <button
                             onClick={() => handleUpdateDurum(a.id, "randevu_alindi")}
                             className="text-xs font-semibold px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors shadow-sm"
                           >
-                            Randevu Alındı
+                            ✓ Randevu Onaylandı
                           </button>
                           <button
                             onClick={() => handleUpdateDurum(a.id, "iptal")}

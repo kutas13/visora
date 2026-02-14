@@ -72,7 +72,7 @@ export default function ResetPasswordPage() {
         <div className="text-center mb-6">
           <div className="relative w-40 h-28 mx-auto mb-4">
             <Image
-              src="/fox-logo.png"
+                src="/fox-logo.jpg"
               alt="Fox Turizm"
               fill
               className="object-contain"

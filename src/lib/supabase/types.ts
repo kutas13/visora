@@ -129,7 +129,7 @@ export interface ActivityLog {
 }
 
 // iDATA Randevu Ataması
-export type IdataAssignmentDurum = "yeni" | "randevu_alindi" | "iptal" | "suresi_doldu";
+export type IdataAssignmentDurum = "yeni" | "randevu_geldi" | "randevu_alindi" | "iptal" | "suresi_doldu";
 
 export interface IdataAssignment {
   id: string;

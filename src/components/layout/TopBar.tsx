@@ -9,6 +9,9 @@ import { createClient } from "@/lib/supabase/client";
 const USER_AVATARS: Record<string, string> = {
   YUSUF: "/yusuf-avatar.png",
   DAVUT: "/davut-avatar.png",
+  SIRRI: "/sirri-avatar.png",
+  ERCAN: "/ercan-avatar.jpg",
+  BAHAR: "/bahar-avatar.jpg",
 };
 
 interface TopBarProps {

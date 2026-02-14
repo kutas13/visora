@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { parseIdataEmail, isIdataAssignmentEmail } from "@/lib/idata-parser";
+import { parseIdataEmail, isIdataAssignmentEmail, getIdataEmailType } from "@/lib/idata-parser";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 saniye timeout
@@ -57,9 +57,12 @@ async function checkEmailAccount(
     const lock = await client.getMailboxLock("INBOX");
 
     try {
-      // noreply@idata.com.tr'den gelen okunmamis mailleri ara
+      // noreply@idata.com.tr'den gelen son 2 günün maillerini ara  
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      
       const searchResults = await client.search({
-        seen: false,
+        since: twoDaysAgo,
         from: "idata.com.tr",
       });
 
@@ -197,20 +200,53 @@ async function processEmails(request: NextRequest) {
             continue;
           }
 
-          // Ayni PNR son 3 gun icinde zaten eklenmis mi kontrol et
-          const cooldownDate = new Date();
-          cooldownDate.setDate(cooldownDate.getDate() - PNR_COOLDOWN_DAYS);
-          const { data: existingPnr } = await supabase
-            .from("idata_assignments")
-            .select("id")
-            .eq("pnr", parsed.pnr)
-            .gte("created_at", cooldownDate.toISOString())
-            .limit(1);
+          // Email tipini belirle: "atama" mi "randevu" mu?
+          const emailType = getIdataEmailType(msg.subject, msg.body);
+          
+          if (emailType === "randevu") {
+            // Randevu maili: mevcut atama kaydını "randevu geldi" durumuna güncelle
+            const { data: existingAssignment } = await supabase
+              .from("idata_assignments")
+              .select("id, durum")
+              .eq("pnr", parsed.pnr)
+              .eq("musteri_ad", parsed.musteriAd)
+              .order("created_at", { ascending: false })
+              .limit(1);
 
-          if (existingPnr && existingPnr.length > 0) {
-            // 3 gun icinde ayni PNR var, yoksay
-            // Ama maili yine de okundu olarak isaretle (ustte yapildi)
-            continue;
+            if (existingAssignment && existingAssignment.length > 0) {
+              // Mevcut kaydı güncelle
+              await supabase
+                .from("idata_assignments")
+                .update({ 
+                  durum: "randevu_geldi", // Yeni durum
+                  randevu_baslangic: parsed.randevuBaslangic,
+                  randevu_bitis: parsed.randevuBitis,
+                  son_kayit_tarihi: parsed.sonKayitTarihi,
+                })
+                .eq("id", existingAssignment[0].id);
+
+              console.log(`✅ Randevu güncellendi: ${parsed.musteriAd} - ${parsed.pnr}`);
+              newCount++;
+              continue;
+            } else {
+              // Eşleşme yok, yeni kayıt oluştur (randevu geldi durumunda)
+              console.log(`🆕 Yeni randevu kaydı: ${parsed.musteriAd} - ${parsed.pnr}`);
+            }
+          } else {
+            // Atama maili: PNR deduplication kontrol et
+            const cooldownDate = new Date();
+            cooldownDate.setDate(cooldownDate.getDate() - PNR_COOLDOWN_DAYS);
+            const { data: existingPnr } = await supabase
+              .from("idata_assignments")
+              .select("id")
+              .eq("pnr", parsed.pnr)
+              .gte("created_at", cooldownDate.toISOString())
+              .limit(1);
+
+            if (existingPnr && existingPnr.length > 0) {
+              // 3 gün içinde aynı PNR var, yoksay
+              continue;
+            }
           }
 
           // Supabase'e kaydet (duplicate check otomatik - unique constraint)

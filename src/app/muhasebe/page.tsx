@@ -9,6 +9,9 @@ import { STAFF_USERS } from "@/lib/constants";
 const USER_AVATARS: Record<string, string> = {
   YUSUF: "/yusuf-avatar.png",
   DAVUT: "/davut-avatar.png",
+  SIRRI: "/sirri-avatar.png",
+  ERCAN: "/ercan-avatar.jpg",
+  BAHAR: "/bahar-avatar.jpg",
 };
 
 interface UserStats {

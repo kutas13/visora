@@ -8,152 +8,194 @@ export interface ParsedIdataEmail {
   pnr: string;
   ulkeAmac: string;
   ofis: string;
-  randevuBaslangic: string | null; // YYYY-MM-DD
-  randevuBitis: string | null; // YYYY-MM-DD
-  sonKayitTarihi: string | null; // ISO timestamp
+  randevuBaslangic: string | null;
+  randevuBitis: string | null;
+  sonKayitTarihi: string | null;
 }
 
-/**
- * DD-MM-YYYY formatindaki tarihi YYYY-MM-DD'ye cevirir
- */
 function parseTurkishDate(dateStr: string): string | null {
-  // 10-02-2026 -> 2026-02-10
   const match = dateStr.match(/(\d{2})-(\d{2})-(\d{4})/);
   if (!match) return null;
   return `${match[3]}-${match[2]}-${match[1]}`;
 }
 
-/**
- * DD-MM-YYYY HH:mm formatindaki tarihi ISO timestamp'e cevirir
- */
 function parseTurkishDateTime(dateStr: string): string | null {
-  // 11-02-2026 23:59 -> 2026-02-11T23:59:00
   const match = dateStr.match(/(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
   if (!match) return null;
   return `${match[3]}-${match[2]}-${match[1]}T${match[4]}:${match[5]}:00`;
 }
 
 /**
- * HTML etiketlerini temizler
+ * HTML'den tablo satırlarını çıkarır - birden fazla yöntem dener
  */
-function stripHtml(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/?(p|div|tr|td|th|table|thead|tbody)[^>]*>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#\d+;/g, "")
-    .replace(/\r\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+function extractTableData(html: string): { headers: string[]; data: string[] } | null {
+  // Yöntem 1: <tr> <td> parsing
+  const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const rows: string[][] = [];
+  let trMatch;
+
+  while ((trMatch = trRegex.exec(html)) !== null) {
+    const rowHtml = trMatch[1];
+    const cells: string[] = [];
+    const tdRegex = /<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi;
+    let tdMatch;
+
+    while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
+      const cellText = tdMatch[1]
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&ouml;/g, "ö")
+        .replace(/&uuml;/g, "ü")
+        .replace(/&ccedil;/g, "ç")
+        .replace(/&#[0-9]+;/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (cellText) cells.push(cellText);
+    }
+
+    if (cells.length >= 2) {
+      rows.push(cells);
+    }
+  }
+
+  // Header ve data satırını bul
+  for (let i = 0; i < rows.length; i++) {
+    const rowText = rows[i].join("|").toUpperCase();
+    if ((rowText.includes("AD") && rowText.includes("PNR")) || 
+        rowText.includes("AD SOYAD")) {
+      if (i + 1 < rows.length) {
+        return { headers: rows[i], data: rows[i + 1] };
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
  * iDATA email body'sini parse eder
- * 
- * Ornek email:
- * Subject: SDP9JY7WFTE - iDATA Almanya Schengen Randevu Tarihi
- * Body: ... 10-02-2026 ile 27-02-2026 arasindaki ...
- *       ... 11-02-2026 23:59'a kadar ...
- *       AD SOYAD    PNR    GIDIS AMACI    OFIS ADI
- *       FARUK GUR   SDP9JY7WFTE   Almanya - Ticari   Istanbul Ofis - Altunizade
  */
 export function parseIdataEmail(
   body: string,
   subject?: string
 ): ParsedIdataEmail | null {
   try {
-    const text = stripHtml(body);
-
-    // Tarih araligini bul: "10-02-2026 ile 27-02-2026"
+    let musteriAd = "";
+    let pnr = "";
+    let ulkeAmac = "";
+    let ofis = "";
     let randevuBaslangic: string | null = null;
     let randevuBitis: string | null = null;
-    const dateRangeMatch = text.match(
-      /(\d{2}-\d{2}-\d{4})\s+ile\s+(\d{2}-\d{2}-\d{4})/
-    );
+    let sonKayitTarihi: string | null = null;
+
+    // HTML'i düz metne çevir (tarih araması için)
+    const fullText = body
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/?(p|div|tr|td|th|table|thead|tbody)[^>]*>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/\s+/g, " ");
+
+    // Tarih aralığını bul
+    const dateRangeMatch = fullText.match(/(\d{2}-\d{2}-\d{4})\s+ile\s+(\d{2}-\d{2}-\d{4})/);
     if (dateRangeMatch) {
       randevuBaslangic = parseTurkishDate(dateRangeMatch[1]);
       randevuBitis = parseTurkishDate(dateRangeMatch[2]);
     }
 
-    // Son kayit tarihini bul: "11-02-2026 23:59'a kadar"
-    let sonKayitTarihi: string | null = null;
-    const deadlineMatch = text.match(
-      /(\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2})[''`]?[aA]?\s*kadar/
-    );
+    // Son kayıt tarihi
+    const deadlineMatch = fullText.match(/(\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2})[''`]?[aA]?\s*kadar/);
     if (deadlineMatch) {
       sonKayitTarihi = parseTurkishDateTime(deadlineMatch[1]);
     }
 
-    // Tablo verilerini parse et
-    // AD SOYAD, PNR, GIDIS AMACI, OFIS ADI
-    // Satir satir arayalim
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    // ===== YÖNTEM 1: HTML tablo parsing =====
+    if (body.includes("<t") && body.includes("PNR")) {
+      const tableData = extractTableData(body);
+      
+      if (tableData) {
+        const { headers, data } = tableData;
+        
+        // Header'lara göre sütun eşleştir
+        for (let col = 0; col < headers.length && col < data.length; col++) {
+          const h = headers[col].toUpperCase().trim();
+          const v = data[col]?.trim() || "";
 
-    let musteriAd = "";
-    let pnr = "";
-    let ulkeAmac = "";
-    let ofis = "";
-
-    // Tablo basligini bul
-    let headerIdx = -1;
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].toUpperCase();
-      if (
-        (line.includes("AD SOYAD") || line.includes("AD\tSOYAD")) &&
-        (line.includes("PNR") || line.includes("GİDİŞ") || line.includes("GIDIS"))
-      ) {
-        headerIdx = i;
-        break;
-      }
-    }
-
-    if (headerIdx >= 0 && headerIdx + 1 < lines.length) {
-      // Sonraki satir veri satirimiz
-      const dataLine = lines[headerIdx + 1];
-
-      // Tab veya coklu boslukla ayrilmis olabilir
-      const parts = dataLine.split(/\t+/).map((s) => s.trim()).filter(Boolean);
-
-      if (parts.length >= 2) {
-        musteriAd = parts[0] || "";
-        pnr = parts[1] || "";
-        ulkeAmac = parts[2] || "";
-        ofis = parts[3] || "";
-      } else {
-        // Tab yoksa, coklu boslukla deneyelim
-        const spaceParts = dataLine.split(/\s{2,}/).map((s) => s.trim()).filter(Boolean);
-        if (spaceParts.length >= 2) {
-          musteriAd = spaceParts[0] || "";
-          pnr = spaceParts[1] || "";
-          ulkeAmac = spaceParts[2] || "";
-          ofis = spaceParts[3] || "";
+          if (h.includes("AD") && (h.includes("SOYAD") || h.includes("AD SOYAD"))) {
+            musteriAd = v;
+          } else if (h === "PNR" || h.includes("PNR")) {
+            pnr = v;
+          } else if (h.includes("GİDİŞ") || h.includes("GIDIS") || h.includes("AMAC")) {
+            ulkeAmac = v;
+          } else if (h.includes("OFİS") || h.includes("OFIS")) {
+            ofis = v;
+          }
         }
       }
     }
 
-    // PNR subject'ten de alinabilir (yedek)
+    // ===== YÖNTEM 2: Plain text satır parsing =====
+    if (!musteriAd || !pnr) {
+      const lines = fullText.split(/\n/).map(l => l.trim()).filter(Boolean);
+      
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].toUpperCase();
+        if (line.includes("AD") && line.includes("SOYAD") && line.includes("PNR")) {
+          const dataLine = lines[i + 1];
+          let parts = dataLine.split(/\t+/).map(s => s.trim()).filter(Boolean);
+          if (parts.length < 2) parts = dataLine.split(/\s{2,}/).map(s => s.trim()).filter(Boolean);
+          
+          if (parts.length >= 2) {
+            if (!musteriAd) musteriAd = parts[0];
+            if (!pnr) pnr = parts[1];
+            if (!ulkeAmac && parts[2]) ulkeAmac = parts[2];
+            if (!ofis && parts[3]) ofis = parts[3];
+          }
+          break;
+        }
+      }
+    }
+
+    // ===== YÖNTEM 3: Regex fallback - direkt email içeriğinden =====
     if (!pnr && subject) {
-      const pnrMatch = subject.match(/^([A-Z0-9]+)\s*-\s*iDATA/i);
-      if (pnrMatch) {
-        pnr = pnrMatch[1];
-      }
+      const pnrMatch = subject.match(/^([A-Z0-9]{8,15})\s*-\s*iDATA/i);
+      if (pnrMatch) pnr = pnrMatch[1];
     }
 
-    // Ulke amac subject'ten de cikarilabilir (yedek)
     if (!ulkeAmac && subject) {
-      const countryMatch = subject.match(
-        /iDATA\s+(.+?)\s+(?:Schengen|Vize|Randevu)/i
-      );
-      if (countryMatch) {
-        ulkeAmac = countryMatch[1];
+      const countryMatch = subject.match(/iDATA\s+(.+?)\s+(?:Schengen|Vize|Randevu)/i);
+      if (countryMatch) ulkeAmac = countryMatch[1];
+    }
+
+    // ===== YÖNTEM 4: Ofis için özel regex (Altunizade, Gayrettepe vb.) =====
+    if (!ofis) {
+      const ofisMatch = fullText.match(/(İstanbul\s+Ofis\s*-\s*(?:Altunizade|Gayrettepe|Levent|Ataşehir|Bakırköy|Kadıköy|Beşiktaş)[a-zıöüçşğ]*)/i) 
+        || fullText.match(/(Ankara\s+Ofis[^,\n<]*)/i)
+        || fullText.match(/(İzmir\s+Ofis[^,\n<]*)/i)
+        || fullText.match(/(Antalya\s+Ofis[^,\n<]*)/i)
+        || fullText.match(/(Bursa\s+Ofis[^,\n<]*)/i);
+      if (ofisMatch) {
+        ofis = ofisMatch[1].trim();
       }
     }
 
-    // En az PNR olmali
+    // ===== YÖNTEM 5: Müşteri adı için özel regex =====
+    if (!musteriAd && pnr) {
+      // PNR'dan önceki büyük harfli kelimeyi müşteri adı olarak al
+      const beforePnr = fullText.split(pnr)[0];
+      if (beforePnr) {
+        // Son büyük harfli isim-soyisim çiftini bul
+        const nameMatches = beforePnr.match(/([A-ZÇĞIİÖŞÜ][A-ZÇĞIİÖŞÜa-zçğıöşü]+\s+[A-ZÇĞIİÖŞÜ][A-ZÇĞIİÖŞÜa-zçğıöşü]+)/g);
+        if (nameMatches) {
+          // En sonuncuyu al (tabloya en yakın olan)
+          musteriAd = nameMatches[nameMatches.length - 1];
+        }
+      }
+    }
+
+    // PNR zorunlu
     if (!pnr) return null;
 
     return {
@@ -166,32 +208,60 @@ export function parseIdataEmail(
       sonKayitTarihi,
     };
   } catch (err) {
-    console.error("iDATA email parse hatasi:", err);
+    console.error("iDATA email parse hatası:", err);
     return null;
   }
 }
 
 /**
- * Emailin iDATA randevu atamasi olup olmadigini kontrol eder
+ * Emailin iDATA randevu ataması olup olmadığını kontrol eder
  */
-export function isIdataAssignmentEmail(
-  from: string,
-  subject: string
-): boolean {
+export function isIdataAssignmentEmail(from: string, subject: string): boolean {
   const fromLower = from.toLowerCase();
   const subjectLower = subject.toLowerCase();
 
-  // noreply@idata.com.tr'den gelen
   if (!fromLower.includes("idata.com.tr")) return false;
 
-  // Subject'te randevu tarihi gecen
   if (
     subjectLower.includes("randevu tarihi") ||
+    subjectLower.includes("randevu talebi") ||
     subjectLower.includes("termindatum") ||
-    subjectLower.includes("appointment date")
+    subjectLower.includes("terminfrage") ||
+    subjectLower.includes("appointment date") ||
+    subjectLower.includes("appointment request")
   ) {
     return true;
   }
 
   return false;
+}
+
+/**
+ * iDATA email tipini belirler: "atama" veya "randevu"
+ */
+export function getIdataEmailType(subject: string, body: string): "atama" | "randevu" | null {
+  const subjectLower = subject.toLowerCase();
+  const bodyLower = body.toLowerCase();
+
+  if (
+    subjectLower.includes("randevu tarihi") ||
+    bodyLower.includes("randevu tarihiniz") ||
+    bodyLower.includes("randevu tarih ve saatinizi") ||
+    bodyLower.includes("appointment has been") ||
+    bodyLower.includes("termin wurde")
+  ) {
+    return "randevu";
+  }
+
+  if (
+    subjectLower.includes("randevu talebi") ||
+    subjectLower.includes("terminfrage") ||
+    bodyLower.includes("randevu talebiniz") ||
+    bodyLower.includes("başvuru talebiniz") ||
+    bodyLower.includes("atama")
+  ) {
+    return "atama";
+  }
+
+  return null;
 }
