@@ -187,7 +187,7 @@ export default function PaymentsPage() {
     ? payments 
     : payments.filter(p => (p.currency || "TL") === filterCurrency);
 
-  const currencyOptions = [{ value: "all", label: "Tümü" }, ...PARA_BIRIMLERI];
+  const currencyOptions = [{ value: "all", label: "Tümü" }, ...PARA_BIRIMLERI.map(p => ({ value: p.value, label: p.label }))];
 
   return (
     <div className="space-y-6">
@@ -333,7 +333,7 @@ export default function PaymentsPage() {
                     const curr = file.ucret_currency || "TL";
                     const accentGradients: Record<string, string> = { TL: "from-emerald-500 to-teal-600", EUR: "from-blue-500 to-indigo-600", USD: "from-amber-500 to-orange-600" };
                     return (
-                    <Card key={file.id} className="relative p-5 pl-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                      <Card key={file.id} className="relative p-5 pl-6 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
                       <div className={`absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b ${accentGradients[curr] || accentGradients.TL}`} />
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
@@ -360,7 +360,8 @@ export default function PaymentsPage() {
                         </Button>
                       </div>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -557,7 +558,7 @@ export default function PaymentsPage() {
                   {formatCurrency(parseFloat(tutar), currency)}
                 </p>
                 <p className="text-sm text-navy-500 mt-2 bg-white/50 rounded-full px-4 py-1 inline-block">
-                  {yontem === "nakit" ? "Nakit (Cariden Düşüş)" : `Hesaba (${HESAP_SAHIPLERI.find(h => h.value === hesapSahibi)?.label})`}
+                  {yontem === "nakit" ? "Nakit (Cariden Düşüş)" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
                 </p>
               </div>
             </div>

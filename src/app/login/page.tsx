@@ -328,9 +328,9 @@ export default function LoginPage() {
                         <div>
                           <h3 className="font-bold text-navy-900 text-lg">{file.musteri_ad}</h3>
                           <p className="text-sm text-navy-500">{file.pasaport_no}</p>
-                          {file.profiles?.name && (
+                          {(file as any).profiles?.name && (
                             <p className="text-xs text-primary-600 bg-primary-50 inline-block px-2 py-1 rounded-full mt-1">
-                              👤 {file.profiles.name}
+                              👤 {(file as any).profiles.name}
                             </p>
                           )}
                         </div>
@@ -464,7 +464,7 @@ export default function LoginPage() {
               {/* Muhasebe Girişi */}
               <div className="pt-3 border-t border-navy-200">
                 <button
-                  onClick={() => handleUserSelect(MUHASEBE_USER)}
+                  onClick={() => handleUserSelect(MUHASEBE_USER as any)}
                   className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 border-2 border-amber-200 hover:border-amber-400 rounded-xl transition-all duration-200 group"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">

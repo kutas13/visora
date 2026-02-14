@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { notifyFileCreated, notifyFileUpdated } from "@/lib/notifications";
 import type { VisaFile, IslemTipi, EvrakDurumu, ParaBirimi, OdemePlani, HesapSahibi, FaturaTipi, Company } from "@/lib/supabase/types";
 
-type UIPaymentPlan = OdemePlani | "firma_cari";
+type UIPaymentPlan = "pesin" | "cari" | "firma_cari";
 
 interface VisaFileFormProps {
   file?: VisaFile | null;
@@ -152,8 +152,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         assigned_user_id: file?.assigned_user_id || user.id,
         ucret: ucretNum,
         ucret_currency: ucretCurrency,
-        odeme_plani: odemePlani === "firma_cari" ? "cari" : odemePlani,
-        odeme_durumu: odemePlani === "pesin" ? "odendi" : "odenmedi",
+        odeme_plani: odemePlani === "firma_cari" ? "cari" as OdemePlani : odemePlani as OdemePlani,
+        odeme_durumu: (odemePlani === "pesin" ? "odendi" : "odenmedi") as "odendi" | "odenmedi",
         // Yeni ödeme detayları
         hesap_sahibi: (odemePlani === "pesin" && hesapSahibi) ? hesapSahibi : null,
         cari_tipi: odemePlani === "firma_cari" ? "firma_cari" : (odemePlani === "cari" ? "kullanici_cari" : null),
@@ -232,7 +232,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   yontem: hesapSahibi ? "hesaba" : "nakit",
                   hesapSahibi: hesapSahibi,
                   companyInfo: selectedCompany,
-                  faturaTipi: odemePlani === "firma_cari" ? faturaTipi : null,
+                  faturaTipi: String(odemePlani) === "firma_cari" ? faturaTipi : null,
                   emailType: "pesin_satis",
                 }),
               });
@@ -260,7 +260,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   currency: onOdemeCurrency,
                   yontem: "nakit", // Ön ödeme genellikle nakit
                   companyInfo: selectedCompany,
-                  faturaTipi: odemePlani === "firma_cari" ? faturaTipi : null,
+                  faturaTipi: String(odemePlani) === "firma_cari" ? faturaTipi : null,
                   emailType: "on_odeme",
                 }),
               });
@@ -419,7 +419,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         )}
 
         {/* Cari ödeme detayları */}
-        {(odemePlani === "cari" && islemTipi !== "firma_cari") && (
+        {(odemePlani === "cari" && String(islemTipi) !== "firma_cari") && (
           <Card className="p-4 bg-amber-50 border border-amber-200">
             <h4 className="text-sm font-medium text-amber-700 mb-3">Cari Ödeme Detayları</h4>
             
