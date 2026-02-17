@@ -207,10 +207,9 @@ export default function VizeBitisiPage() {
                     : "from-green-500 to-emerald-600";
                 
                 return (
-                  <button
+                  <div
                     key={file.id}
-                    onClick={() => handleEditFile(file)}
-                    className={`w-full flex items-center gap-4 p-5 rounded-xl border-l-4 ${urgencyClass} hover:shadow-lg transition-all duration-200 text-left group`}
+                    className={`flex items-center gap-4 p-5 rounded-xl border-l-4 ${urgencyClass} shadow-md hover:shadow-lg transition-all duration-200 group`}
                   >
                     <div className={`w-16 h-16 bg-gradient-to-br ${daysClass} rounded-2xl flex flex-col items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform`}>
                       <span className="text-2xl font-bold">{file.daysRemaining}</span>
@@ -228,13 +227,66 @@ export default function VizeBitisiPage() {
                     <div className="text-right">
                       <p className="text-sm font-semibold text-navy-700">Bitiş: {formatDate(file.vize_bitis_tarihi!)}</p>
                       <Badge variant="success" size="sm" className="mt-1">Vize Onay</Badge>
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={async () => {
+                            if (confirm(`${file.musteri_ad} kaydını silmek istediğinizden emin misiniz?`)) {
+                              try {
+                                const supabase = createClient();
+                                await supabase.from("visa_files").update({ arsiv_mi: true }).eq("id", file.id);
+                                loadData();
+                              } catch (err) {
+                                alert("Silme hatası");
+                              }
+                            }
+                          }}
+                          className="text-red-600 hover:bg-red-50 border-red-200"
+                        >
+                          🗑️ Sil
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const supabase = createClient();
+                              // Yeni dosya oluştur (tekrar başvuru)
+                              const newFile = {
+                                musteri_ad: file.musteri_ad,
+                                pasaport_no: file.pasaport_no + "-R", // Tekrar başvuru işareti
+                                hedef_ulke: file.hedef_ulke,
+                                ulke_manuel_mi: file.ulke_manuel_mi,
+                                islem_tipi: file.islem_tipi,
+                                assigned_user_id: file.assigned_user_id,
+                                ucret: file.ucret,
+                                ucret_currency: file.ucret_currency,
+                                odeme_plani: "cari", // Yeni başvuru genelde cari
+                                odeme_durumu: "odenmedi",
+                              };
+                              await supabase.from("visa_files").insert(newFile);
+                              // Eski dosyayı arşivle
+                              await supabase.from("visa_files").update({ arsiv_mi: true }).eq("id", file.id);
+                              alert(`✅ ${file.musteri_ad} için yeni başvuru oluşturuldu`);
+                              loadData();
+                            } catch (err) {
+                              alert("Tekrar başvuru hatası");
+                            }
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white"
+                        >
+                          🔄 Tekrar Başvuru
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleEditFile(file)}
+                        >
+                          ✏️ Düzenle
+                        </Button>
+                      </div>
                     </div>
-                    <div className="text-navy-300 group-hover:text-primary-500 transition-colors">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

@@ -50,10 +50,33 @@ function getWeekDates(date: Date) {
   return days;
 }
 
+function getMonthDates(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  
+  // Ayın ilk gününün hangi gün olduğunu bul (Pazartesi = 0)
+  const startDay = (firstDay.getDay() + 6) % 7; // Pazartesi başlangıçlı
+  
+  // Takvim grid'i oluştur (6 hafta = 42 gün)
+  const dates = [];
+  const startDate = new Date(firstDay);
+  startDate.setDate(startDate.getDate() - startDay);
+  
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    dates.push(d);
+  }
+  
+  return { dates, firstDay, lastDay };
+}
+
 export default function CalendarPage() {
   const [appointments, setAppointments] = useState<VisaFileWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -107,6 +130,7 @@ export default function CalendarPage() {
   }, [appointments, selectedDate]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
+  const monthData = useMemo(() => getMonthDates(selectedDate), [selectedDate]);
 
   const appointmentsByWeekDay = useMemo(() => {
     const map: Record<string, VisaFileWithProfile[]> = {};
@@ -120,6 +144,19 @@ export default function CalendarPage() {
     });
     return map;
   }, [appointments, weekDates]);
+
+  const appointmentsByMonthDay = useMemo(() => {
+    const map: Record<string, VisaFileWithProfile[]> = {};
+    monthData.dates.forEach(d => {
+      const key = toLocalDateKey(d);
+      map[key] = [];
+    });
+    appointments.forEach(a => {
+      const key = toLocalDateKey(new Date(a.randevu_tarihi!));
+      if (map[key]) map[key].push(a);
+    });
+    return map;
+  }, [appointments, monthData]);
 
   const upcomingAppointments = useMemo(() => {
     const today = new Date();
@@ -157,6 +194,12 @@ export default function CalendarPage() {
     setSelectedDate(newDate);
   };
 
+  const navigateMonth = (delta: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() + delta);
+    setSelectedDate(newDate);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -179,7 +222,7 @@ export default function CalendarPage() {
         <div className="bg-navy-100 p-1 rounded-xl inline-flex gap-1">
           <button
             onClick={() => setViewMode("day")}
-            className={`px-6 py-2 font-medium rounded-lg transition-all ${
+            className={`px-4 py-2 font-medium rounded-lg transition-all ${
               viewMode === "day" 
                 ? "bg-white text-navy-900 shadow-md" 
                 : "text-navy-600 hover:text-navy-900"
@@ -189,13 +232,23 @@ export default function CalendarPage() {
           </button>
           <button
             onClick={() => setViewMode("week")}
-            className={`px-6 py-2 font-medium rounded-lg transition-all ${
+            className={`px-4 py-2 font-medium rounded-lg transition-all ${
               viewMode === "week" 
                 ? "bg-white text-navy-900 shadow-md" 
                 : "text-navy-600 hover:text-navy-900"
             }`}
           >
             Hafta
+          </button>
+          <button
+            onClick={() => setViewMode("month")}
+            className={`px-4 py-2 font-medium rounded-lg transition-all ${
+              viewMode === "month" 
+                ? "bg-white text-navy-900 shadow-md" 
+                : "text-navy-600 hover:text-navy-900"
+            }`}
+          >
+            Ay
           </button>
         </div>
       </div>
@@ -299,7 +352,7 @@ export default function CalendarPage() {
             )}
           </div>
         </Card>
-      ) : (
+      ) : viewMode === "week" ? (
         <Card className="overflow-hidden shadow-lg">
           <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
             <div className="flex items-center justify-between">
@@ -357,6 +410,87 @@ export default function CalendarPage() {
                       })}
                       {dayAppts.length > 3 && (
                         <p className="text-xs text-navy-500 text-center font-medium">+{dayAppts.length - 3} daha</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      ) : (
+        // Ay Görünümü
+        <Card className="overflow-hidden shadow-lg">
+          <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" size="sm" onClick={() => navigateMonth(-1)} className="text-white hover:bg-white/10">
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Önceki Ay
+              </Button>
+              <div className="text-center">
+                <p className="text-lg font-bold text-white">
+                  {selectedDate.toLocaleDateString("tr-TR", { year: "numeric", month: "long" })}
+                </p>
+                <button onClick={() => setSelectedDate(new Date())} className="text-sm text-primary-300 hover:text-white transition-colors">Bu Ay</button>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigateMonth(1)} className="text-white hover:bg-white/10">
+                Sonraki Ay
+                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Button>
+            </div>
+          </div>
+          <div className="p-4">
+            {/* Gün başlıkları */}
+            <div className="grid grid-cols-7 gap-2 mb-2">
+              {["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"].map(day => (
+                <div key={day} className="text-center py-2">
+                  <span className="text-sm font-medium text-navy-600">{day}</span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Takvim grid'i */}
+            <div className="grid grid-cols-7 gap-2">
+              {monthData.dates.map(date => {
+                const key = toLocalDateKey(date);
+                const dayAppts = appointmentsByMonthDay[key] || [];
+                const isToday = new Date().toDateString() === date.toDateString();
+                const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
+                
+                return (
+                  <div key={key} className={`min-h-[100px] p-2 rounded-lg border transition-all ${
+                    isToday ? "border-primary-500 bg-primary-50 shadow-md" : 
+                    isCurrentMonth ? "border-navy-200 hover:border-primary-300 bg-white" : "border-gray-100 bg-gray-50"
+                  }`}>
+                    <div className="text-center mb-1">
+                      <span className={`text-sm font-medium ${
+                        isToday ? "text-primary-600 font-bold" : 
+                        isCurrentMonth ? "text-navy-700" : "text-gray-400"
+                      }`}>{date.getDate()}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {dayAppts.slice(0, 2).map(apt => {
+                        const isMine = apt.assigned_user_id === currentUserId;
+                        return (
+                          <button
+                            key={apt.id}
+                            onClick={() => handleEditFile(apt)}
+                            className={`w-full text-xs p-1 rounded text-center transition-all ${
+                              isMine ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                            }`}
+                            title={`${apt.musteri_ad} - ${formatTime(apt.randevu_tarihi!)} - ${apt.profiles?.name}`}
+                          >
+                            <div className="font-medium">{formatTime(apt.randevu_tarihi!)}</div>
+                            <div className="truncate">{apt.musteri_ad.split(" ")[0]}</div>
+                          </button>
+                        );
+                      })}
+                      {dayAppts.length > 2 && (
+                        <p className="text-xs text-navy-400 text-center">+{dayAppts.length - 2}</p>
                       )}
                     </div>
                   </div>

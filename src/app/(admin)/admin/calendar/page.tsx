@@ -50,11 +50,31 @@ function getWeekDates(date: Date) {
   return days;
 }
 
+function getMonthDates(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  
+  const startDay = (firstDay.getDay() + 6) % 7;
+  const dates = [];
+  const startDate = new Date(firstDay);
+  startDate.setDate(startDate.getDate() - startDay);
+  
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    dates.push(d);
+  }
+  
+  return { dates, firstDay, lastDay };
+}
+
 export default function AdminCalendarPage() {
   const [allAppointments, setAllAppointments] = useState<VisaFileWithProfile[]>([]);
   const [staff, setStaff] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"day" | "week">("day");
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [filterStaff, setFilterStaff] = useState("all");
   const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
@@ -116,6 +136,7 @@ export default function AdminCalendarPage() {
   }, [appointments, selectedDate]);
 
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
+  const monthData = useMemo(() => getMonthDates(selectedDate), [selectedDate]);
 
   const appointmentsByWeekDay = useMemo(() => {
     const map: Record<string, VisaFileWithProfile[]> = {};
@@ -129,6 +150,19 @@ export default function AdminCalendarPage() {
     });
     return map;
   }, [appointments, weekDates]);
+
+  const appointmentsByMonthDay = useMemo(() => {
+    const map: Record<string, VisaFileWithProfile[]> = {};
+    monthData.dates.forEach(d => {
+      const key = toLocalDateKey(d);
+      map[key] = [];
+    });
+    appointments.forEach(a => {
+      const key = toLocalDateKey(new Date(a.randevu_tarihi!));
+      if (map[key]) map[key].push(a);
+    });
+    return map;
+  }, [appointments, monthData]);
 
   const upcomingAppointments = useMemo(() => {
     const today = new Date();
@@ -159,6 +193,12 @@ export default function AdminCalendarPage() {
   const navigateWeek = (delta: number) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + (delta * 7));
+    setSelectedDate(newDate);
+  };
+
+  const navigateMonth = (delta: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setMonth(newDate.getMonth() + delta);
     setSelectedDate(newDate);
   };
 
@@ -205,6 +245,16 @@ export default function AdminCalendarPage() {
               }`}
             >
               Hafta
+            </button>
+            <button
+              onClick={() => setViewMode("month")}
+              className={`px-4 py-2 font-medium rounded-lg transition-all ${
+                viewMode === "month" 
+                  ? "bg-white text-navy-900 shadow-md" 
+                  : "text-navy-600 hover:text-navy-900"
+              }`}
+            >
+              Ay
             </button>
           </div>
         </div>
@@ -296,7 +346,7 @@ export default function AdminCalendarPage() {
             )}
           </div>
         </Card>
-      ) : (
+      ) : viewMode === "week" ? (
         <Card className="overflow-hidden shadow-lg">
           <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
             <div className="flex items-center justify-between">
@@ -349,6 +399,82 @@ export default function AdminCalendarPage() {
                       ))}
                       {dayAppts.length > 3 && (
                         <p className="text-xs text-navy-500 text-center font-medium">+{dayAppts.length - 3} daha</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      ) : (
+        // Ay Görünümü - Admin
+        <Card className="overflow-hidden shadow-lg">
+          <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <Button variant="ghost" size="sm" onClick={() => navigateMonth(-1)} className="text-white hover:bg-white/10">
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Önceki Ay
+              </Button>
+              <div className="text-center">
+                <p className="text-lg font-bold text-white">
+                  {selectedDate.toLocaleDateString("tr-TR", { year: "numeric", month: "long" })}
+                </p>
+                <button onClick={() => setSelectedDate(new Date())} className="text-sm text-primary-300 hover:text-white transition-colors">Bu Ay</button>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigateMonth(1)} className="text-white hover:bg-white/10">
+                Sonraki Ay
+                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Button>
+            </div>
+          </div>
+          <div className="p-4">
+            {/* Gün başlıkları */}
+            <div className="grid grid-cols-7 gap-2 mb-2">
+              {["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"].map(day => (
+                <div key={day} className="text-center py-2">
+                  <span className="text-sm font-medium text-navy-600">{day}</span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Ay takvimi - profesyonel */}
+            <div className="grid grid-cols-7 gap-2">
+              {monthData.dates.map(date => {
+                const key = toLocalDateKey(date);
+                const dayAppts = appointmentsByMonthDay[key] || [];
+                const isToday = new Date().toDateString() === date.toDateString();
+                const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
+                
+                return (
+                  <div key={key} className={`min-h-[120px] p-3 rounded-xl border-2 transition-all ${
+                    isToday ? "border-primary-500 bg-primary-50 shadow-lg" : 
+                    isCurrentMonth ? "border-navy-200 hover:border-primary-300 bg-white" : "border-gray-100 bg-gray-50"
+                  }`}>
+                    <div className="text-center mb-2">
+                      <span className={`text-lg font-bold ${
+                        isToday ? "text-primary-600" : 
+                        isCurrentMonth ? "text-navy-700" : "text-gray-400"
+                      }`}>{date.getDate()}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {dayAppts.slice(0, 3).map(apt => (
+                        <button
+                          key={apt.id}
+                          onClick={() => handleEditFile(apt)}
+                          className="w-full text-xs bg-primary-100 text-primary-700 rounded-lg p-1.5 truncate hover:bg-primary-200 transition-colors"
+                          title={`${apt.musteri_ad} - ${formatTime(apt.randevu_tarihi!)} - ${apt.profiles?.name}`}
+                        >
+                          <div className="font-bold">{formatTime(apt.randevu_tarihi!)}</div>
+                          <div className="truncate">{apt.musteri_ad.split(" ")[0]}</div>
+                        </button>
+                      ))}
+                      {dayAppts.length > 3 && (
+                        <p className="text-xs text-navy-400 text-center">+{dayAppts.length - 3}</p>
                       )}
                     </div>
                   </div>

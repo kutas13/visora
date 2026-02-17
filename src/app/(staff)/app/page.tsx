@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Card, Badge } from "@/components/ui";
+import { Card, Badge, Button } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import type { ActivityLog } from "@/lib/supabase/types";
+import type { ActivityLog, VisaFile } from "@/lib/supabase/types";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", {
@@ -41,7 +41,18 @@ export default function StaffDashboard() {
     odenmedi: 0,
     aktif: 0,
     tamamlanan: 0,
+    toplam: 0,
+    onaylanan: 0,
+    bugunRandevu: 0,
   });
+  const [weeklyStats, setWeeklyStats] = useState({
+    buHaftaOlusturulan: 0,
+    buHaftaTahsilat: 0,
+    tahsilatTL: 0,
+    tahsilatEUR: 0,
+    tahsilatUSD: 0,
+  });
+  const [statusDistribution, setStatusDistribution] = useState<{ label: string; count: number; color: string }[]>([]);
   const [recentLogs, setRecentLogs] = useState<(ActivityLog & { visa_files?: { musteri_ad: string; hedef_ulke: string } | null })[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -57,43 +68,123 @@ export default function StaffDashboard() {
         return;
       }
 
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+
       // Tüm sorguları paralel çalıştır (hız optimizasyonu)
-      const [profileRes, filesRes, logsRes] = await Promise.all([
+      const [profileRes, filesRes, logsRes, paymentsRes] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).single<any>(),
-        supabase.from("visa_files").select("*").eq("assigned_user_id", user.id).eq("arsiv_mi", false),
+        supabase.from("visa_files").select("*").eq("assigned_user_id", user.id),
         supabase.from("activity_logs").select("*, visa_files(musteri_ad, hedef_ulke)").eq("actor_id", user.id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("payments").select("*").eq("created_by", user.id).gte("created_at", weekStart.toISOString()),
       ]);
 
       if (profileRes.data && typeof profileRes.data.name === "string") {
         setUserName(profileRes.data.name);
       }
 
-      const myFiles = filesRes.data;
+      const myFiles = filesRes.data as VisaFile[] | null;
+      const myPayments = paymentsRes.data || [];
       setRecentLogs(logsRes.data || []);
 
       if (myFiles) {
         let randevu15 = 0;
-        let randevu2 = 0;
+        let randevu2 = 0; 
+        let bugunRandevu = 0;
         let islemde = 0;
         let odenmedi = 0;
         let aktif = 0;
         let tamamlanan = 0;
+        let onaylanan = 0;
 
-        (myFiles as Array<any>).forEach((file) => {
-          if (file.islem_tipi === "randevulu" && file.randevu_tarihi && !file.sonuc) {
-            const daysUntil = getDaysUntil(file.randevu_tarihi);
-            if (daysUntil !== null) {
-              if (daysUntil <= 15 && daysUntil > 2) randevu15++;
-              if (daysUntil <= 2 && daysUntil >= 0) randevu2++;
+        // Durum dağılımı için
+        let evrakGelmedi = 0;
+        let islemdeCount = 0; 
+        let onaylandiCount = 0;
+        let reddedildiCount = 0;
+
+        // Haftalık istatistikler
+        let buHaftaOlusturulan = 0;
+        const weeklyPayments = myPayments || [];
+
+        myFiles.forEach((file) => {
+          const toplam = true; // Tüm dosyalar (arşiv dahil)
+          if (!file.arsiv_mi) aktif++;
+          if (file.sonuc) tamamlanan++;
+          if (file.sonuc === "vize_onay") onaylanan++;
+
+          // Bugün randevuları
+          if (file.islem_tipi === "randevulu" && file.randevu_tarihi) {
+            const randevuTarihi = new Date(file.randevu_tarihi);
+            randevuTarihi.setHours(0, 0, 0, 0);
+            if (randevuTarihi.getTime() === today.getTime()) {
+              bugunRandevu++;
+            }
+
+            if (!file.sonuc) {
+              const daysUntil = getDaysUntil(file.randevu_tarihi);
+              if (daysUntil !== null) {
+                if (daysUntil <= 15 && daysUntil > 2) randevu15++;
+                if (daysUntil <= 2 && daysUntil >= 0) randevu2++;
+              }
             }
           }
+          
           if (file.basvuru_yapildi && !file.sonuc) islemde++;
           if (file.odeme_durumu === "odenmedi") odenmedi++;
-          if (!file.sonuc) aktif++;
-          if (file.sonuc) tamamlanan++;
+
+          // Bu hafta oluşturulan
+          if (new Date(file.created_at) >= weekStart) {
+            buHaftaOlusturulan++;
+          }
+
+          // Durum dağılımı
+          if (file.evrak_durumu === "gelmedi") evrakGelmedi++;
+          if (file.basvuru_yapildi && !file.sonuc) islemdeCount++;
+          if (file.sonuc === "vize_onay") onaylandiCount++;
+          if (file.sonuc === "red") reddedildiCount++;
         });
 
-        setStats({ randevu15Gun: randevu15, randevu2Gun: randevu2, islemde, odenmedi, aktif, tamamlanan });
+        setStats({ 
+          randevu15Gun: randevu15, 
+          randevu2Gun: randevu2, 
+          bugunRandevu,
+          islemde, 
+          odenmedi, 
+          aktif, 
+          tamamlanan,
+          toplam: myFiles.length,
+          onaylanan 
+        });
+
+        // Haftalık özet
+        let tahsilatTL = 0, tahsilatEUR = 0, tahsilatUSD = 0;
+        weeklyPayments.forEach(p => {
+          const curr = p.currency || "TL";
+          if (curr === "TL") tahsilatTL += Number(p.tutar);
+          if (curr === "EUR") tahsilatEUR += Number(p.tutar);
+          if (curr === "USD") tahsilatUSD += Number(p.tutar);
+        });
+
+        setWeeklyStats({
+          buHaftaOlusturulan,
+          buHaftaTahsilat: weeklyPayments.length,
+          tahsilatTL,
+          tahsilatEUR, 
+          tahsilatUSD,
+        });
+
+        // Durum dağılımı
+        setStatusDistribution([
+          { label: "Evrak Gelmedi", count: evrakGelmedi, color: "bg-amber-500" },
+          { label: "İşlemde", count: islemdeCount, color: "bg-blue-500" },
+          { label: "Onaylandı", count: onaylandiCount, color: "bg-green-500" },
+          { label: "Reddedildi", count: reddedildiCount, color: "bg-red-500" },
+        ]);
       }
 
       setLoading(false);
@@ -119,10 +210,108 @@ export default function StaffDashboard() {
         <div className="relative z-10">
           <p className="text-primary-100 text-sm font-medium mb-1">{timeGreeting}</p>
           <h1 className="text-3xl font-bold mb-2">{userName}! 👋</h1>
-          <p className="text-primary-100">Bugün {stats.aktif} aktif dosyanız var. Harika işler çıkarın!</p>
+          <div className="space-y-1">
+            <p className="text-primary-100">Bugün {stats.aktif} aktif dosyanız var. {stats.toplam} toplam, {stats.onaylanan} onaylandı.</p>
+            {stats.bugunRandevu > 0 && (
+              <p className="text-yellow-200 font-medium flex items-center gap-1">
+                ⚡ Dikkat: Bugün {stats.bugunRandevu} randevunuz var!
+              </p>
+            )}
+          </div>
         </div>
         <div className="absolute bottom-4 right-4 text-6xl opacity-20">🦊</div>
       </div>
+
+      {/* Hızlı İşlemler */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-navy-900 mb-4">Hızlı İşlemler</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Button 
+            onClick={() => window.location.href = "/app/files/new"}
+            className="bg-primary-500 hover:bg-primary-600 text-white p-4 h-auto flex items-center gap-3"
+          >
+            <span className="text-2xl">📁</span>
+            <div className="text-left">
+              <p className="font-medium">Yeni Dosya</p>
+              <p className="text-xs opacity-80">Müşteri dosyası oluştur</p>
+            </div>
+          </Button>
+          <Button 
+            onClick={() => window.location.href = "/app/payments"}
+            className="bg-green-500 hover:bg-green-600 text-white p-4 h-auto flex items-center gap-3"
+          >
+            <span className="text-2xl">💰</span>
+            <div className="text-left">
+              <p className="font-medium">Tahsilat</p>
+              <p className="text-xs opacity-80">{stats.odenmedi} bekleyen ödeme</p>
+            </div>
+          </Button>
+          <Button 
+            onClick={() => window.location.href = "/app/calendar"}
+            className="bg-blue-500 hover:bg-blue-600 text-white p-4 h-auto flex items-center gap-3"
+          >
+            <span className="text-2xl">📅</span>
+            <div className="text-left">
+              <p className="font-medium">Takvim</p>
+              <p className="text-xs opacity-80">Randevularımı gör</p>
+            </div>
+          </Button>
+        </div>
+      </Card>
+
+      {/* Haftalık Özet */}
+      <Card className="p-6 bg-gradient-to-r from-gray-50 to-white">
+        <h3 className="text-lg font-semibold text-navy-900 mb-4">Bu Hafta</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-primary-600">{weeklyStats.buHaftaOlusturulan}</p>
+            <p className="text-sm text-navy-500">Dosya Oluşturuldu</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold text-green-600">{weeklyStats.buHaftaTahsilat}</p>
+            <p className="text-sm text-navy-500">Tahsilat Yapıldı</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-semibold text-emerald-600">{weeklyStats.tahsilatTL.toLocaleString("tr-TR")} ₺</p>
+            <p className="text-xs text-navy-500">TL Tahsilat</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-semibold text-blue-600">{weeklyStats.tahsilatEUR.toLocaleString("tr-TR")} €</p>
+            <p className="text-xs text-navy-500">EUR Tahsilat</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-semibold text-amber-600">{weeklyStats.tahsilatUSD.toLocaleString("tr-TR")} $</p>
+            <p className="text-xs text-navy-500">USD Tahsilat</p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Dosya Durumu Dağılımı */}
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold text-navy-900 mb-4">Dosya Durumu Dağılımı</h3>
+        <div className="space-y-3">
+          {statusDistribution.map((status, index) => {
+            const percentage = stats.toplam > 0 ? (status.count / stats.toplam) * 100 : 0;
+            return (
+              <div key={index} className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-navy-700">{status.label}</span>
+                    <span className="text-sm text-navy-500">{status.count}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${status.color}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-xs text-navy-400 w-12 text-right">{percentage.toFixed(0)}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* Özet Kartlar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -17,6 +17,7 @@ const pageTitles: Record<string, string> = {
   "/app/atamalar": "iDATA Atamalarım",
   "/app/cari-hesap": "Cari Hesabım",
   "/app/bildirimler": "Bildirimler",
+  "/app/whatsapp": "WhatsApp Bildirimler",
 };
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {

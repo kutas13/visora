@@ -25,6 +25,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   const [sonuc, setSonuc] = useState<VizeSonucu | "">("");
   const [sonucTarihi, setSonucTarihi] = useState(new Date().toISOString().split("T")[0]);
   const [vizeBitisTarihi, setVizeBitisTarihi] = useState("");
+  const [musteriTelefon, setMusteriTelefon] = useState("");
   const [sonucError, setSonucError] = useState<string | null>(null);
 
   // Dosya tamamlandı mı kontrolü
@@ -155,6 +156,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         sonuc: sonuc as VizeSonucu,
         sonuc_tarihi: sonucTarihi,
         vize_bitis_tarihi: sonuc === "vize_onay" ? vizeBitisTarihi : null,
+        musteri_telefon: musteriTelefon.trim() || null,
       };
 
       const { error } = await supabase.from("visa_files").update(updateData).eq("id", file.id);
@@ -346,6 +348,35 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
               required
             />
           )}
+
+          {/* İletişim Bilgisi */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-navy-700">Müşteri Telefon Numarası</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 text-sm text-navy-600 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg">
+                  +90
+                </span>
+                <input
+                  type="text"
+                  placeholder="5058937071"
+                  value={musteriTelefon.replace(/^90/, "")} // 90 prefix'i gösterme
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    setMusteriTelefon("90" + digits); // Otomatik 90 ekle
+                  }}
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  maxLength={10}
+                />
+              </div>
+              <p className="text-xs text-navy-500">
+                Sadece numarayı girin, +90 otomatik eklenir
+              </p>
+            </div>
+            <p className="text-xs text-blue-600 mt-2">
+              💡 Vize bitiş hatırlatması için kayıt edilir (WhatsApp sayfasından mesaj gönderilebilir)
+            </p>
+          </div>
 
           <div className="flex gap-3 pt-4 border-t border-navy-200">
             <Button type="button" variant="outline" onClick={() => setShowSonucModal(false)} className="flex-1" disabled={isLoading}>

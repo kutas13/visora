@@ -79,6 +79,7 @@ export interface VisaFile {
   on_odeme_tutar: number | null;
   on_odeme_currency: ParaBirimi | null;
   kalan_tutar: number | null;
+  musteri_telefon: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -208,6 +209,7 @@ export interface Database {
           on_odeme_tutar?: number | null;
           on_odeme_currency?: ParaBirimi | null;
           kalan_tutar?: number | null;
+          musteri_telefon?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,20 +1,23 @@
-// Kullanıcı listesi (email mapping ile)
+// Kullanıcı listesi (email + telefon + hitap mapping ile)
 export const STAFF_USERS = [
-  { id: "bahar", name: "BAHAR", email: "vize@foxturizm.com" },
-  { id: "ercan", name: "ERCAN", email: "ercan@foxturizm.com" },
-  { id: "yusuf", name: "YUSUF", email: "yusuf@foxturizm.com" },
+  { id: "bahar", name: "BAHAR", email: "vize@foxturizm.com", phone: "0505 562 32 79", hitap: "Bahar Hanım" },
+  { id: "ercan", name: "ERCAN", email: "ercan@foxturizm.com", phone: "0505 562 33 01", hitap: "Ercan Bey" },
+  { id: "yusuf", name: "YUSUF", email: "yusuf@foxturizm.com", phone: "0505 893 70 71", hitap: "Yusuf Bey" },
 ] as const;
 
 export const ADMIN_USER = { 
   id: "davut", 
   name: "DAVUT", 
-  email: "info@foxturizm.com" 
+  email: "info@foxturizm.com",
+  phone: "0543 568 08 74",
+  hitap: "Davut Bey"
 };
 
 export const MUHASEBE_USER = { 
   id: "sirri", 
   name: "SIRRI", 
-  email: "muhasebe@foxturizm.com" 
+  email: "muhasebe@foxturizm.com",
+  phone: "0xxx xxx xx xx"
 };
 
 // Tüm kullanıcılar
