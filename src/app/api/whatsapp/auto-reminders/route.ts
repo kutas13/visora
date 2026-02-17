@@ -36,20 +36,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Geçerli tip belirtiniz." }, { status: 400 });
     }
 
-    // Alıcı listesi (müşteri mesajı için değil, sadece randevu/vize_bitis için)
-    const targetNumbers = recipients && recipients.length > 0 ? recipients : [whatsappTo];
-
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const whatsappTo = process.env.WHATSAPP_NOTIFY_NUMBER;
+    const serviceUrl = process.env.WHATSAPP_SERVICE_URL || "http://localhost:3001";
 
     console.log("Environment check:", { 
       supabaseUrl: !!supabaseUrl, 
       serviceKey: !!serviceKey, 
       whatsappTo: !!whatsappTo 
     });
-
-    const serviceUrl = process.env.WHATSAPP_SERVICE_URL || "http://localhost:3001";
 
     if (!supabaseUrl || !serviceKey) {
       return NextResponse.json({ error: "Supabase yapılandırması eksik." }, { status: 500 });
@@ -61,6 +57,9 @@ export async function POST(request: NextRequest) {
         hint: "Vercel environment variables'da WHATSAPP_NOTIFY_NUMBER ekleyin."
       }, { status: 500 });
     }
+
+    // Alıcı listesi (müşteri mesajı için değil, sadece randevu/vize_bitis için)
+    const targetNumbers = recipients && recipients.length > 0 ? recipients : [whatsappTo];
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
