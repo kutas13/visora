@@ -7,88 +7,75 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    // Origin kontrolü
     const origin = request.headers.get("origin");
     const host = request.headers.get("host");
     if (!validateOrigin(origin, host)) {
-      return NextResponse.json({ error: "Yetkisiz istek." }, { status: 403 });
+      return NextResponse.json({ error: "Yetkisiz." }, { status: 403 });
     }
 
-    // Muhasebe kullanıcısı kontrolü
     const authClient = await createServerSupabaseClient();
     const { data: { user } } = await authClient.auth.getUser();
-
     if (!user) {
-      return NextResponse.json({ error: "Giriş yapmanız gerekiyor." }, { status: 401 });
+      return NextResponse.json({ error: "Giriş gerekli." }, { status: 401 });
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
     if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: "Sunucu yapılandırması eksik." }, { status: 500 });
+      return NextResponse.json({ error: "Yapılandırma eksik." }, { status: 500 });
     }
 
-    // Service role ile tam yetkili client
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Kullanıcı rolü kontrolü
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    // Tüm verileri tek seferde çek (admin cari hesap sayfasıyla aynı mantık)
+    const [profilesRes, filesRes, paymentsRes] = await Promise.all([
+      supabase.from("profiles").select("*").order("name"),
+      supabase.from("visa_files").select("*").eq("odeme_plani", "cari").eq("arsiv_mi", false).order("created_at", { ascending: false }),
+      supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke, assigned_user_id)").eq("payment_type", "tahsilat").order("created_at", { ascending: false }),
+    ]);
 
-    if (profile?.role !== "muhasebe") {
-      return NextResponse.json({ error: "Sadece muhasebe erişebilir." }, { status: 403 });
-    }
+    const profiles = profilesRes.data || [];
+    const files = filesRes.data || [];
+    const payments = paymentsRes.data || [];
 
-    const url = new URL(request.url);
-    const targetUserId = url.searchParams.get("userId");
+    // Kullanıcı bazlı cari hesap hesapla (admin cari-hesap sayfasıyla birebir aynı mantık)
+    const staffList = profiles
+      .filter(p => p.role === "staff" || p.role === "admin")
+      .map(profile => {
+        const userFiles = files.filter(f => f.assigned_user_id === profile.id);
+        const userPayments = payments.filter(p => p.created_by === profile.id);
 
-    if (!targetUserId) {
-      return NextResponse.json({ error: "Kullanıcı ID gerekli." }, { status: 400 });
-    }
+        const totals: Record<string, { borc: number; tahsilat: number; kalan: number }> = {};
 
-    // Kullanıcının ödenmemiş dosyaları (firma cari hariç)
-    const { data: unpaidFiles } = await supabase
-      .from("visa_files")
-      .select("*")
-      .eq("assigned_user_id", targetUserId)
-      .eq("arsiv_mi", false)
-      .eq("odeme_plani", "cari")
-      .eq("odeme_durumu", "odenmedi")
-      .neq("cari_tipi", "firma_cari");
+        userFiles.forEach(f => {
+          const c = f.ucret_currency || "TL";
+          if (!totals[c]) totals[c] = { borc: 0, tahsilat: 0, kalan: 0 };
+          totals[c].borc += Number(f.ucret) || 0;
+        });
 
-    // Kullanıcının tahsilatları
-    const { data: payments } = await supabase
-      .from("payments")
-      .select("*, visa_files(musteri_ad, hedef_ulke)")
-      .eq("created_by", targetUserId)
-      .order("created_at", { ascending: false })
-      .limit(20);
+        userPayments.forEach(p => {
+          const c = p.currency || "TL";
+          if (!totals[c]) totals[c] = { borc: 0, tahsilat: 0, kalan: 0 };
+          totals[c].tahsilat += Number(p.tutar) || 0;
+        });
 
-    const allPayments = payments || [];
+        Object.keys(totals).forEach(c => {
+          totals[c].kalan = totals[c].borc - totals[c].tahsilat;
+        });
 
-    // Para birimi bazında toplamlar
-    const tlTotal = allPayments.filter(p => (p.currency || "TL") === "TL").reduce((sum, p) => sum + Number(p.tutar), 0);
-    const eurTotal = allPayments.filter(p => p.currency === "EUR").reduce((sum, p) => sum + Number(p.tutar), 0);
-    const usdTotal = allPayments.filter(p => p.currency === "USD").reduce((sum, p) => sum + Number(p.tutar), 0);
+        return {
+          profile,
+          totals,
+          files: userFiles,
+          payments: userPayments,
+          bekleyenOdeme: userFiles.filter(f => f.odeme_durumu === "odenmedi").length,
+        };
+      })
+      .filter(s => s.files.length > 0 || s.payments.length > 0);
 
-    const stats = {
-      tlTotal,
-      eurTotal,
-      usdTotal,
-      bekleyenOdemeler: unpaidFiles?.length || 0,
-      sonTahsilatlar: allPayments,
-    };
-
-    return NextResponse.json(stats);
+    return NextResponse.json({ staffList });
   } catch (err: any) {
-    console.error("Muhasebe user stats error:", err);
-    return NextResponse.json(
-      { error: err?.message || "Sunucu hatası." },
-      { status: 500 }
-    );
+    console.error("Muhasebe stats error:", err);
+    return NextResponse.json({ error: err?.message || "Hata." }, { status: 500 });
   }
 }

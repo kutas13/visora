@@ -101,6 +101,26 @@ export default function AdminCariHesapPage() {
 
   const selectedData = staffList.find((s) => s.profile.id === selectedStaff);
 
+  const exportToExcel = () => {
+    // CSV formatında export (Excel açabilir)
+    let csvContent = "Personel,Borç (TL),Tahsilat (TL),Kalan (TL),Borç (EUR),Tahsilat (EUR),Kalan (EUR),Borç (USD),Tahsilat (USD),Kalan (USD)\n";
+    
+    staffList.forEach(staff => {
+      const tlData = staff.totals["TL"] || { borc: 0, tahsilat: 0, kalan: 0 };
+      const eurData = staff.totals["EUR"] || { borc: 0, tahsilat: 0, kalan: 0 };
+      const usdData = staff.totals["USD"] || { borc: 0, tahsilat: 0, kalan: 0 };
+      
+      csvContent += `${staff.profile.name},${tlData.borc},${tlData.tahsilat},${tlData.kalan},${eurData.borc},${eurData.tahsilat},${eurData.kalan},${usdData.borc},${usdData.tahsilat},${usdData.kalan}\n`;
+    });
+
+    // CSV dosyası oluştur ve indir
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `cari_hesap_raporu_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -119,15 +139,26 @@ export default function AdminCariHesapPage() {
           <h1 className="text-2xl font-bold text-navy-900">{"Cari Hesap Yönetimi"}</h1>
           <p className="text-navy-500 text-sm mt-1">{"Tüm personellerin cari hesap özeti"}</p>
         </div>
-        <button
-          onClick={() => window.location.href = "/admin/cari-hesap/firmalar"}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
-          </svg>
-          Firma Cari Hesapları
-        </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => window.location.href = "/admin/cari-hesap/firmalar"}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
+              </svg>
+              Firma Cari Hesapları
+            </button>
+            <button
+              onClick={() => exportToExcel()}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              📊 Excel'e Aktar
+            </button>
+          </div>
       </div>
 
       {/* Genel Toplam KPI */}

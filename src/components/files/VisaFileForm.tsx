@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Button, Input, Select, Card } from "@/components/ui";
+import { Button, Input, Select, Card, Modal } from "@/components/ui";
 import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME_PLANLARI_EXTENDED, HESAP_SAHIPLERI, FATURA_TIPLERI, ALL_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileCreated, notifyFileUpdated } from "@/lib/notifications";
@@ -50,6 +50,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [faturaTipi, setFaturaTipi] = useState<FaturaTipi>("isimli");
+  const [showCreateCompany, setShowCreateCompany] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState("");
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +108,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     if (islemTipi === "randevulu" && !randevuTarihi) { setError("Randevulu işlem için randevu tarihi zorunludur"); return; }
     if (odemePlani === "firma_cari" && !selectedCompany) { setError("Firma seçimi zorunludur"); return; }
     if (!ucret || parseFloat(ucret) <= 0) { setError("Ücret zorunludur"); return; }
-    if (odemePlani === "pesin" && hesapSahibi === null) { setError("Hesap sahibi seçimi zorunludur"); return; }
+    if (odemePlani === "pesin" && hesapSahibi !== null && !hesapSahibi) { setError("Hesap sahibi seçimi zorunludur"); return; }
     if (onOdemeVar && (!onOdemeTutar || parseFloat(onOdemeTutar) <= 0)) { setError("Ön ödeme tutarı zorunludur"); return; }
 
     setIsLoading(true);
@@ -315,6 +317,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
@@ -510,12 +513,29 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
             <h4 className="text-sm font-medium text-purple-700 mb-3">Firma Seçimi</h4>
             
             <div className="space-y-3">
-              <Input 
-                label="Firma Adı Ara" 
-                placeholder="Firma adı yazın..." 
-                value={companySearch} 
-                onChange={(e) => setCompanySearch(e.target.value)} 
-              />
+              <div className="flex gap-3">
+                <Input 
+                  label="Firma Adı Ara" 
+                  placeholder="Firma adı yazın..." 
+                  value={companySearch} 
+                  onChange={(e) => setCompanySearch(e.target.value)} 
+                  className="flex-1"
+                />
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setNewCompanyName(companySearch.trim());
+                      setShowCreateCompany(true);
+                    }}
+                    variant="outline"
+                    className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                    disabled={!companySearch.trim()}
+                  >
+                    + Firma Oluştur
+                  </Button>
+                </div>
+              </div>
               
               {companySearch.trim() && filteredCompanies.length > 0 && (
                 <div className="max-h-40 overflow-y-auto border border-purple-200 rounded-lg bg-white">
@@ -620,5 +640,67 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         </Button>
       </div>
     </form>
+
+    {/* Firma Oluştur Modal */}
+    <Modal isOpen={showCreateCompany} onClose={() => { setShowCreateCompany(false); setNewCompanyName(""); }} title="Yeni Firma Oluştur" size="sm">
+      <div className="space-y-4">
+        <Input
+          label="Firma Adı"
+          placeholder="Firma adını girin..."
+          value={newCompanyName}
+          onChange={(e) => setNewCompanyName(e.target.value)}
+        />
+        
+        <div className="flex gap-3">
+          <Button 
+            type="button"
+            variant="outline" 
+            onClick={() => {
+              setShowCreateCompany(false);
+              setNewCompanyName("");
+            }}
+            className="flex-1"
+          >
+            İptal
+          </Button>
+          <Button 
+            type="button"
+            onClick={async () => {
+              if (!newCompanyName.trim()) return;
+              
+              try {
+                const res = await fetch("/api/companies", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ firma_adi: newCompanyName.trim() }),
+                });
+
+                if (res.ok) {
+                  const data = await res.json();
+                  setShowCreateCompany(false);
+                  // Yeni firmayı seç ve listeye ekle
+                  const newCompany = data.data;
+                  setCompanies(prev => [...prev, newCompany]);
+                  setSelectedCompany(newCompany);
+                  setCompanySearch(newCompany.firma_adi);
+                  setNewCompanyName("");
+                  alert(`✅ ${newCompany.firma_adi} firması oluşturuldu ve seçildi!`);
+                } else {
+                  const errData = await res.json().catch(() => ({}));
+                  alert(`Hata: ${errData.error || "Firma oluşturulamadı"}`);
+                }
+              } catch (err) {
+                alert("Bağlantı hatası");
+              }
+            }}
+            disabled={!newCompanyName.trim()}
+            className="flex-1"
+          >
+            Oluştur ve Seç
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 }
