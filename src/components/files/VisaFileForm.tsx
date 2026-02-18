@@ -49,7 +49,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [companySearch, setCompanySearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [faturaTipi, setFaturaTipi] = useState<FaturaTipi>("isimli");
+  const [faturaTipi, setFaturaTipi] = useState<FaturaTipi>(file?.fatura_tipi || "isimli");
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   
@@ -74,20 +74,30 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     loadUserName();
   }, []);
 
-  // Firma listesi yükle
+  // Firma listesi yükle + edit modunda mevcut firmayı seç
   useEffect(() => {
     const loadCompanies = async () => {
       try {
         const res = await fetch("/api/companies");
         if (res.ok) {
           const data = await res.json();
-          setCompanies(data.data || []);
+          const companyList = data.data || [];
+          setCompanies(companyList);
+
+          if (file?.company_id && !selectedCompany) {
+            const existing = companyList.find((c: Company) => c.id === file.company_id);
+            if (existing) {
+              setSelectedCompany(existing);
+              setCompanySearch(existing.firma_adi);
+            }
+          }
         }
       } catch (err) {
         console.error("Firma listesi alınamadı:", err);
       }
     };
     loadCompanies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Firma arama filtreleme

@@ -17,11 +17,20 @@ export const MUHASEBE_USER = {
   id: "sirri", 
   name: "SIRRI", 
   email: "muhasebe@foxturizm.com",
-  phone: "0xxx xxx xx xx"
+  phone: "0507 801 50 33",
+  hitap: "Sırrı Bey"
+};
+
+export const FEHMI_USER = {
+  id: "fehmi",
+  name: "FEHMİ",
+  email: "",
+  phone: "0505 562 31 70",
+  hitap: "Fehmi Bey"
 };
 
 // Tüm kullanıcılar
-export const ALL_USERS = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER];
+export const ALL_USERS = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER];
 
 // Email'den kullanıcı bul
 export function getUserByEmail(email: string) {
@@ -87,23 +96,39 @@ export const VISA_STATUSES = [
   { value: "rejected", label: "Reddedildi" },
 ] as const;
 
-// Popüler hedef ülkeler
+// Hedef ülkeler (öncelik sırasına göre)
 export const TARGET_COUNTRIES = [
   { value: "all", label: "Tüm Ülkeler" },
+  { value: "Yunanistan", label: "Yunanistan" },
   { value: "Almanya", label: "Almanya" },
   { value: "Fransa", label: "Fransa" },
+  { value: "Hollanda", label: "Hollanda" },
   { value: "İtalya", label: "İtalya" },
   { value: "İspanya", label: "İspanya" },
-  { value: "Hollanda", label: "Hollanda" },
-  { value: "İngiltere", label: "İngiltere" },
-  { value: "ABD", label: "ABD" },
-  { value: "Kanada", label: "Kanada" },
-  { value: "Yunanistan", label: "Yunanistan" },
   { value: "Belçika", label: "Belçika" },
   { value: "Avusturya", label: "Avusturya" },
+  { value: "Portekiz", label: "Portekiz" },
   { value: "İsviçre", label: "İsviçre" },
   { value: "Polonya", label: "Polonya" },
   { value: "Çekya", label: "Çekya" },
+  { value: "Macaristan", label: "Macaristan" },
+  { value: "Danimarka", label: "Danimarka" },
+  { value: "İsveç", label: "İsveç" },
+  { value: "Norveç", label: "Norveç" },
+  { value: "Finlandiya", label: "Finlandiya" },
+  { value: "Estonya", label: "Estonya" },
+  { value: "Letonya", label: "Letonya" },
+  { value: "Litvanya", label: "Litvanya" },
+  { value: "Slovenya", label: "Slovenya" },
+  { value: "Slovakya", label: "Slovakya" },
+  { value: "Hırvatistan", label: "Hırvatistan" },
+  { value: "Malta", label: "Malta" },
+  { value: "Lüksemburg", label: "Lüksemburg" },
+  { value: "İzlanda", label: "İzlanda" },
+  { value: "Liechtenstein", label: "Liechtenstein" },
+  { value: "ABD", label: "ABD" },
+  { value: "İngiltere", label: "İngiltere" },
+  { value: "Kanada", label: "Kanada" },
 ] as const;
 
 // Dosya durum badge'leri

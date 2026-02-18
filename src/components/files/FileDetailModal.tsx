@@ -138,6 +138,26 @@ export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailM
             )}
           </Card>
 
+          {/* Eksik Evrak Notu */}
+          {file.evrak_eksik_mi && file.evrak_not && (
+            <Card className="p-4 bg-amber-50 border border-amber-200">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-amber-600 text-lg">⚠️</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-amber-700 uppercase tracking-wide mb-1">Eksik Evrak Notu</h4>
+                  <p className="text-sm text-amber-800 whitespace-pre-wrap">{file.evrak_not}</p>
+                  {file.eksik_kayit_tarihi && (
+                    <p className="text-xs text-amber-500 mt-2">
+                      Kayıt: {formatDateTime(file.eksik_kayit_tarihi)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Ödemeler */}
           {payments.length > 0 && (
             <div>

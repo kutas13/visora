@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { rateLimit, validateOrigin } from "@/lib/security";
-import { STAFF_USERS, ADMIN_USER } from "@/lib/constants";
+import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { type, recipients } = body as { type: "randevu" | "vize_bitis" | "vize_bitis_customers"; recipients?: string[] };
+    const { type, recipients } = body as { type: "randevu" | "randevu_yarin" | "vize_bitis" | "vize_bitis_customers"; recipients?: string[] };
 
-    if (!type || !["randevu", "vize_bitis", "vize_bitis_customers"].includes(type)) {
+    if (!type || !["randevu", "randevu_yarin", "vize_bitis", "vize_bitis_customers"].includes(type)) {
       return NextResponse.json({ error: "Geçerli tip belirtiniz." }, { status: 400 });
     }
 
@@ -66,28 +66,50 @@ export async function POST(request: NextRequest) {
     let targetFiles: any[] = [];
     let messageText = "";
 
-    if (type === "randevu") {
-      // Gelecek 3 günün randevularını bul (bugün dahil)
+    if (type === "randevu" || type === "randevu_yarin") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const threeDaysLater = new Date(today);
-      threeDaysLater.setDate(threeDaysLater.getDate() + 3);
 
-      const { data } = await supabase
-        .from("visa_files")
-        .select("*, profiles:assigned_user_id(name)")
-        .eq("islem_tipi", "randevulu")
-        .not("randevu_tarihi", "is", null)
-        .eq("arsiv_mi", false)
-        .gte("randevu_tarihi", today.toISOString())
-        .lt("randevu_tarihi", threeDaysLater.toISOString())
-        .order("randevu_tarihi", { ascending: true });
+      let endDate: Date;
+      let label: string;
 
-      targetFiles = data || [];
+      if (type === "randevu_yarin") {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        endDate = new Date(tomorrow);
+        endDate.setDate(endDate.getDate() + 1);
+        label = "YARIN";
+        
+        const { data } = await supabase
+          .from("visa_files")
+          .select("*, profiles:assigned_user_id(name)")
+          .eq("islem_tipi", "randevulu")
+          .not("randevu_tarihi", "is", null)
+          .eq("arsiv_mi", false)
+          .gte("randevu_tarihi", tomorrow.toISOString())
+          .lt("randevu_tarihi", endDate.toISOString())
+          .order("randevu_tarihi", { ascending: true });
+        targetFiles = data || [];
+      } else {
+        endDate = new Date(today);
+        endDate.setDate(endDate.getDate() + 3);
+        label = "3 GÜN";
+        
+        const { data } = await supabase
+          .from("visa_files")
+          .select("*, profiles:assigned_user_id(name)")
+          .eq("islem_tipi", "randevulu")
+          .not("randevu_tarihi", "is", null)
+          .eq("arsiv_mi", false)
+          .gte("randevu_tarihi", today.toISOString())
+          .lt("randevu_tarihi", endDate.toISOString())
+          .order("randevu_tarihi", { ascending: true });
+        targetFiles = data || [];
+      }
 
-      messageText = `🗓️ YAKLAŞAN RANDEVULAR (3 GÜN)\n\n`;
+      messageText = `🗓️ YAKLAŞAN RANDEVULAR (${label})\n\n`;
       if (targetFiles.length === 0) {
-        messageText += "📅 Gelecek 3 günde randevu bulunmuyor.\n";
+        messageText += `📅 ${type === "randevu_yarin" ? "Yarın" : "Gelecek 3 günde"} randevu bulunmuyor.\n`;
       } else {
         messageText += `📊 Toplam ${targetFiles.length} randevu:\n\n`;
         
@@ -166,7 +188,7 @@ export async function POST(request: NextRequest) {
         const personelName = file.profiles?.name || "Fox Turizm";
         
         // Personel bilgilerini bul (hitap + telefon)
-        const allUsers = [...STAFF_USERS, ADMIN_USER];
+        const allUsers = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER];
         const personelInfo = allUsers.find(u => u.name === personelName);
         const personelHitap = personelInfo?.hitap || personelName;
         const personelTelefon = personelInfo?.phone || "0212 xxx xx xx";

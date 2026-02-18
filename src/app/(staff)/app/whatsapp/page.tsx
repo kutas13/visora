@@ -1,41 +1,38 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button, Card, Input, Badge, Select } from "@/components/ui";
-import { createClient } from "@/lib/supabase/client";
+import { Card } from "@/components/ui";
 
 const CONTACT_LIST = [
-  { value: "905435680874", label: "Davut Bey", name: "Davut" },
-  { value: "905055623279", label: "Bahar Hanım", name: "Bahar" },
-  { value: "905055623301", label: "Ercan Bey", name: "Ercan" },
-  { value: "905058937071", label: "Yusuf Bey", name: "Yusuf" },
-  { value: "all", label: "🎯 Hepsi", name: "Hepsi" },
+  { value: "905435680874", label: "Davut Bey", name: "DAVUT" },
+  { value: "905055623279", label: "Bahar Hanım", name: "BAHAR" },
+  { value: "905055623301", label: "Ercan Bey", name: "ERCAN" },
+  { value: "905058937071", label: "Yusuf Bey", name: "YUSUF" },
+  { value: "905055623170", label: "Fehmi Bey", name: "FEHMİ" },
+  { value: "905078015033", label: "Sırrı Bey", name: "SIRRI" },
+  { value: "all", label: "Tüm Ekip", name: "Hepsi" },
 ];
 
-export default function WhatsAppPage() {
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<string>("");
-  const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "disconnected">("checking");
-  const [selectedRecipients, setSelectedRecipients] = useState<string>("905435680874");
+type ReminderType = "randevu" | "randevu_yarin" | "vize_bitis" | "vize_bitis_customers";
 
-  // WhatsApp servis durumunu kontrol et
+export default function WhatsAppPage() {
+  const [sending, setSending] = useState(false);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [result, setResult] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<"checking" | "connected" | "disconnected">("checking");
+  const [selectedRecipient, setSelectedRecipient] = useState<string>("all");
+
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const res = await fetch("/api/whatsapp-send", {
+        const serviceUrl = "/api/whatsapp-send";
+        const res = await fetch(serviceUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to: "test", message: "test" }),
+          body: JSON.stringify({ to: "status-check", message: "ping" }),
         });
         const data = await res.json();
-        
-        if (data.hint || res.status === 503) {
-          setConnectionStatus("disconnected");
-        } else {
-          setConnectionStatus("connected");
-        }
+        setConnectionStatus(data.hint || res.status === 503 ? "disconnected" : "connected");
       } catch {
         setConnectionStatus("disconnected");
       }
@@ -43,293 +40,206 @@ export default function WhatsAppPage() {
     checkStatus();
   }, []);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phoneNumber.trim() || !message.trim()) return;
-
+  const sendReminder = async (type: ReminderType) => {
     setSending(true);
-    setResult("");
+    setActiveAction(type);
+    setResult({ type: "info", message: "Hazırlanıyor..." });
 
     try {
-      // Telefon numarasını WhatsApp formatına çevir (+90 ile başlamalı)
-      const whatsappPhone = phoneNumber.startsWith("90") 
-        ? "+" + phoneNumber.trim()
-        : phoneNumber.startsWith("+") 
-          ? phoneNumber.trim()
-          : "+90" + phoneNumber.trim();
-
-      console.log(`Manuel mesaj gönderiliyor: ${phoneNumber.trim()} → ${whatsappPhone}`);
-
-      const res = await fetch("/api/whatsapp-send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: whatsappPhone,
-          message: message.trim(),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setResult(`✅ Mesaj gönderildi! ID: ${data.messageId}`);
-        setMessage("");
-      } else {
-        setResult(`❌ Hata: ${data.error}`);
-        if (data.hint) {
-          setResult(prev => prev + `\n💡 ${data.hint}`);
-        }
-      }
-    } catch (err) {
-      setResult("❌ Bağlantı hatası");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const sendReminderToGroup = async (type: "randevu" | "vize_bitis" | "vize_bitis_customers") => {
-    setSending(true);
-    setResult(`🔄 ${type === "randevu" ? "Randevu" : "Vize bitiş"} hatırlatması hazırlanıyor...`);
-    
-    try {
-      const recipients = selectedRecipients === "all" 
+      const recipients = selectedRecipient === "all"
         ? CONTACT_LIST.filter(c => c.value !== "all").map(c => c.value)
-        : [selectedRecipients];
+        : [selectedRecipient];
 
-      console.log("WhatsApp hatırlatma:", { type, recipients });
-      
       const res = await fetch("/api/whatsapp/auto-reminders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, recipients }),
       });
 
-      console.log("API cevabı:", res.status, res.headers.get("content-type"));
-      
-      const data = await res.json().catch((e) => {
-        console.error("JSON parse hatası:", e);
-        return { error: "JSON parse hatası" };
-      });
-      
-      console.log("API data:", data);
-      
+      const data = await res.json().catch(() => ({ error: "Yanıt okunamadı" }));
+
       if (res.ok) {
-        if (type === "vize_bitis_customers") {
-          setResult(`✅ Müşteri vize bitiş mesajları gönderildi! ${data.sentTo}/${data.count} başarılı.`);
-        } else {
-          const recipientNames = recipients.length > 1 ? "gruba" : CONTACT_LIST.find(c => c.value === recipients[0])?.name || "kişiye";
-          setResult(`✅ ${type === "randevu" ? "Randevu" : "Vize bitiş"} hatırlatması ${recipientNames} gönderildi! ${data.count} müşteri bilgisi.`);
-        }
+        const labels: Record<string, string> = {
+          randevu: "Randevu hatırlatması",
+          randevu_yarin: "Yarınki randevu bildirimi",
+          vize_bitis: "Vize bitiş hatırlatması",
+          vize_bitis_customers: "Müşteri vize bitiş mesajları",
+        };
+        const countInfo = type === "vize_bitis_customers"
+          ? `${data.sentTo}/${data.count} müşteriye gönderildi`
+          : `${data.count} kayıt bildirildi`;
+        setResult({ type: "success", message: `${labels[type]} basariyla gonderildi. ${countInfo}` });
       } else {
-        setResult(`❌ Hatırlatma hatası (${res.status}): ${data.error || "Bilinmeyen hata"}`);
-        if (data.hint) setResult(prev => prev + `\n💡 ${data.hint}`);
-        if (data.details) setResult(prev => prev + `\n🔍 Detay: ${JSON.stringify(data.details)}`);
+        setResult({ type: "error", message: data.error || "Gönderilemedi" });
       }
     } catch (err: any) {
-      console.error("WhatsApp hatırlatma hatası:", err);
-      setResult(`❌ Bağlantı hatası: ${err.message || "API'ye erişilemedi"}`);
+      setResult({ type: "error", message: err.message || "Bağlantı hatası" });
     } finally {
       setSending(false);
+      setActiveAction(null);
     }
   };
 
+  const reminderActions = [
+    {
+      id: "randevu",
+      title: "Randevu Hatırlatması",
+      subtitle: "Gelecek 3 günün randevuları",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      color: "blue",
+      type: "randevu" as ReminderType,
+    },
+    {
+      id: "randevu_yarin",
+      title: "Sadece Yarın",
+      subtitle: "Yarınki randevular",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: "indigo",
+      type: "randevu_yarin" as ReminderType,
+    },
+    {
+      id: "vize_bitis",
+      title: "Vize Bitiş (Personel)",
+      subtitle: "30 gün içinde bitenler",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      color: "amber",
+      type: "vize_bitis" as ReminderType,
+    },
+    {
+      id: "vize_bitis_customers",
+      title: "Müşteri Bildirimi",
+      subtitle: "60 gün kala direkt müşteriye",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+      color: "emerald",
+      type: "vize_bitis_customers" as ReminderType,
+    },
+  ];
+
+  const colorMap: Record<string, { bg: string; border: string; text: string; icon: string; hover: string; activeBg: string }> = {
+    blue: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: "bg-blue-100 text-blue-600", hover: "hover:border-blue-400", activeBg: "bg-blue-600" },
+    indigo: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", icon: "bg-indigo-100 text-indigo-600", hover: "hover:border-indigo-400", activeBg: "bg-indigo-600" },
+    amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: "bg-amber-100 text-amber-600", hover: "hover:border-amber-400", activeBg: "bg-amber-600" },
+    emerald: { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", icon: "bg-emerald-100 text-emerald-600", hover: "hover:border-emerald-400", activeBg: "bg-emerald-600" },
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-          <span className="text-3xl">📱</span>
-          WhatsApp Bildirimler
-        </h1>
-        <p className="text-navy-500 mt-1">Müşterilere WhatsApp mesajı gönderin</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-navy-900">WhatsApp Bildirimleri</h1>
+          <p className="text-navy-500 text-sm mt-1">Otomatik hatırlatma mesajları gönderin</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`w-2.5 h-2.5 rounded-full ${
+            connectionStatus === "connected" ? "bg-green-500" :
+            connectionStatus === "disconnected" ? "bg-red-500" : "bg-yellow-500 animate-pulse"
+          }`} />
+          <span className="text-sm text-navy-600">
+            {connectionStatus === "connected" ? "Bağlı" :
+             connectionStatus === "disconnected" ? "Bağlantı yok" : "Kontrol ediliyor"}
+          </span>
+        </div>
       </div>
 
-      {/* Bağlantı Durumu */}
-      <Card className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${
-            connectionStatus === "connected" ? "bg-green-500" :
-            connectionStatus === "disconnected" ? "bg-red-500" : "bg-yellow-500"
-          }`} />
-          <span className="text-sm font-medium">
-            WhatsApp Servis Durumu: {
-              connectionStatus === "connected" ? "✅ Bağlı" :
-              connectionStatus === "disconnected" ? "❌ Bağlı Değil" : "🔄 Kontrol ediliyor..."
-            }
-          </span>
-          {connectionStatus === "disconnected" && (
-            <Badge variant="warning" size="sm">QR Kod tarayın</Badge>
-          )}
+      {/* Alıcı Seçimi */}
+      <Card className="p-5">
+        <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide mb-3">Bildirim Alıcısı</h3>
+        <div className="flex flex-wrap gap-2">
+          {CONTACT_LIST.map((contact) => (
+            <button
+              key={contact.value}
+              onClick={() => setSelectedRecipient(contact.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                selectedRecipient === contact.value
+                  ? "bg-navy-900 text-white shadow-md"
+                  : "bg-navy-50 text-navy-600 hover:bg-navy-100"
+              }`}
+            >
+              {contact.label}
+            </button>
+          ))}
         </div>
       </Card>
 
-      {/* Manuel Mesaj Gönder */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-navy-900 mb-4">Manuel Mesaj Gönder</h3>
-        
-        <form onSubmit={handleSend} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-navy-700">Telefon Numarası *</label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 text-sm text-navy-600 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg">
-                  +90
-                </span>
-                <input
-                  type="text"
-                  placeholder="5058937071"
-                  value={phoneNumber.replace(/^90/, "")} // 90 prefix'i gösterme
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    setPhoneNumber("90" + digits); // Otomatik 90 ekle
-                  }}
-                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  maxLength={10}
-                  required
-                />
-              </div>
-              <p className="text-xs text-navy-500">
-                Sadece numarayı girin, +90 otomatik eklenir
-              </p>
-            </div>
-            <div className="flex items-end">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-navy-700">Hızlı Seçim</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setPhoneNumber("905435680874")} className="text-xs p-2 bg-blue-100 hover:bg-blue-200 rounded-lg">📞 Davut</button>
-                  <button type="button" onClick={() => setPhoneNumber("905055623279")} className="text-xs p-2 bg-blue-100 hover:bg-blue-200 rounded-lg">📞 Bahar</button>
-                  <button type="button" onClick={() => setPhoneNumber("905055623301")} className="text-xs p-2 bg-blue-100 hover:bg-blue-200 rounded-lg">📞 Ercan</button>
-                  <button type="button" onClick={() => setPhoneNumber("905058937071")} className="text-xs p-2 bg-blue-100 hover:bg-blue-200 rounded-lg">📞 Yusuf</button>
+      {/* Hatırlatma Aksiyonları */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {reminderActions.map((action) => {
+          const colors = colorMap[action.color];
+          const isActive = activeAction === action.id;
+          return (
+            <Card
+              key={action.id}
+              className={`p-5 border ${colors.border} ${colors.bg} ${colors.hover} transition-all ${isActive ? "ring-2 ring-offset-1" : ""}`}
+            >
+              <div className="flex items-start gap-4">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${colors.icon}`}>
+                  {action.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className={`font-semibold ${colors.text}`}>{action.title}</h4>
+                  <p className="text-sm text-navy-500 mt-0.5">{action.subtitle}</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-navy-700 mb-2">Mesaj İçeriği</label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="WhatsApp mesajınızı buraya yazın..."
-              className="w-full p-3 border border-gray-300 rounded-lg h-32 resize-none"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">{message.length}/500 karakter</p>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={sending || !phoneNumber.trim() || !message.trim()}
-            className="w-full"
-          >
-            {sending ? "Gönderiliyor..." : "📤 Mesaj Gönder"}
-          </Button>
-        </form>
-      </Card>
-
-      {/* Otomatik Hatırlatmalar */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-navy-900 mb-4">Otomatik Hatırlatmalar</h3>
-        
-        {/* Alıcı Seçimi */}
-        <div className="mb-6">
-          <Select
-            label="Hatırlatma Gönderilecek Kişi"
-            options={CONTACT_LIST}
-            value={selectedRecipients}
-            onChange={(e) => setSelectedRecipients(e.target.value)}
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">📅</span>
-              <div>
-                <h4 className="font-medium text-navy-900">Randevu Hatırlatması</h4>
-                <p className="text-sm text-navy-600">Son 3 günün randevuları</p>
-              </div>
-            </div>
-            <Button
-              onClick={() => sendReminderToGroup("randevu")}
-              disabled={sending}
-              className="w-full bg-blue-500 hover:bg-blue-600"
-            >
-              🔔 Randevu Hatırlatması Gönder
-            </Button>
-          </div>
-
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">⏰</span>
-              <div>
-                <h4 className="font-medium text-navy-900">Vize Bitiş Hatırlatması</h4>
-                <p className="text-sm text-navy-600">30 gün içinde bitenler</p>
-              </div>
-            </div>
-            <Button
-              onClick={() => sendReminderToGroup("vize_bitis")}
-              disabled={sending}
-              className="w-full bg-amber-500 hover:bg-amber-600"
-            >
-              ⚠️ Vize Bitiş Hatırlatması
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Müşteri Vize Bitiş Mesajları */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-navy-900 mb-4">Müşteri Vize Bitiş Mesajları</h3>
-        
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <h4 className="font-medium text-navy-900">60 Gün Kala Hatırlatması</h4>
-              <p className="text-sm text-navy-600">Vize süresi dolacak müşterilere mesaj</p>
-            </div>
-          </div>
-          <Button
-            onClick={() => sendReminderToGroup("vize_bitis_customers")}
-            disabled={sending}
-            className="w-full bg-amber-500 hover:bg-amber-600"
-          >
-            📞 Müşterilere Vize Bitiş Mesajı Gönder
-          </Button>
-          <p className="text-xs text-amber-600 mt-2">
-            💡 60 gün içinde vize süresi dolacak müşterilerin kayıtlı telefon numaralarına gönderilir
-          </p>
-        </div>
-      </Card>
+              <button
+                onClick={() => sendReminder(action.type)}
+                disabled={sending || connectionStatus === "disconnected"}
+                className={`w-full mt-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed ${colors.activeBg} hover:opacity-90`}
+              >
+                {isActive ? "Gönderiliyor..." : "Gönder"}
+              </button>
+            </Card>
+          );
+        })}
+      </div>
 
       {/* Sonuç */}
       {result && (
-        <Card className="p-4">
-          <pre className="text-sm whitespace-pre-wrap text-navy-700">{result}</pre>
+        <Card className={`p-4 border ${
+          result.type === "success" ? "bg-green-50 border-green-200" :
+          result.type === "error" ? "bg-red-50 border-red-200" :
+          "bg-blue-50 border-blue-200"
+        }`}>
+          <div className="flex items-start gap-3">
+            <span className="text-lg flex-shrink-0">
+              {result.type === "success" ? "✓" : result.type === "error" ? "✕" : "→"}
+            </span>
+            <p className={`text-sm ${
+              result.type === "success" ? "text-green-700" :
+              result.type === "error" ? "text-red-700" : "text-blue-700"
+            }`}>
+              {result.message}
+            </p>
+          </div>
         </Card>
       )}
 
-      {/* Hızlı Mesaj Şablonları */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-navy-900 mb-4">Mesaj Şablonları</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            "Merhaba, vize randevunuz yarın. Lütfen evraklarınızı hazırlayın.",
-            "Evraklarınız eksik. Lütfen en kısa sürede tamamlayın.",
-            "Vize başvurunuz onaylandı! Pasaportunuzu teslim alabilirsiniz.",
-            "Vize süreniz 30 gün içinde dolacak. Yenileme için iletişime geçin.",
-            "Ödemeniz bekliyor. Lütfen tahsilat için ofise uğrayın.",
-          ].map((template, index) => (
-            <button
-              key={index}
-              onClick={() => setMessage(template)}
-              className="text-left p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-sm transition-colors"
-            >
-              {template}
-            </button>
-          ))}
+      {/* Bilgi */}
+      <Card className="p-4 bg-navy-50 border border-navy-200">
+        <div className="flex items-start gap-3">
+          <svg className="w-5 h-5 text-navy-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="text-sm text-navy-600 space-y-1">
+            <p>Randevu hatırlatmaları seçilen kişilere toplu bilgi mesajı gönderir.</p>
+            <p>Müşteri bildirimi, telefon numarası kayıtlı ve 60 gün içinde vizesi dolacak müşterilere doğrudan gider. Aynı müşteriye 5 gün içinde tekrar mesaj gönderilmez.</p>
+          </div>
         </div>
       </Card>
     </div>
