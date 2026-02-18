@@ -93,31 +93,31 @@ export async function POST(request: NextRequest) {
     
     if (isPesin) {
       if (yontem === "nakit") {
-        grad1 = "#16a34a"; grad2 = "#059669"; // yeşil (nakit)
+        grad1 = "#16a34a"; grad2 = "#059669";
         badgeBg = "rgba(22,163,74,0.12)"; badgeClr = "#16a34a";
         methodLabel = "Nakit (Cariden Düşüş)";
-        icon = "&#x1F4B5;"; // 💵 nakit
+        icon = "&#x1F4B5;";
       } else {
-        grad1 = "#2563eb"; grad2 = "#3b82f6"; // mavi (hesaba)
+        grad1 = "#2563eb"; grad2 = "#3b82f6";
         badgeBg = "rgba(37,99,235,0.12)"; badgeClr = "#2563eb";
         methodLabel = `Hesaba${hesapBilgisi}`;
-        icon = "&#x1F3E6;"; // 🏦 banka
+        icon = "&#x1F3E6;";
       }
     } else if (isOnOdeme) {
-      grad1 = "#8b5cf6"; grad2 = "#a78bfa"; // mor (ön ödeme)
+      grad1 = "#8b5cf6"; grad2 = "#a78bfa";
       badgeBg = "rgba(139,92,246,0.12)"; badgeClr = "#8b5cf6";
       methodLabel = "Ön Ödeme";
-      icon = "&#x1F4B3;"; // 💳 kart
+      icon = "&#x1F4B3;";
     } else if (isFirmaCari) {
-      grad1 = "#7c3aed"; grad2 = "#8b5cf6"; // mor (firma)
+      grad1 = "#7c3aed"; grad2 = "#8b5cf6";
       badgeBg = "rgba(124,58,237,0.12)"; badgeClr = "#7c3aed";
       methodLabel = "Firma Cari";
-      icon = "&#x1F3E2;"; // 🏢 şirket
+      icon = "&#x1F3E2;";
     } else {
-      grad1 = "#f97316"; grad2 = "#ef4444"; // turuncu (tahsilat)
+      grad1 = "#f97316"; grad2 = "#ef4444";
       badgeBg = "rgba(249,115,22,0.12)"; badgeClr = "#ea580c";
       methodLabel = yontem === "nakit" ? "Nakit (Cariden Düşüş)" : `Hesaba${hesapBilgisi}`;
-      icon = companyInfo ? "&#x1F3E2;" : "&#x1F4B0;"; // 🏢 şirket / 💰 tahsilat
+      icon = companyInfo ? "&#x1F3E2;" : "&#x1F4B0;";
     }
 
     const html = `<!DOCTYPE html>
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
           </td>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
             <span style="font-size:14px;color:#e2e8f0;font-weight:500;">${companyInfo.firma_adi}</span>
-            ${faturaTipi ? `<br><span style="font-size:11px;color:#64748b;">${faturaTipi === "isimli" ? "İsimli" : "İsimsiz"} Fatura</span>` : ""}
+            ${faturaTipi ? `<br><span style="font-size:11px;color:#64748b;">${faturaTipi === "isimli" ? "\u0130simli" : "\u0130simsiz"} Fatura</span>` : ""}
           </td>
         </tr>` : ""}
         ${hesapSahibi && yontem === "hesaba" ? `<tr>
@@ -216,16 +216,16 @@ export async function POST(request: NextRequest) {
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Hesap</span>
           </td>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
-            <span style="font-size:14px;color:#e2e8f0;font-weight:500;">${hesapSahibi === "DAVUT_TURGUT" ? "Davut Turgut" : "Sırrı Turgut"}</span>
+            <span style="font-size:14px;color:#e2e8f0;font-weight:500;">${hesapSahibi === "DAVUT_TURGUT" ? "Davut Turgut" : "S\u0131rr\u0131 Turgut"}</span>
           </td>
         </tr>` : ""}
         ${onOdemeGecmisi ? `<tr>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Ön Ödeme</span>
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">\u00d6n \u00d6deme</span>
           </td>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
             <span style="font-size:13px;color:#e2e8f0;">${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency}</span>
-            <br><span style="font-size:11px;color:#64748b;">${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde alınmıştı</span>
+            <br><span style="font-size:11px;color:#64748b;">${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde al\u0131nm\u0131\u015ft\u0131</span>
           </td>
         </tr>` : ""}
         ${notlar ? `<tr>

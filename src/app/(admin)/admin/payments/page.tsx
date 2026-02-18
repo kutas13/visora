@@ -50,6 +50,7 @@ export default function AdminPaymentsPage() {
         .select("*, profiles:assigned_user_id(name)")
         .eq("arsiv_mi", false)
         .eq("odeme_plani", "cari")
+        .neq("cari_tipi", "firma_cari")
         .eq("odeme_durumu", "odenmedi")
         .order("created_at", { ascending: false });
 

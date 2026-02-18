@@ -107,29 +107,25 @@ export async function POST(request: NextRequest) {
         targetFiles = data || [];
       }
 
-      messageText = `🗓️ YAKLAŞAN RANDEVULAR (${label})\n\n`;
+      messageText = `*RANDEVU BİLDİRİMİ — ${label}*\n`;
+      messageText += `${type === "randevu_yarin" ? "Yarınki" : "Önümüzdeki 3 günlük"} randevu özeti\n`;
+      messageText += `${"─".repeat(28)}\n\n`;
       if (targetFiles.length === 0) {
-        messageText += `📅 ${type === "randevu_yarin" ? "Yarın" : "Gelecek 3 günde"} randevu bulunmuyor.\n`;
+        messageText += `${type === "randevu_yarin" ? "Yarın" : "Gelecek 3 günde"} randevu bulunmuyor.\n`;
       } else {
-        messageText += `📊 Toplam ${targetFiles.length} randevu:\n\n`;
+        messageText += `Toplam: *${targetFiles.length}* randevu\n\n`;
         
         targetFiles.forEach((file, index) => {
           const randevuTarihi = new Date(file.randevu_tarihi);
-          const tarihSaat = randevuTarihi.toLocaleString("tr-TR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          });
+          const tarih = randevuTarihi.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" });
+          const saat = randevuTarihi.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
           
-          messageText += `${index + 1}. ${file.musteri_ad}\n`;
-          messageText += `   📅 ${tarihSaat}\n`;
-          messageText += `   🌍 ${file.hedef_ulke}\n`;
-          messageText += `   👤 ${file.profiles?.name || "?"}\n\n`;
+          messageText += `*${index + 1}.* ${file.musteri_ad}\n`;
+          messageText += `    ${tarih} — ${saat}\n`;
+          messageText += `    ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
         });
       }
-      messageText += `📱 Fox Turizm Vize Sistemi`;
+      messageText += `— Fox Turizm`;
 
     } else if (type === "vize_bitis_customers") {
       // Müşterilere direkt vize bitiş mesajı (60 gün kala)
@@ -193,19 +189,16 @@ export async function POST(request: NextRequest) {
         const personelHitap = personelInfo?.hitap || personelName;
         const personelTelefon = personelInfo?.phone || "0212 xxx xx xx";
         
-        const personalMessage = `🇹🇷 Sayın ${file.musteri_ad},
+        const personalMessage = `Sayın ${file.musteri_ad},
 
-${file.hedef_ulke} vizenizin süresi ${kalanGun} gün sonra (${bitisDate.toLocaleDateString("tr-TR")}) tarihinde sona erecek.
+${file.hedef_ulke} vizenizin süresi *${kalanGun} gün sonra* (${bitisDate.toLocaleDateString("tr-TR")}) sona erecektir.
 
-Vizenizin süresinin dolmaması için yenileme işlemlerinizi en kısa sürede başlatmanızı öneriyoruz.
+Yenileme işlemlerinizi zamanında başlatmanızı öneriyoruz.
 
-Detaylı bilgi ve randevu için bizimle iletişime geçebilirsiniz:
+Bilgi ve randevu için:
+${personelHitap} — ${personelTelefon}
 
-📞 ${personelHitap}
-☎️ ${personelTelefon}
-
-🏢 Fox Turizm Vize Hizmetleri
-💼 Profesyonel vize danışmanlığı`;
+Fox Turizm Vize Hizmetleri`;
 
         // Telefon numarasını WhatsApp formatına çevir (+90 ile başlamalı)
         const whatsappPhone = file.musteri_telefon.startsWith("90") 
@@ -281,21 +274,22 @@ Detaylı bilgi ve randevu için bizimle iletişime geçebilirsiniz:
 
       targetFiles = data || [];
 
-      messageText = `⚠️ VİZE BİTİŞ HATIRLATMASI\n\n`;
+      messageText = `*VİZE BİTİŞ TAKİBİ*\n`;
+      messageText += `30 gün içinde süresi dolacak vizeler\n`;
+      messageText += `${"─".repeat(28)}\n\n`;
       if (targetFiles.length === 0) {
-        messageText += "✅ 30 gün içinde vize süresi dolacak müşteri yok.\n";
+        messageText += "30 gün içinde vize süresi dolacak müşteri bulunmuyor.\n";
       } else {
-        messageText += `📊 ${targetFiles.length} müşterinin vize süresi 30 gün içinde dolacak:\n\n`;
+        messageText += `Toplam: *${targetFiles.length}* müşteri\n\n`;
         targetFiles.forEach((file, index) => {
-          const bitisTarihi = new Date(file.vize_bitis_tarihi).toLocaleDateString("tr-TR");
+          const bitisTarihi = new Date(file.vize_bitis_tarihi).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" });
           const kalanGun = Math.ceil((new Date(file.vize_bitis_tarihi).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          messageText += `${index + 1}. ${file.musteri_ad}\n`;
-          messageText += `   📅 Bitiş: ${bitisTarihi} (${kalanGun} gün kaldı)\n`;
-          messageText += `   🌍 ${file.hedef_ulke}\n`;
-          messageText += `   👤 ${file.profiles?.name || "?"}\n\n`;
+          messageText += `*${index + 1}.* ${file.musteri_ad}\n`;
+          messageText += `    Bitiş: ${bitisTarihi} (${kalanGun} gün)\n`;
+          messageText += `    ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
         });
       }
-      messageText += `📱 Fox Turizm Vize Sistemi`;
+      messageText += `— Fox Turizm`;
     }
 
     // WhatsApp mesajını çoklu alıcıya gönder

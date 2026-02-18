@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Card, Button, Badge, Modal, Select } from "@/components/ui";
+import { Card, Modal, Select } from "@/components/ui";
 import VisaFileForm from "@/components/files/VisaFileForm";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
@@ -217,72 +217,46 @@ export default function AdminCalendarPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-            <span className="text-3xl">📅</span>
-            Randevu Takvimi
-          </h1>
-          <p className="text-navy-500 mt-1">{appointments.length} yaklaşan randevu</p>
+          <h1 className="text-2xl font-bold text-navy-900">Randevu Takvimi</h1>
+          <p className="text-navy-500 text-sm mt-1">{appointments.length} yaklaşan randevu</p>
         </div>
         <div className="flex flex-wrap gap-3 items-center">
           <Select options={staffOptions} value={filterStaff} onChange={(e) => setFilterStaff(e.target.value)} className="min-w-[180px]" />
-          <div className="bg-navy-100 p-1 rounded-xl inline-flex gap-1">
-            <button
-              onClick={() => setViewMode("day")}
-              className={`px-4 py-2 font-medium rounded-lg transition-all ${
-                viewMode === "day" 
-                  ? "bg-white text-navy-900 shadow-md" 
-                  : "text-navy-600 hover:text-navy-900"
-              }`}
-            >
-              Gün
-            </button>
-            <button
-              onClick={() => setViewMode("week")}
-              className={`px-4 py-2 font-medium rounded-lg transition-all ${
-                viewMode === "week" 
-                  ? "bg-white text-navy-900 shadow-md" 
-                  : "text-navy-600 hover:text-navy-900"
-              }`}
-            >
-              Hafta
-            </button>
-            <button
-              onClick={() => setViewMode("month")}
-              className={`px-4 py-2 font-medium rounded-lg transition-all ${
-                viewMode === "month" 
-                  ? "bg-white text-navy-900 shadow-md" 
-                  : "text-navy-600 hover:text-navy-900"
-              }`}
-            >
-              Ay
-            </button>
+          <div className="bg-navy-100 p-0.5 rounded-lg inline-flex gap-0.5">
+            {(["day", "week", "month"] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  viewMode === mode ? "bg-white text-navy-900 shadow-sm" : "text-navy-500 hover:text-navy-700"
+                }`}
+              >
+                {mode === "day" ? "Gün" : mode === "week" ? "Hafta" : "Ay"}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Bugünün Randevuları */}
       {todayAppointments.length > 0 && (
-        <Card className="overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 p-6 text-white">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <span className="text-2xl">🕐</span>
-              Bugünün Randevuları ({todayAppointments.length})
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <Card className="overflow-hidden border border-navy-200">
+          <div className="bg-primary-600 p-5 text-white">
+            <h3 className="text-base font-semibold mb-3">Bugünün Randevuları ({todayAppointments.length})</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
               {todayAppointments.map(apt => (
                 <button
                   key={apt.id}
                   onClick={() => handleEditFile(apt)}
-                  className="bg-white/20 hover:bg-white/30 backdrop-blur rounded-xl p-4 text-left transition-all hover:scale-[1.02]"
+                  className="bg-white/15 hover:bg-white/25 rounded-lg p-3 text-left transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-14 h-14 bg-white/30 rounded-xl flex items-center justify-center">
-                      <span className="text-xl font-bold">{formatTime(apt.randevu_tarihi!)}</span>
+                    <div className="w-11 h-11 bg-white/20 rounded-lg flex items-center justify-center text-sm font-bold">
+                      {formatTime(apt.randevu_tarihi!)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold truncate">{apt.musteri_ad}</p>
-                      <p className="text-sm text-white/80">{apt.hedef_ulke}</p>
-                      <p className="text-xs text-white/60">{apt.profiles?.name}</p>
+                      <p className="font-semibold truncate text-sm">{apt.musteri_ad}</p>
+                      <p className="text-xs text-white/70">{apt.hedef_ulke} · {apt.profiles?.name}</p>
                     </div>
                   </div>
                 </button>
@@ -294,52 +268,44 @@ export default function AdminCalendarPage() {
 
       {/* Takvim Görünümü */}
       {viewMode === "day" ? (
-        <Card className="overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
+        <Card className="overflow-hidden border border-navy-200">
+          <div className="bg-navy-800 px-6 py-3">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={() => navigateDay(-1)} className="text-white hover:bg-white/10">
-                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+              <button onClick={() => navigateDay(-1)} className="text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 Önceki
-              </Button>
+              </button>
               <div className="text-center">
-                <p className="text-lg font-bold text-white">{formatDate(selectedDate.toISOString())}</p>
-                <button onClick={() => setSelectedDate(new Date())} className="text-sm text-primary-300 hover:text-white transition-colors">Bugün</button>
+                <p className="text-sm font-semibold text-white">{formatDate(selectedDate.toISOString())}</p>
+                <button onClick={() => setSelectedDate(new Date())} className="text-xs text-primary-300 hover:text-white transition-colors">Bugün</button>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigateDay(1)} className="text-white hover:bg-white/10">
+              <button onClick={() => navigateDay(1)} className="text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors">
                 Sonraki
-                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Button>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {filteredByDay.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-4xl">📅</span>
-                </div>
-                <p className="text-lg font-semibold text-navy-700 mb-1">Randevu Yok</p>
-                <p className="text-navy-500">Bu gün için planlanmış randevu bulunmuyor</p>
+              <div className="text-center py-12">
+                <p className="text-navy-400 text-sm">Bu gün için randevu bulunmuyor</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {filteredByDay.map(apt => (
                   <button
                     key={apt.id}
                     onClick={() => handleEditFile(apt)}
-                    className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-navy-50 to-white border-l-4 border-l-primary-500 rounded-xl transition-all hover:shadow-lg text-left group"
+                    className="w-full flex items-center gap-3 p-3 border border-navy-200 rounded-lg hover:bg-navy-50 transition-colors text-left"
                   >
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex flex-col items-center justify-center text-white shadow-lg">
-                      <span className="text-lg font-bold">{formatTime(apt.randevu_tarihi!)}</span>
+                    <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
+                      {formatTime(apt.randevu_tarihi!)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-navy-900">{apt.musteri_ad}</p>
-                      <p className="text-sm text-navy-500">{apt.hedef_ulke} • {apt.pasaport_no}</p>
+                      <p className="font-semibold text-navy-900 text-sm">{apt.musteri_ad}</p>
+                      <p className="text-xs text-navy-500">{apt.hedef_ulke} · {apt.pasaport_no}</p>
                     </div>
-                    <Badge variant="purple">{apt.profiles?.name}</Badge>
+                    <span className="text-xs text-navy-500">{apt.profiles?.name}</span>
                   </button>
                 ))}
               </div>
@@ -347,27 +313,23 @@ export default function AdminCalendarPage() {
           </div>
         </Card>
       ) : viewMode === "week" ? (
-        <Card className="overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
+        <Card className="overflow-hidden border border-navy-200">
+          <div className="bg-navy-800 px-6 py-3">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={() => navigateWeek(-1)} className="text-white hover:bg-white/10">
-                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+              <button onClick={() => navigateWeek(-1)} className="text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 Önceki Hafta
-              </Button>
+              </button>
               <div className="text-center">
-                <p className="text-lg font-bold text-white">
-                  {formatShortDate(weekDates[0].toISOString())} - {formatShortDate(weekDates[6].toISOString())}
+                <p className="text-sm font-semibold text-white">
+                  {formatShortDate(weekDates[0].toISOString())} – {formatShortDate(weekDates[6].toISOString())}
                 </p>
-                <button onClick={() => setSelectedDate(new Date())} className="text-sm text-primary-300 hover:text-white transition-colors">Bu Hafta</button>
+                <button onClick={() => setSelectedDate(new Date())} className="text-xs text-primary-300 hover:text-white transition-colors">Bu Hafta</button>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigateWeek(1)} className="text-white hover:bg-white/10">
+              <button onClick={() => navigateWeek(1)} className="text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors">
                 Sonraki Hafta
-                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Button>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
             </div>
           </div>
           <div className="p-4">
@@ -379,12 +341,12 @@ export default function AdminCalendarPage() {
                 const dayNames = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
                 return (
-                  <div key={key} className={`min-h-[140px] p-3 rounded-xl border-2 transition-all ${
-                    isToday ? "border-primary-500 bg-primary-50 shadow-lg" : "border-navy-200 hover:border-primary-300"
+                  <div key={key} className={`min-h-[130px] p-2 rounded-lg border transition-all ${
+                    isToday ? "border-primary-500 bg-primary-50" : "border-navy-200"
                   }`}>
-                    <div className="text-center mb-2">
-                      <p className="text-xs font-medium text-navy-500">{dayNames[(date.getDay() + 6) % 7]}</p>
-                      <p className={`text-xl font-bold ${isToday ? "text-primary-600" : "text-navy-700"}`}>{date.getDate()}</p>
+                    <div className="text-center mb-1.5">
+                      <p className="text-[10px] font-medium text-navy-400 uppercase">{dayNames[(date.getDay() + 6) % 7]}</p>
+                      <p className={`text-lg font-bold ${isToday ? "text-primary-600" : "text-navy-700"}`}>{date.getDate()}</p>
                     </div>
                     <div className="space-y-1">
                       {dayAppts.slice(0, 3).map(apt => (
@@ -409,27 +371,23 @@ export default function AdminCalendarPage() {
         </Card>
       ) : (
         // Ay Görünümü - Admin
-        <Card className="overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
+        <Card className="overflow-hidden border border-navy-200">
+          <div className="bg-navy-800 px-6 py-3">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="sm" onClick={() => navigateMonth(-1)} className="text-white hover:bg-white/10">
-                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+              <button onClick={() => navigateMonth(-1)} className="text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 Önceki Ay
-              </Button>
+              </button>
               <div className="text-center">
-                <p className="text-lg font-bold text-white">
+                <p className="text-sm font-semibold text-white">
                   {selectedDate.toLocaleDateString("tr-TR", { year: "numeric", month: "long" })}
                 </p>
-                <button onClick={() => setSelectedDate(new Date())} className="text-sm text-primary-300 hover:text-white transition-colors">Bu Ay</button>
+                <button onClick={() => setSelectedDate(new Date())} className="text-xs text-primary-300 hover:text-white transition-colors">Bu Ay</button>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => navigateMonth(1)} className="text-white hover:bg-white/10">
+              <button onClick={() => navigateMonth(1)} className="text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors">
                 Sonraki Ay
-                <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Button>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
             </div>
           </div>
           <div className="p-4">
@@ -451,14 +409,14 @@ export default function AdminCalendarPage() {
                 const isCurrentMonth = date.getMonth() === selectedDate.getMonth();
                 
                 return (
-                  <div key={key} className={`min-h-[120px] p-3 rounded-xl border-2 transition-all ${
-                    isToday ? "border-primary-500 bg-primary-50 shadow-lg" : 
-                    isCurrentMonth ? "border-navy-200 hover:border-primary-300 bg-white" : "border-gray-100 bg-gray-50"
+                  <div key={key} className={`min-h-[100px] p-2 rounded border transition-all ${
+                    isToday ? "border-primary-500 bg-primary-50" : 
+                    isCurrentMonth ? "border-navy-100 bg-white" : "border-transparent bg-gray-50/50"
                   }`}>
-                    <div className="text-center mb-2">
-                      <span className={`text-lg font-bold ${
-                        isToday ? "text-primary-600" : 
-                        isCurrentMonth ? "text-navy-700" : "text-gray-400"
+                    <div className="text-center mb-1">
+                      <span className={`text-xs ${
+                        isToday ? "text-primary-600 font-bold" : 
+                        isCurrentMonth ? "text-navy-600 font-medium" : "text-gray-300"
                       }`}>{date.getDate()}</span>
                     </div>
                     <div className="space-y-1">
@@ -486,46 +444,38 @@ export default function AdminCalendarPage() {
       )}
 
       {/* Yaklaşan Randevular Listesi */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <span className="text-xl">📋</span>
-            Yaklaşan Randevular
-          </h3>
+      <Card className="overflow-hidden border border-navy-200">
+        <div className="bg-navy-800 px-6 py-3">
+          <h3 className="text-sm font-semibold text-white">Yaklaşan Randevular</h3>
         </div>
-        <div className="p-6">
+        <div className="p-4">
           {upcomingAppointments.length === 0 ? (
-            <div className="text-center py-12 text-navy-500">
+            <div className="text-center py-8 text-navy-400 text-sm">
               <p>Yaklaşan randevu bulunmuyor</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {upcomingAppointments.slice(0, 20).map(apt => {
                 const daysUntil = getDaysUntil(apt.randevu_tarihi!);
-                const urgencyClass = daysUntil <= 2 
-                  ? "from-red-500 to-red-600" 
-                  : daysUntil <= 7 
-                    ? "from-amber-500 to-orange-500" 
-                    : "from-green-500 to-emerald-600";
+                const urgencyColor = daysUntil <= 2 ? "bg-red-600" : daysUntil <= 7 ? "bg-amber-500" : "bg-green-600";
                 
                 return (
                   <button
                     key={apt.id}
                     onClick={() => handleEditFile(apt)}
-                    className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-navy-50 to-white rounded-xl transition-all hover:shadow-lg text-left"
+                    className="w-full flex items-center gap-3 p-3 border border-navy-100 rounded-lg hover:bg-navy-50 transition-colors text-left"
                   >
-                    <div className={`w-16 h-16 bg-gradient-to-br ${urgencyClass} rounded-xl flex flex-col items-center justify-center text-white shadow-lg`}>
-                      <span className="text-xl font-bold">{daysUntil}</span>
-                      <span className="text-xs opacity-80">gün</span>
+                    <div className={`w-10 h-10 ${urgencyColor} rounded-lg flex flex-col items-center justify-center text-white`}>
+                      <span className="text-sm font-bold leading-none">{daysUntil}</span>
+                      <span className="text-[8px] opacity-80">gün</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-navy-900 truncate">{apt.musteri_ad}</p>
-                      <p className="text-sm text-navy-500">{apt.hedef_ulke}</p>
+                      <p className="font-semibold text-navy-900 text-sm truncate">{apt.musteri_ad}</p>
+                      <p className="text-xs text-navy-500">{apt.hedef_ulke}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-navy-700">{formatShortDate(apt.randevu_tarihi!)}</p>
-                      <p className="text-sm text-navy-500">{formatTime(apt.randevu_tarihi!)}</p>
-                      <Badge variant="purple" size="sm" className="mt-1">{apt.profiles?.name}</Badge>
+                      <p className="text-xs font-medium text-navy-700">{formatShortDate(apt.randevu_tarihi!)} · {formatTime(apt.randevu_tarihi!)}</p>
+                      <p className="text-[11px] text-navy-400">{apt.profiles?.name}</p>
                     </div>
                   </button>
                 );

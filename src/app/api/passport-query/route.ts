@@ -38,11 +38,29 @@ export async function POST(request: NextRequest) {
 
     const searchTerm = passportNo.trim();
 
-    // Hem pasaport hem müşteri adına göre arama yap + personel bilgisi
+    // Türkçe karakter normalizasyonu (ı↔I, i↔İ sorunu)
+    const toTurkishUpper = (s: string) =>
+      s.replace(/ı/g, "I").replace(/i/g, "İ").replace(/ğ/g, "Ğ").replace(/ü/g, "Ü")
+       .replace(/ş/g, "Ş").replace(/ö/g, "Ö").replace(/ç/g, "Ç").toUpperCase();
+    const toTurkishLower = (s: string) =>
+      s.replace(/I/g, "ı").replace(/İ/g, "i").replace(/Ğ/g, "ğ").replace(/Ü/g, "ü")
+       .replace(/Ş/g, "ş").replace(/Ö/g, "ö").replace(/Ç/g, "ç").toLowerCase();
+
+    const upper = toTurkishUpper(searchTerm);
+    const lower = toTurkishLower(searchTerm);
+
+    // Tüm varyasyonlarla ara (orijinal + büyük harf + küçük harf)
     const { data, error } = await supabase
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
-      .or(`pasaport_no.ilike.%${searchTerm}%,musteri_ad.ilike.%${searchTerm}%`);
+      .or([
+        `pasaport_no.ilike.%${searchTerm}%`,
+        `musteri_ad.ilike.%${searchTerm}%`,
+        `pasaport_no.ilike.%${upper}%`,
+        `musteri_ad.ilike.%${upper}%`,
+        `pasaport_no.ilike.%${lower}%`,
+        `musteri_ad.ilike.%${lower}%`,
+      ].join(","));
 
     if (error) {
       console.error("Pasaport sorgu hatası:", error.message, error.details);

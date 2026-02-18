@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Button, Input, Select, Card, Modal } from "@/components/ui";
+import { Button, Input, Select, Modal } from "@/components/ui";
 import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME_PLANLARI_EXTENDED, HESAP_SAHIPLERI, FATURA_TIPLERI, ALL_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileCreated, notifyFileUpdated } from "@/lib/notifications";
@@ -184,14 +184,73 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
         if (updateError) throw new Error(updateError.message);
 
+        const prevCariTipi = file.cari_tipi;
+        const newCariTipi = fileData.cari_tipi;
+        const changedToFirmaCari = prevCariTipi !== "firma_cari" && newCariTipi === "firma_cari";
+        const changedToPesin = file.odeme_plani !== "pesin" && fileData.odeme_plani === "pesin";
+
+        if (changedToFirmaCari && selectedCompany) {
+          try {
+            await fetch("/api/send-tahsilat-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                senderEmail: user.email,
+                senderName: userName,
+                musteriAd: musteriAd.trim(),
+                hedefUlke: finalUlke,
+                tutar: ucretNum,
+                currency: ucretCurrency,
+                yontem: "cari",
+                companyInfo: selectedCompany,
+                faturaTipi: faturaTipi,
+                emailType: "firma_cari",
+              }),
+            });
+          } catch (emailErr) {
+            console.error("Firma cari güncelleme email hatası:", emailErr);
+          }
+        }
+
+        if (changedToPesin) {
+          try {
+            await supabase.from("payments").insert({
+              file_id: file.id,
+              tutar: ucretNum,
+              yontem: hesapSahibi ? "hesaba" : "nakit",
+              durum: "odendi",
+              currency: ucretCurrency,
+              payment_type: "pesin_satis",
+              created_by: user.id,
+            });
+            await fetch("/api/send-tahsilat-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                senderEmail: user.email,
+                senderName: userName,
+                musteriAd: musteriAd.trim(),
+                hedefUlke: finalUlke,
+                tutar: ucretNum,
+                currency: ucretCurrency,
+                yontem: hesapSahibi ? "hesaba" : "nakit",
+                hesapSahibi: hesapSahibi,
+                emailType: "pesin_satis",
+              }),
+            });
+          } catch (emailErr) {
+            console.error("Peşin güncelleme email hatası:", emailErr);
+          }
+        }
+
         await supabase.from("activity_logs").insert({
           type: "file_updated",
-          message: `${musteriAd} dosyasını güncelledi`,
+          message: `${musteriAd} dosyasını güncelledi${changedToFirmaCari ? " (firma cariye geçirildi)" : ""}`,
           file_id: file.id,
           actor_id: user.id,
         });
 
-        await notifyFileUpdated(file.id, musteriAd.trim(), user.id, userName, `${musteriAd} dosyası güncellendi`);
+        await notifyFileUpdated(file.id, musteriAd.trim(), user.id, userName, `${musteriAd} dosyası güncellendi${changedToFirmaCari ? " - firma cariye geçirildi" : ""}`);
       } else {
         const { data: newFile, error: insertError } = await supabase
           .from("visa_files")
@@ -328,24 +387,27 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
   return (
     <>
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-          <strong>Hata:</strong> {error}
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          {error}
         </div>
       )}
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide">Müşteri Bilgileri</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input label="Müşteri Adı Soyadı" value={musteriAd} onChange={(e) => setMusteriAd(e.target.value)} placeholder="Örn: Ahmet Yılmaz" required />
-          <Input label="Pasaport Numarası" value={pasaportNo} onChange={(e) => setPasaportNo(e.target.value)} placeholder="Örn: U12345678" required />
+      {/* Müşteri Bilgileri */}
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Müşteri Bilgileri</legend>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Input label="Ad Soyad" value={musteriAd} onChange={(e) => setMusteriAd(e.target.value)} placeholder="Ahmet Yılmaz" required />
+          <Input label="Pasaport No" value={pasaportNo} onChange={(e) => setPasaportNo(e.target.value)} placeholder="U12345678" required />
         </div>
-      </div>
+      </fieldset>
 
-      <div className="space-y-3">
+      {/* Hedef Ülke */}
+      <fieldset className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide">Hedef Ülke</h3>
+          <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Hedef Ülke</legend>
           <button type="button" onClick={() => setUlkeManuelMi(!ulkeManuelMi)} className="text-xs text-primary-600 hover:text-primary-700 font-medium">
             {ulkeManuelMi ? "Listeden seç" : "Manuel giriş"}
           </button>
@@ -353,174 +415,122 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         {ulkeManuelMi ? (
           <Input placeholder="Ülke adı girin..." value={manuelUlke} onChange={(e) => setManuelUlke(e.target.value)} required />
         ) : (
-          <Select options={countryOptions} value={hedefUlke} onChange={(e) => setHedefUlke(e.target.value)} />
+          <select
+            value={hedefUlke}
+            onChange={(e) => setHedefUlke(e.target.value)}
+            className="w-full px-3 py-2.5 border border-navy-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+            size={1}
+          >
+            {countryOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         )}
-      </div>
+      </fieldset>
 
-      {/* Ücret ve Ödeme Planı */}
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide">Ücret Bilgileri</h3>
+      {/* Ücret ve Ödeme */}
+      <fieldset className="space-y-4">
+        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Ücret ve Ödeme</legend>
         
-        {/* Ödeme Planı */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-navy-600">Ödeme Planı</label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <label className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${odemePlani === "pesin" ? "border-green-500 bg-green-50" : "border-navy-200 hover:border-navy-300"}`}>
-              <input type="radio" name="odemePlani" value="pesin" checked={odemePlani === "pesin"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
-              <span className={`font-medium ${odemePlani === "pesin" ? "text-green-700" : "text-navy-700"}`}>
-                💰 Peşin
-              </span>
-              <p className="text-xs mt-1 text-navy-500">Ödeme alındı</p>
-            </label>
-            <label className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${odemePlani === "cari" ? "border-amber-500 bg-amber-50" : "border-navy-200 hover:border-navy-300"}`}>
-              <input type="radio" name="odemePlani" value="cari" checked={odemePlani === "cari"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
-              <span className={`font-medium ${odemePlani === "cari" ? "text-amber-700" : "text-navy-700"}`}>
-                📋 Cari
-              </span>
-              <p className="text-xs mt-1 text-navy-500">Sonra tahsil</p>
-            </label>
-            <label className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${odemePlani === "firma_cari" ? "border-purple-500 bg-purple-50" : "border-navy-200 hover:border-navy-300"}`}>
-              <input type="radio" name="odemePlani" value="firma_cari" checked={odemePlani === "firma_cari"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
-              <span className={`font-medium ${odemePlani === "firma_cari" ? "text-purple-700" : "text-navy-700"}`}>
-                🏢 Firma Cari
-              </span>
-              <p className="text-xs mt-1 text-navy-500">Şirket carisi</p>
-            </label>
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          <label className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${odemePlani === "pesin" ? "border-green-500 bg-green-50 text-green-700 font-semibold ring-1 ring-green-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+            <input type="radio" name="odemePlani" value="pesin" checked={odemePlani === "pesin"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
+            Peşin
+          </label>
+          <label className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${odemePlani === "cari" ? "border-amber-500 bg-amber-50 text-amber-700 font-semibold ring-1 ring-amber-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+            <input type="radio" name="odemePlani" value="cari" checked={odemePlani === "cari"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
+            Cari
+          </label>
+          <label className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${odemePlani === "firma_cari" ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold ring-1 ring-purple-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+            <input type="radio" name="odemePlani" value="firma_cari" checked={odemePlani === "firma_cari"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
+            Firma Cari
+          </label>
         </div>
 
-        {/* Ücret ve Para Birimi */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <Input label="Ücret" type="number" placeholder="0" value={ucret} onChange={(e) => setUcret(e.target.value)} required />
           </div>
-          <Select label="Para Birimi" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => setUcretCurrency(e.target.value as ParaBirimi)} />
+          <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => setUcretCurrency(e.target.value as ParaBirimi)} />
         </div>
 
         {/* Peşin ödeme detayları */}
         {odemePlani === "pesin" && (
-          <Card className="p-4 bg-green-50 border border-green-200">
-            <h4 className="text-sm font-medium text-green-700 mb-3">Peşin Ödeme Detayları</h4>
-            
-            {/* Ödeme Yöntemi */}
-            <div className="space-y-3 mb-4">
-              <label className="text-sm font-medium text-navy-600">Ödeme Yöntemi</label>
-              <div className="flex gap-3">
-                <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${!hesapSahibi ? "border-orange-500 bg-orange-50" : "border-navy-200"}`}>
-                  <input type="radio" checked={!hesapSahibi} onChange={() => setHesapSahibi(null)} className="sr-only" />
-                  <span className={!hesapSahibi ? "text-orange-700 font-medium" : "text-navy-600"}>💰 Nakit</span>
-                </label>
-                <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${hesapSahibi ? "border-blue-500 bg-blue-50" : "border-navy-200"}`}>
-                  <input type="radio" checked={!!hesapSahibi} onChange={() => setHesapSahibi("DAVUT_TURGUT")} className="sr-only" />
-                  <span className={hesapSahibi ? "text-blue-700 font-medium" : "text-navy-600"}>🏦 Hesaba</span>
-                </label>
-              </div>
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Ödeme Yöntemi</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${!hesapSahibi ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" checked={!hesapSahibi} onChange={() => setHesapSahibi(null)} className="sr-only" />
+                Nakit
+              </label>
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${hesapSahibi ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" checked={!!hesapSahibi} onChange={() => setHesapSahibi("DAVUT_TURGUT")} className="sr-only" />
+                Hesaba
+              </label>
             </div>
-
-            {/* Hesap Sahibi Seçimi (Hesaba seçildiğinde) */}
             {hesapSahibi && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-navy-600">Hesap Sahibi</label>
-                <Select 
-                  options={HESAP_SAHIPLERI} 
-                  value={hesapSahibi || ""} 
-                  onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} 
-                />
-              </div>
+              <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi || ""} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
             )}
-          </Card>
+          </div>
         )}
 
         {/* Cari ödeme detayları */}
         {(odemePlani === "cari" && String(islemTipi) !== "firma_cari") && (
-          <Card className="p-4 bg-amber-50 border border-amber-200">
-            <h4 className="text-sm font-medium text-amber-700 mb-3">Cari Ödeme Detayları</h4>
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Cari Detayları</p>
             
-            {/* Cari Sahibi Seçimi */}
-            <div className="space-y-3 mb-4">
-              <label className="text-sm font-medium text-navy-600">Cari Sahibi</label>
-              <div className="flex gap-3">
-                {/* Kullanıcının kendisi */}
-                <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${cariSahibi === userName ? "border-amber-500 bg-amber-100" : "border-navy-200"}`}>
-                  <input type="radio" checked={cariSahibi === userName} onChange={() => setCariSahibi(userName)} className="sr-only" />
-                  <span className={`font-medium ${cariSahibi === userName ? "text-amber-700" : "text-navy-600"}`}>
-                    {userName} CARİ
-                  </span>
-                </label>
-                {/* Davut Bey carisi (herkese açık) */}
-                <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${cariSahibi === "DAVUT" ? "border-amber-500 bg-amber-100" : "border-navy-200"}`}>
-                  <input type="radio" checked={cariSahibi === "DAVUT"} onChange={() => setCariSahibi("DAVUT")} className="sr-only" />
-                  <span className={`font-medium ${cariSahibi === "DAVUT" ? "text-amber-700" : "text-navy-600"}`}>
-                    DAVUT CARİ
-                  </span>
-                </label>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${cariSahibi === userName ? "border-amber-500 bg-white text-amber-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" checked={cariSahibi === userName} onChange={() => setCariSahibi(userName)} className="sr-only" />
+                {userName} Cari
+              </label>
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${cariSahibi === "DAVUT" ? "border-amber-500 bg-white text-amber-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" checked={cariSahibi === "DAVUT"} onChange={() => setCariSahibi("DAVUT")} className="sr-only" />
+                Davut Cari
+              </label>
             </div>
 
-            {/* Ön ödeme checkbox */}
-            <label className="flex items-center gap-3 mb-4">
-              <input 
-                type="checkbox" 
-                checked={onOdemeVar} 
-                onChange={(e) => setOnOdemeVar(e.target.checked)} 
-                className="w-4 h-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500"
-              />
-              <span className="text-sm font-medium text-navy-700">Ön ödeme aldım</span>
+            <label className="flex items-center gap-2 mt-3">
+              <input type="checkbox" checked={onOdemeVar} onChange={(e) => setOnOdemeVar(e.target.checked)} className="w-4 h-4 text-amber-600 bg-white border-gray-300 rounded focus:ring-amber-500" />
+              <span className="text-sm text-navy-700">Ön ödeme aldım</span>
             </label>
 
-            {/* Ön ödeme detayları */}
             {onOdemeVar && (
-              <div className="space-y-4 bg-white rounded-lg p-4 border border-amber-200">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <Input label="Toplam Vize Ücreti" type="number" value={ucret} onChange={(e) => setUcret(e.target.value)} required disabled />
-                  </div>
-                  <div>
-                    <Select label="Para Birimi" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => setUcretCurrency(e.target.value as ParaBirimi)} disabled />
-                  </div>
+              <div className="space-y-3 mt-3 bg-white rounded-lg p-3 border border-amber-200">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2"><Input label="Toplam Ücret" type="number" value={ucret} disabled /></div>
+                  <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} disabled />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <Input label="Alınan Ön Ödeme" type="number" value={onOdemeTutar} onChange={(e) => setOnOdemeTutar(e.target.value)} required />
-                  </div>
-                  <div>
-                    <Select label="Para Birimi" options={PARA_BIRIMLERI} value={onOdemeCurrency} onChange={(e) => setOnOdemeCurrency(e.target.value as ParaBirimi)} />
-                  </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2"><Input label="Ön Ödeme" type="number" value={onOdemeTutar} onChange={(e) => setOnOdemeTutar(e.target.value)} required /></div>
+                  <Select label="Birim" options={PARA_BIRIMLERI} value={onOdemeCurrency} onChange={(e) => setOnOdemeCurrency(e.target.value as ParaBirimi)} />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <Input 
-                      label="Kalan Tutar" 
-                      type="number" 
-                      value={onOdemeTutar && ucret ? (parseFloat(ucret) - parseFloat(onOdemeTutar)).toString() : ""} 
-                      disabled 
-                    />
-                  </div>
-                  <div>
-                    <Select label="Para Birimi" options={PARA_BIRIMLERI} value={ucretCurrency} disabled />
-                  </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2"><Input label="Kalan" type="number" value={onOdemeTutar && ucret ? (parseFloat(ucret) - parseFloat(onOdemeTutar)).toString() : ""} disabled /></div>
+                  <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} disabled />
                 </div>
               </div>
             )}
-          </Card>
+          </div>
         )}
-      </div>
+      </fieldset>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide">İşlem Tipi</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* İşlem Tipi */}
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">İşlem Tipi</legend>
+        <div className="grid grid-cols-2 gap-2">
           {ISLEM_TIPLERI.map((tip) => (
-            <label key={tip.value} className={`p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${islemTipi === tip.value ? "border-primary-500 bg-primary-50" : "border-navy-200 hover:border-navy-300"}`}>
+            <label key={tip.value} className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${islemTipi === tip.value ? "border-primary-500 bg-primary-50 text-primary-700 font-semibold ring-1 ring-primary-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
               <input type="radio" name="islemTipi" value={tip.value} checked={islemTipi === tip.value} onChange={(e) => setIslemTipi(e.target.value as IslemTipi)} className="sr-only" />
-              <span className={`font-medium ${islemTipi === tip.value ? "text-primary-700" : "text-navy-700"}`}>{tip.label}</span>
+              {tip.label}
             </label>
           ))}
         </div>
 
         {/* Firma Cari Arama */}
         {odemePlani === "firma_cari" && (
-          <Card className="p-4 bg-purple-50 border border-purple-200">
-            <h4 className="text-sm font-medium text-purple-700 mb-3">Firma Seçimi</h4>
+          <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
+            <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Firma Seçimi</p>
             
             <div className="space-y-3">
               <div className="flex gap-3">
@@ -572,82 +582,76 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
               )}
             </div>
 
-            {/* Fatura Tipi */}
-            <div className="mt-4 space-y-2">
-              <label className="text-sm font-medium text-navy-600">Fatura Tipi</label>
-              <div className="flex gap-3">
-                {FATURA_TIPLERI.map((tip) => (
-                  <label key={tip.value} className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${faturaTipi === tip.value ? "border-purple-500 bg-purple-100" : "border-navy-200"}`}>
-                    <input type="radio" checked={faturaTipi === tip.value} onChange={() => setFaturaTipi(tip.value)} className="sr-only" />
-                    <span className={faturaTipi === tip.value ? "text-purple-700 font-medium" : "text-navy-600"}>{tip.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      {islemTipi === "randevulu" && (
-        <>
-          <Input label="Randevu Tarihi ve Saati" type="datetime-local" value={randevuTarihi} onChange={(e) => setRandevuTarihi(e.target.value)} required />
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide">Evrak Durumu</h3>
-            <div className="flex gap-4">
-              {EVRAK_DURUMLARI.map((durum) => (
-                <label key={durum.value} className={`flex-1 p-4 border-2 rounded-xl cursor-pointer transition-all text-center ${evrakDurumu === durum.value ? "border-primary-500 bg-primary-50" : "border-navy-200 hover:border-navy-300"}`}>
-                  <input type="radio" name="evrakDurumu" value={durum.value} checked={evrakDurumu === durum.value} onChange={(e) => { setEvrakDurumu(e.target.value as EvrakDurumu); if (e.target.value === "gelmedi") setEvrakEksikMi(null); }} className="sr-only" />
-                  <span className={`font-medium ${evrakDurumu === durum.value ? "text-primary-700" : "text-navy-700"}`}>{durum.label}</span>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {FATURA_TIPLERI.map((tip) => (
+                <label key={tip.value} className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${faturaTipi === tip.value ? "border-purple-500 bg-white text-purple-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                  <input type="radio" checked={faturaTipi === tip.value} onChange={() => setFaturaTipi(tip.value)} className="sr-only" />
+                  {tip.label}
                 </label>
               ))}
             </div>
           </div>
+        )}
+      </fieldset>
+
+      {/* Randevu & Evrak */}
+      {islemTipi === "randevulu" && (
+        <fieldset className="space-y-3">
+          <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Randevu ve Evrak</legend>
+          <Input label="Randevu Tarihi ve Saati" type="datetime-local" value={randevuTarihi} onChange={(e) => setRandevuTarihi(e.target.value)} required />
+          <div className="grid grid-cols-2 gap-2">
+            {EVRAK_DURUMLARI.map((durum) => (
+              <label key={durum.value} className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${evrakDurumu === durum.value ? "border-primary-500 bg-primary-50 text-primary-700 font-semibold ring-1 ring-primary-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+                <input type="radio" name="evrakDurumu" value={durum.value} checked={evrakDurumu === durum.value} onChange={(e) => { setEvrakDurumu(e.target.value as EvrakDurumu); if (e.target.value === "gelmedi") setEvrakEksikMi(null); }} className="sr-only" />
+                Evrak {durum.label}
+              </label>
+            ))}
+          </div>
           {evrakDurumu === "geldi" && (
-            <Card className="p-4 bg-navy-50 border border-navy-200">
-              <h4 className="text-sm font-medium text-navy-700 mb-3">Eksiği var mı?</h4>
-              <div className="flex gap-4">
-                <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${evrakEksikMi === false ? "border-green-500 bg-green-50" : "border-navy-200"}`}>
-                  <input type="radio" name="evrakEksik" checked={evrakEksikMi === false} onChange={() => setEvrakEksikMi(false)} className="sr-only" />
-                  <span className={evrakEksikMi === false ? "text-green-700 font-medium" : "text-navy-600"}>Yok (Tam)</span>
-                </label>
-                <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${evrakEksikMi === true ? "border-orange-500 bg-orange-50" : "border-navy-200"}`}>
-                  <input type="radio" name="evrakEksik" checked={evrakEksikMi === true} onChange={() => setEvrakEksikMi(true)} className="sr-only" />
-                  <span className={evrakEksikMi === true ? "text-orange-700 font-medium" : "text-navy-600"}>Var (Eksik)</span>
-                </label>
-              </div>
-            </Card>
+            <div className="grid grid-cols-2 gap-2">
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === false ? "border-green-500 bg-green-50 text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" name="evrakEksik" checked={evrakEksikMi === false} onChange={() => setEvrakEksikMi(false)} className="sr-only" />
+                Tam
+              </label>
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === true ? "border-orange-500 bg-orange-50 text-orange-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" name="evrakEksik" checked={evrakEksikMi === true} onChange={() => setEvrakEksikMi(true)} className="sr-only" />
+                Eksik Var
+              </label>
+            </div>
           )}
-        </>
+        </fieldset>
       )}
 
       {islemTipi === "randevusuz" && (
-        <Card className="p-4 bg-navy-50 border border-navy-200">
-          <h4 className="text-sm font-medium text-navy-700 mb-3">Eksik var mı?</h4>
-          <div className="flex gap-4">
-            <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${evrakEksikMi === false ? "border-green-500 bg-green-50" : "border-navy-200"}`}>
+        <fieldset className="space-y-3">
+          <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Evrak Durumu</legend>
+          <div className="grid grid-cols-2 gap-2">
+            <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === false ? "border-green-500 bg-green-50 text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
               <input type="radio" name="evrakEksik" checked={evrakEksikMi === false} onChange={() => setEvrakEksikMi(false)} className="sr-only" />
-              <span className={evrakEksikMi === false ? "text-green-700 font-medium" : "text-navy-600"}>Yok (Tam)</span>
+              Tam
             </label>
-            <label className={`flex-1 p-3 border-2 rounded-xl cursor-pointer text-center transition-all ${evrakEksikMi === true ? "border-orange-500 bg-orange-50" : "border-navy-200"}`}>
+            <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === true ? "border-orange-500 bg-orange-50 text-orange-700 font-medium" : "border-navy-200 text-navy-600"}`}>
               <input type="radio" name="evrakEksik" checked={evrakEksikMi === true} onChange={() => setEvrakEksikMi(true)} className="sr-only" />
-              <span className={evrakEksikMi === true ? "text-orange-700 font-medium" : "text-navy-600"}>Var (Eksik)</span>
+              Eksik Var
             </label>
           </div>
-        </Card>
+        </fieldset>
       )}
 
       {evrakEksikMi === true && (
         <div>
-          <label className="block text-sm font-medium text-navy-700 mb-1">Eksik Evrak Notu</label>
-          <textarea value={evrakNot} onChange={(e) => setEvrakNot(e.target.value)} placeholder="Eksik evrakları yazın..." rows={3} className="w-full px-4 py-3 border border-navy-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+          <label className="block text-xs font-semibold text-navy-400 uppercase tracking-widest mb-1">Eksik Evrak Notu</label>
+          <textarea value={evrakNot} onChange={(e) => setEvrakNot(e.target.value)} placeholder="Eksik evrakları yazın..." rows={2} className="w-full px-3 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
         </div>
       )}
 
-      <div className="flex gap-4 pt-4 border-t border-navy-200">
-        <Button type="button" variant="outline" onClick={onCancel} className="flex-1">İptal</Button>
-        <Button type="submit" disabled={isLoading} className="flex-1">
-          {isLoading ? "Kaydediliyor..." : (isEdit ? "Güncelle" : "Oluştur")}
-        </Button>
+      <div className="flex gap-3 pt-4 border-t border-navy-100">
+        <button type="button" onClick={onCancel} className="flex-1 py-2.5 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">
+          İptal
+        </button>
+        <button type="submit" disabled={isLoading} className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">
+          {isLoading ? "Kaydediliyor..." : (isEdit ? "Güncelle" : "Dosya Oluştur")}
+        </button>
       </div>
     </form>
 
