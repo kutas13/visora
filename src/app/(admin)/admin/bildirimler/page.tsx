@@ -98,6 +98,22 @@ export default function AdminBildirimlerPage() {
     setLoading(false);
   }, [filterKind]);
 
+  const markAsRead = async (notifId: string) => {
+    const supabase = createClient();
+    await supabase.from("notifications").update({ is_read: true }).eq("id", notifId);
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
+  };
+
+  const markAllAsRead = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
   useEffect(() => {
     loadNotifications();
   }, [loadNotifications]);
@@ -144,6 +160,15 @@ export default function AdminBildirimlerPage() {
           </h1>
           <p className="text-navy-500 mt-1">Sistem tarafından oluşturulan tüm bildirimleri yönetin</p>
         </div>
+        <div className="flex gap-2">
+        {stats.unread > 0 && (
+          <Button onClick={markAllAsRead} variant="outline" className="shadow-md">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Tümünü Oku ({stats.unread})
+          </Button>
+        )}
         <Button onClick={runCronManually} disabled={cronRunning} variant="outline" className="shadow-md">
           {cronRunning ? (
             <>
@@ -161,6 +186,7 @@ export default function AdminBildirimlerPage() {
             </>
           )}
         </Button>
+        </div>
       </div>
 
       {cronResult && (
@@ -295,16 +321,25 @@ export default function AdminBildirimlerPage() {
                         <Badge variant="default" size="sm">{notif.kind}</Badge>
                       </div>
                     </div>
-                    {notif.file_id && (
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={() => handleDetailClick(notif.file_id)}
-                        className="shadow-sm"
-                      >
-                        Detay Gör
-                      </Button>
-                    )}
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      {notif.file_id && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleDetailClick(notif.file_id)}
+                        >
+                          Detay
+                        </Button>
+                      )}
+                      {!notif.is_read && (
+                        <button
+                          onClick={() => markAsRead(notif.id)}
+                          className="text-xs text-primary-600 hover:text-primary-700 font-medium px-2 py-1 rounded hover:bg-primary-50 transition-colors"
+                        >
+                          Okundu
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
