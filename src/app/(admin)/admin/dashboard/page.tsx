@@ -2,9 +2,18 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Card, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile, ActivityLog, Payment } from "@/lib/supabase/types";
+
+const USER_AVATARS: Record<string, string> = {
+  YUSUF: "/yusuf-avatar.png",
+  DAVUT: "/davut-avatar.png",
+  SIRRI: "/sirri-avatar.png",
+  ERCAN: "/ercan-avatar.jpg",
+  BAHAR: "/bahar-avatar.jpg",
+};
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", {
@@ -294,16 +303,15 @@ export default function AdminDashboard() {
                   >
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md ${
-                          index === 0 ? "bg-gradient-to-br from-yellow-400 to-amber-500" :
-                          index === 1 ? "bg-gradient-to-br from-gray-300 to-gray-400" :
-                          index === 2 ? "bg-gradient-to-br from-amber-600 to-amber-700" :
-                          "bg-gradient-to-br from-primary-100 to-primary-200"
-                        }`}>
-                          <span className={`font-bold ${index < 3 ? "text-white" : "text-primary-600"}`}>
-                            {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : s.name.charAt(0)}
-                          </span>
-                        </div>
+                        {USER_AVATARS[s.name.toUpperCase()] ? (
+                          <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-navy-200 flex-shrink-0">
+                            <Image src={USER_AVATARS[s.name.toUpperCase()]} alt={s.name} width={40} height={40} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                            <span className="text-primary-600 font-bold">{s.name.charAt(0)}</span>
+                          </div>
+                        )}
                         <span className="font-semibold text-navy-900">{s.name}</span>
                       </div>
                     </td>

@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Card } from "@/components/ui";
+
+const USER_AVATARS: Record<string, string> = {
+  DAVUT: "/davut-avatar.png",
+  BAHAR: "/bahar-avatar.jpg",
+  ERCAN: "/ercan-avatar.jpg",
+  YUSUF: "/yusuf-avatar.png",
+  SIRRI: "/sirri-avatar.png",
+};
 
 const CONTACT_LIST = [
   { value: "905435680874", label: "Davut Bey", name: "DAVUT" },
@@ -161,19 +170,32 @@ export default function AdminWhatsAppPage() {
       <Card className="p-5">
         <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide mb-3">Bildirim Alıcısı</h3>
         <div className="flex flex-wrap gap-2">
-          {CONTACT_LIST.map((contact) => (
-            <button
-              key={contact.value}
-              onClick={() => setSelectedRecipient(contact.value)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                selectedRecipient === contact.value
-                  ? "bg-navy-900 text-white shadow-md"
-                  : "bg-navy-50 text-navy-600 hover:bg-navy-100"
-              }`}
-            >
-              {contact.label}
-            </button>
-          ))}
+          {CONTACT_LIST.map((contact) => {
+            const avatarSrc = USER_AVATARS[contact.name];
+            const isSelected = selectedRecipient === contact.value;
+            return (
+              <button
+                key={contact.value}
+                onClick={() => setSelectedRecipient(contact.value)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isSelected
+                    ? "bg-navy-900 text-white shadow-md"
+                    : "bg-navy-50 text-navy-600 hover:bg-navy-100"
+                }`}
+              >
+                {avatarSrc ? (
+                  <div className={`w-6 h-6 rounded-full overflow-hidden flex-shrink-0 ${isSelected ? "ring-1 ring-white/50" : "ring-1 ring-navy-200"}`}>
+                    <Image src={avatarSrc} alt={contact.label} width={24} height={24} className="w-full h-full object-cover" />
+                  </div>
+                ) : contact.value !== "all" ? (
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isSelected ? "bg-white/20 text-white" : "bg-navy-200 text-navy-600"}`}>
+                    {contact.label.charAt(0)}
+                  </div>
+                ) : null}
+                {contact.label}
+              </button>
+            );
+          })}
         </div>
       </Card>
 

@@ -24,9 +24,12 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [ulkeManuelMi, setUlkeManuelMi] = useState(file?.ulke_manuel_mi || false);
   const [manuelUlke, setManuelUlke] = useState(file?.ulke_manuel_mi ? file.hedef_ulke : "");
   const [islemTipi, setIslemTipi] = useState<IslemTipi>(file?.islem_tipi || "randevulu");
-  const [randevuTarihi, setRandevuTarihi] = useState(
-    file?.randevu_tarihi ? new Date(file.randevu_tarihi).toISOString().slice(0, 16) : ""
-  );
+  const [randevuTarihi, setRandevuTarihi] = useState(() => {
+    if (!file?.randevu_tarihi) return "";
+    const d = new Date(file.randevu_tarihi);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
   const [evrakDurumu, setEvrakDurumu] = useState<EvrakDurumu>(file?.evrak_durumu || "gelmedi");
   const [evrakEksikMi, setEvrakEksikMi] = useState<boolean | null>(file?.evrak_eksik_mi ?? null);
   const [evrakNot, setEvrakNot] = useState(file?.evrak_not || "");
@@ -156,7 +159,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         hedef_ulke: finalUlke,
         ulke_manuel_mi: ulkeManuelMi,
         islem_tipi: islemTipi,
-        randevu_tarihi: islemTipi === "randevulu" ? randevuTarihi : null,
+        randevu_tarihi: islemTipi === "randevulu" && randevuTarihi ? new Date(randevuTarihi).toISOString() : null,
         evrak_durumu: islemTipi === "randevulu" ? evrakDurumu : "gelmedi",
         evrak_eksik_mi: islemTipi === "randevusuz" ? evrakEksikMi : (evrakDurumu === "geldi" ? evrakEksikMi : null),
         evrak_not: evrakNot || null,
