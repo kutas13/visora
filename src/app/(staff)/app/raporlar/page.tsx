@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import type { VisaFile, Payment, Profile } from "@/lib/supabase/types";
+import type { VisaFile, Payment } from "@/lib/supabase/types";
 import dynamic from "next/dynamic";
 
-const RechartsCharts = dynamic(() => import("@/components/reports/ReportsCharts"), {
+const StaffReportsCharts = dynamic(() => import("@/components/reports/StaffReportsCharts"), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center py-24">
@@ -14,8 +13,6 @@ const RechartsCharts = dynamic(() => import("@/components/reports/ReportsCharts"
     </div>
   ),
 });
-
-type Period = "week" | "month" | "quarter" | "year" | "custom";
 
 function getCurrencySymbol(c: string) {
   return ({ TL: "₺", EUR: "€", USD: "$" } as Record<string, string>)[c] || c;
@@ -26,11 +23,13 @@ function toDateStr(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export default function RaporlarPage() {
+type Period = "week" | "month" | "quarter" | "year" | "custom";
+
+export default function StaffRaporlarPage() {
   const [files, setFiles] = useState<VisaFile[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [staff, setStaff] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [staffName, setStaffName] = useState("");
   const [period, setPeriod] = useState<Period>("month");
 
   const today = new Date();
@@ -41,14 +40,24 @@ export default function RaporlarPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const [filesRes, paymentsRes, staffRes] = await Promise.all([
-        supabase.from("visa_files").select("*").returns<VisaFile[]>(),
-        supabase.from("payments").select("*").eq("durum", "odendi").returns<Payment[]>(),
-        supabase.from("profiles").select("*").eq("role", "staff").returns<Profile[]>(),
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+
+      setStaffName(profile?.name || "");
+
+      const [filesRes, paymentsRes] = await Promise.all([
+        supabase.from("visa_files").select("*").eq("assigned_user_id", user.id).returns<VisaFile[]>(),
+        supabase.from("payments").select("*").eq("created_by", user.id).eq("durum", "odendi").returns<Payment[]>(),
       ]);
+
       setFiles(filesRes.data || []);
       setPayments(paymentsRes.data || []);
-      setStaff(staffRes.data || []);
       setLoading(false);
     }
     load();
@@ -78,14 +87,14 @@ export default function RaporlarPage() {
     return new Date();
   }, [period, customEnd]);
 
-  const filteredPayments = useMemo(
-    () => payments.filter((p) => { const d = new Date(p.created_at); return d >= periodStart && d <= periodEnd; }),
-    [payments, periodStart, periodEnd]
-  );
-
   const filteredFiles = useMemo(
     () => files.filter((f) => { const d = new Date(f.created_at); return d >= periodStart && d <= periodEnd; }),
     [files, periodStart, periodEnd]
+  );
+
+  const filteredPayments = useMemo(
+    () => payments.filter((p) => { const d = new Date(p.created_at); return d >= periodStart && d <= periodEnd; }),
+    [payments, periodStart, periodEnd]
   );
 
   const kpis = useMemo(() => {
@@ -94,14 +103,14 @@ export default function RaporlarPage() {
       revenue[p.currency || "TL"] = (revenue[p.currency || "TL"] || 0) + Number(p.tutar);
     });
     const totalFiles = filteredFiles.length;
-    const approvedFiles = filteredFiles.filter((f) => f.sonuc === "vize_onay").length;
-    const rejectedFiles = filteredFiles.filter((f) => f.sonuc === "red").length;
-    const pendingFiles = filteredFiles.filter((f) => !f.sonuc && !f.arsiv_mi).length;
-    const successRate = approvedFiles + rejectedFiles > 0 ? Math.round((approvedFiles / (approvedFiles + rejectedFiles)) * 100) : 0;
-    const pesinCount = filteredPayments.filter((p) => p.payment_type === "pesin_satis").length;
-    const tahsilatCount = filteredPayments.filter((p) => p.payment_type === "tahsilat").length;
-    return { revenue, totalFiles, approvedFiles, rejectedFiles, pendingFiles, successRate, pesinCount, tahsilatCount, totalPayments: filteredPayments.length };
-  }, [filteredPayments, filteredFiles]);
+    const approved = filteredFiles.filter((f) => f.sonuc === "vize_onay").length;
+    const rejected = filteredFiles.filter((f) => f.sonuc === "red").length;
+    const pending = filteredFiles.filter((f) => !f.sonuc && !f.arsiv_mi).length;
+    const successRate = approved + rejected > 0 ? Math.round((approved / (approved + rejected)) * 100) : 0;
+    const pesin = filteredPayments.filter((p) => p.payment_type === "pesin_satis").length;
+    const tahsilat = filteredPayments.filter((p) => p.payment_type === "tahsilat").length;
+    return { revenue, totalFiles, approved, rejected, pending, successRate, pesin, tahsilat, totalPayments: filteredPayments.length };
+  }, [filteredFiles, filteredPayments]);
 
   if (loading) {
     return (
@@ -128,8 +137,8 @@ export default function RaporlarPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-navy-900">Raporlar</h1>
-          <p className="text-navy-500 text-sm">Tahsilat, başvuru ve performans istatistikleri</p>
+          <h1 className="text-xl font-bold text-navy-900">Raporlarım</h1>
+          <p className="text-navy-500 text-sm">{staffName} - kişisel performans ve istatistikler</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5">
@@ -165,32 +174,32 @@ export default function RaporlarPage() {
         </div>
       </div>
 
-      {/* Period Label */}
+      {/* Period Summary */}
       <p className="text-xs text-navy-400 font-medium uppercase tracking-wider">{activeLabel} · {filteredFiles.length} dosya · {filteredPayments.length} tahsilat</p>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Dosya</p>
+          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Dosyalarım</p>
           <p className="text-2xl font-black text-navy-900 mt-1">{kpis.totalFiles}</p>
+          <p className="text-[10px] text-navy-400">{kpis.pending} aktif</p>
         </div>
         <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Onay</p>
-          <p className="text-2xl font-black text-green-600 mt-1">{kpis.approvedFiles}</p>
-          <p className="text-[10px] text-green-500">%{kpis.successRate}</p>
+          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Onay / Red</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-2xl font-black text-green-600">{kpis.approved}</span>
+            <span className="text-navy-300">/</span>
+            <span className="text-2xl font-black text-red-500">{kpis.rejected}</span>
+          </div>
+          <p className="text-[10px] text-green-500">%{kpis.successRate} başarı</p>
         </div>
         <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Red</p>
-          <p className="text-2xl font-black text-red-600 mt-1">{kpis.rejectedFiles}</p>
-          <p className="text-[10px] text-navy-400">{kpis.pendingFiles} beklemede</p>
-        </div>
-        <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Tahsilat</p>
+          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Tahsilatlarım</p>
           <p className="text-2xl font-black text-amber-600 mt-1">{kpis.totalPayments}</p>
-          <p className="text-[10px] text-navy-400">{kpis.pesinCount} peşin · {kpis.tahsilatCount} cari</p>
+          <p className="text-[10px] text-navy-400">{kpis.pesin} peşin · {kpis.tahsilat} cari</p>
         </div>
-        <div className="col-span-2 lg:col-span-1 bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Gelir</p>
+        <div className="bg-white rounded-xl border border-navy-200 p-4">
+          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Gelirim</p>
           <div className="mt-1 space-y-0.5">
             {Object.entries(kpis.revenue).map(([curr, val]) => val > 0 && (
               <p key={curr} className="text-sm font-bold text-navy-800">{val.toLocaleString("tr-TR")} {getCurrencySymbol(curr)}</p>
@@ -201,14 +210,12 @@ export default function RaporlarPage() {
       </div>
 
       {/* Charts */}
-      <RechartsCharts
+      <StaffReportsCharts
         files={filteredFiles}
         allFiles={files}
         payments={filteredPayments}
         allPayments={payments}
-        staff={staff}
-        period={period}
-        periodStart={periodStart}
+        staffName={staffName}
       />
     </div>
   );
