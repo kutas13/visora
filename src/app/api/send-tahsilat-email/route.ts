@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const raw = await request.text();
     const body = JSON.parse(raw);
 
-    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType, hesapSahibi, companyInfo, faturaTipi, notlar, onOdemeGecmisi } = body;
+    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType, hesapSahibi, companyInfo, faturaTipi, notlar, onOdemeGecmisi, dekontBase64, dekontName } = body;
 
     if (!senderEmail || !musteriAd || !tutar || !currency) {
       return NextResponse.json({ error: "Eksik alanlar" }, { status: 400 });
@@ -268,6 +268,19 @@ export async function POST(request: NextRequest) {
     const toMuhasebe = body.testTo || "Muhasebe@foxturizm.com";
     const recipients = [toMuhasebe, senderEmail];
 
+    const attachments: any[] = [];
+    if (dekontBase64 && dekontName) {
+      const matches = dekontBase64.match(/^data:(.+);base64,(.+)$/);
+      if (matches) {
+        attachments.push({
+          filename: dekontName,
+          content: matches[2],
+          encoding: "base64",
+          contentType: matches[1],
+        });
+      }
+    }
+
     await transporter.sendMail({
       from: { name: senderName, address: senderEmail },
       to: recipients,
@@ -275,6 +288,7 @@ export async function POST(request: NextRequest) {
       text: plainBody,
       html,
       encoding: "utf-8" as const,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
     return NextResponse.json({ success: true });

@@ -56,11 +56,23 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   
+  const [dekontFile, setDekontFile] = useState<File | null>(null);
+  const [dekontPreview, setDekontPreview] = useState<string | null>(null);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
 
   const countryOptions = TARGET_COUNTRIES.filter(c => c.value !== "all");
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
   // Kullanıcı adını yükle
   useEffect(() => {
@@ -293,6 +305,12 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
             // Peşin satış otomatik email (Muhasebe'ye)
             try {
+              let dekontBase64: string | null = null;
+              let dekontName: string | null = null;
+              if (dekontFile && hesapSahibi) {
+                dekontBase64 = await fileToBase64(dekontFile);
+                dekontName = dekontFile.name;
+              }
               const emailRes = await fetch("/api/send-tahsilat-email", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -308,6 +326,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   companyInfo: selectedCompany,
                   faturaTipi: String(odemePlani) === "firma_cari" ? faturaTipi : null,
                   emailType: "pesin_satis",
+                  dekontBase64,
+                  dekontName,
                 }),
               });
               if (!emailRes.ok) {
@@ -472,7 +492,39 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
               </label>
             </div>
             {hesapSahibi && (
-              <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi || ""} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
+              <>
+                <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi || ""} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
+                <div>
+                  <label className="block text-xs font-medium text-green-700 mb-1">Dekont Yükle (PDF veya Görsel)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setDekontFile(f);
+                      if (f && f.type.startsWith("image/")) {
+                        setDekontPreview(URL.createObjectURL(f));
+                      } else {
+                        setDekontPreview(null);
+                      }
+                    }}
+                    className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-green-100 file:text-green-700 hover:file:bg-green-200 text-navy-600"
+                  />
+                  {dekontPreview && (
+                    <div className="mt-2 relative w-24 h-24 rounded-lg overflow-hidden border border-green-200">
+                      <img src={dekontPreview} alt="Dekont" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">×</button>
+                    </div>
+                  )}
+                  {dekontFile && !dekontPreview && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-green-700 bg-green-100 px-2.5 py-1.5 rounded-lg">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      {dekontFile.name}
+                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="ml-auto text-red-600 font-bold">×</button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}

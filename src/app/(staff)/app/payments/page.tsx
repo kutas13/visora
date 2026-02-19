@@ -40,6 +40,8 @@ export default function PaymentsPage() {
 
   const [filterCurrency, setFilterCurrency] = useState("all");
   const [stats, setStats] = useState<Record<string, number>>({ TL: 0, EUR: 0, USD: 0 });
+  const [dekontFile, setDekontFile] = useState<File | null>(null);
+  const [dekontPreview, setDekontPreview] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -142,6 +144,17 @@ export default function PaymentsPage() {
 
       // Otomatik email gönder (Muhasebe'ye)
       try {
+        let dekontBase64: string | null = null;
+        let dekontName: string | null = null;
+        if (dekontFile && yontem === "hesaba") {
+          dekontBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(dekontFile);
+          });
+          dekontName = dekontFile.name;
+        }
         const emailRes = await fetch("/api/send-tahsilat-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -161,6 +174,8 @@ export default function PaymentsPage() {
               tarih: selectedFile.created_at
             } : null,
             emailType: "tahsilat",
+            dekontBase64,
+            dekontName,
           }),
         });
         if (!emailRes.ok) {
@@ -174,6 +189,8 @@ export default function PaymentsPage() {
       setShowConfirmModal(false);
       setSelectedFile(null);
       setTutar("");
+      setDekontFile(null);
+      setDekontPreview(null);
       loadData();
     } catch (err) {
       console.error(err);
@@ -488,12 +505,44 @@ export default function PaymentsPage() {
             <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={yontem} onChange={(e) => setYontem(e.target.value)} />
 
             {yontem === "hesaba" && (
-              <Select 
-                label="Hesap Sahibi" 
-                options={HESAP_SAHIPLERI} 
-                value={hesapSahibi} 
-                onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} 
-              />
+              <div className="space-y-3">
+                <Select 
+                  label="Hesap Sahibi" 
+                  options={HESAP_SAHIPLERI} 
+                  value={hesapSahibi} 
+                  onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} 
+                />
+                <div>
+                  <label className="block text-sm font-medium text-navy-600 mb-1">Dekont Yükle (PDF veya Görsel)</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setDekontFile(f);
+                      if (f && f.type.startsWith("image/")) {
+                        setDekontPreview(URL.createObjectURL(f));
+                      } else {
+                        setDekontPreview(null);
+                      }
+                    }}
+                    className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-navy-600"
+                  />
+                  {dekontPreview && (
+                    <div className="mt-2 relative w-20 h-20 rounded-lg overflow-hidden border border-navy-200">
+                      <img src={dekontPreview} alt="Dekont" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">×</button>
+                    </div>
+                  )}
+                  {dekontFile && !dekontPreview && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      {dekontFile.name}
+                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="ml-auto text-red-600 font-bold">×</button>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
 
             {/* Ön ödeme bilgisi */}

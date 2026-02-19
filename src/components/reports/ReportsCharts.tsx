@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import { Card } from "@/components/ui";
 import type { VisaFile, Payment, Profile } from "@/lib/supabase/types";
 import {
@@ -9,6 +10,20 @@ import {
   AreaChart, Area,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
+
+const USER_AVATARS: Record<string, string> = {
+  YUSUF: "/yusuf-avatar.png",
+  DAVUT: "/davut-avatar.png",
+  SIRRI: "/sirri-avatar.png",
+  ERCAN: "/ercan-avatar.jpg",
+  BAHAR: "/bahar-avatar.jpg",
+};
+
+function StaffAvatar({ name, size = 28 }: { name: string; size?: number }) {
+  const src = USER_AVATARS[name.toUpperCase()];
+  if (src) return <div className="rounded-full overflow-hidden ring-1 ring-navy-200 flex-shrink-0" style={{ width: size, height: size }}><Image src={src} alt={name} width={size} height={size} className="w-full h-full object-cover" /></div>;
+  return <div className="rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}><span className="text-primary-600 font-bold" style={{ fontSize: size * 0.4 }}>{name.charAt(0)}</span></div>;
+}
 
 interface Props {
   files: VisaFile[];
@@ -394,7 +409,10 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
                     return (
                       <tr key={s.id} className="border-b border-navy-100 hover:bg-emerald-50/30 transition-colors">
                         <td className="py-3 px-4">
-                          <span className="font-semibold text-navy-900">{s.name}</span>
+                          <div className="flex items-center gap-2">
+                            <StaffAvatar name={s.name} size={28} />
+                            <span className="font-semibold text-navy-900">{s.name}</span>
+                          </div>
                         </td>
                         <td className="py-3 px-3 text-center">
                           {tl > 0 ? (
@@ -530,13 +548,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
                           <tr key={i} className="border-b border-navy-100 hover:bg-navy-50 transition-colors">
                             <td className="py-3 px-3">
                               <div className="flex items-center gap-2">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold ${
-                                  i === 0 ? "bg-gradient-to-br from-amber-400 to-amber-600" :
-                                  i === 1 ? "bg-gradient-to-br from-gray-300 to-gray-500" :
-                                  "bg-gradient-to-br from-primary-400 to-primary-600"
-                                }`}>
-                                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : s.name.charAt(0)}
-                                </div>
+                                <StaffAvatar name={s.name} size={28} />
                                 <span className="font-semibold text-navy-900">{s.name}</span>
                               </div>
                             </td>
