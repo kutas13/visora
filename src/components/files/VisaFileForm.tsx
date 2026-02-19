@@ -172,8 +172,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         ulke_manuel_mi: ulkeManuelMi,
         islem_tipi: islemTipi,
         randevu_tarihi: islemTipi === "randevulu" && randevuTarihi ? new Date(randevuTarihi).toISOString() : null,
-        evrak_durumu: islemTipi === "randevulu" ? evrakDurumu : "gelmedi",
-        evrak_eksik_mi: islemTipi === "randevusuz" ? evrakEksikMi : (evrakDurumu === "geldi" ? evrakEksikMi : null),
+        evrak_durumu: evrakDurumu,
+        evrak_eksik_mi: evrakDurumu === "geldi" ? evrakEksikMi : null,
         evrak_not: evrakNot || null,
         eksik_kayit_tarihi: eksikKayitTarihi,
         assigned_user_id: file?.assigned_user_id || user.id,
@@ -681,15 +681,25 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         <fieldset className="space-y-3">
           <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Evrak Durumu</legend>
           <div className="grid grid-cols-2 gap-2">
-            <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === false ? "border-green-500 bg-green-50 text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-              <input type="radio" name="evrakEksik" checked={evrakEksikMi === false} onChange={() => setEvrakEksikMi(false)} className="sr-only" />
-              Tam
-            </label>
-            <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === true ? "border-orange-500 bg-orange-50 text-orange-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-              <input type="radio" name="evrakEksik" checked={evrakEksikMi === true} onChange={() => setEvrakEksikMi(true)} className="sr-only" />
-              Eksik Var
-            </label>
+            {EVRAK_DURUMLARI.map((durum) => (
+              <label key={durum.value} className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${evrakDurumu === durum.value ? "border-primary-500 bg-primary-50 text-primary-700 font-semibold ring-1 ring-primary-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+                <input type="radio" name="evrakDurumuRandevusuz" value={durum.value} checked={evrakDurumu === durum.value} onChange={(e) => { setEvrakDurumu(e.target.value as EvrakDurumu); if (e.target.value === "gelmedi") setEvrakEksikMi(null); }} className="sr-only" />
+                Evrak {durum.label}
+              </label>
+            ))}
           </div>
+          {evrakDurumu === "geldi" && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === false ? "border-green-500 bg-green-50 text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" name="evrakEksikRandevusuz" checked={evrakEksikMi === false} onChange={() => setEvrakEksikMi(false)} className="sr-only" />
+                Tam
+              </label>
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${evrakEksikMi === true ? "border-orange-500 bg-orange-50 text-orange-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" name="evrakEksikRandevusuz" checked={evrakEksikMi === true} onChange={() => setEvrakEksikMi(true)} className="sr-only" />
+                Eksik Var
+              </label>
+            </div>
+          )}
         </fieldset>
       )}
 
