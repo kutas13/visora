@@ -129,6 +129,9 @@ export const TARGET_COUNTRIES = [
   { value: "ABD", label: "ABD" },
   { value: "İngiltere", label: "İngiltere" },
   { value: "Kanada", label: "Kanada" },
+  { value: "Çin", label: "Çin" },
+  { value: "Suudi Arabistan", label: "Suudi Arabistan" },
+  { value: "Güney Kore", label: "Güney Kore" },
 ] as const;
 
 // Dosya durum badge'leri
