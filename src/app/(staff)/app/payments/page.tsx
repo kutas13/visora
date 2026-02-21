@@ -42,6 +42,7 @@ export default function PaymentsPage() {
   const [stats, setStats] = useState<Record<string, number>>({ TL: 0, EUR: 0, USD: 0 });
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
+  const [tlKarsiligi, setTlKarsiligi] = useState("");
 
   const loadData = async () => {
     setLoading(true);
@@ -93,6 +94,7 @@ export default function PaymentsPage() {
     setCurrency(file.ucret_currency || "TL");
     setYontem("nakit");
     setNotlar("");
+    setTlKarsiligi("");
     setShowModal(true);
   };
 
@@ -168,6 +170,9 @@ export default function PaymentsPage() {
             yontem: yontem,
             hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
             notlar: notlar.trim() || null,
+            tlKarsiligi: (tlKarsiligi.trim() && parseFloat(tlKarsiligi) > 0 && currency !== "TL") ? tlKarsiligi.trim() : (currency === "TL" && selectedFile.ucret_currency !== "TL" ? tutar : null),
+            dosyaCurrency: selectedFile.ucret_currency,
+            dosyaTutar: selectedFile.kalan_tutar || selectedFile.ucret,
             onOdemeGecmisi: selectedFile.on_odeme_tutar ? {
               tutar: selectedFile.on_odeme_tutar,
               currency: selectedFile.on_odeme_currency,
@@ -502,6 +507,36 @@ export default function PaymentsPage() {
               <Select label="Para Birimi" options={PARA_BIRIMLERI} value={currency} onChange={(e) => setCurrency(e.target.value as ParaBirimi)} />
             </div>
 
+            {/* Dosya dövizli ama TL ile ödeme yapıldıysa */}
+            {selectedFile && selectedFile.ucret_currency !== "TL" && currency === "TL" && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                <p className="text-xs font-semibold text-blue-700">Dosya ücreti {selectedFile.ucret_currency} ama TL olarak tahsil ediliyor</p>
+                <p className="text-xs text-blue-600">Girdiğiniz TL tutarı muhasebeye bildirilecek.</p>
+              </div>
+            )}
+            {selectedFile && selectedFile.ucret_currency !== "TL" && currency !== "TL" && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tlKarsiligi !== ""}
+                    onChange={() => setTlKarsiligi(tlKarsiligi !== "" ? "" : " ")}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-navy-700">Müşteri TL olarak ödedi</span>
+                </label>
+                {tlKarsiligi !== "" && (
+                  <Input
+                    label={`TL Karşılığı (${tutar} ${getCurrencySymbol(currency)} = ? TL)`}
+                    type="number"
+                    placeholder="Ödenen TL tutarı"
+                    value={tlKarsiligi.trim()}
+                    onChange={(e) => setTlKarsiligi(e.target.value)}
+                  />
+                )}
+              </div>
+            )}
+
             <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={yontem} onChange={(e) => setYontem(e.target.value)} />
 
             {yontem === "hesaba" && (
@@ -608,6 +643,13 @@ export default function PaymentsPage() {
                 <p className="text-sm text-navy-500 mt-2 bg-white/50 rounded-full px-4 py-1 inline-block">
                   {yontem === "nakit" ? "Nakit (Cariden Düşüş)" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
                 </p>
+                {((tlKarsiligi.trim() && parseFloat(tlKarsiligi) > 0 && currency !== "TL") || (currency === "TL" && selectedFile.ucret_currency !== "TL")) && (
+                  <p className="text-xs text-blue-700 mt-2 bg-blue-50 rounded-full px-3 py-1 inline-block">
+                    {selectedFile.ucret_currency !== "TL" && currency === "TL"
+                      ? `Dosya: ${selectedFile.kalan_tutar || selectedFile.ucret} ${selectedFile.ucret_currency} → TL olarak tahsil edildi`
+                      : `${tutar} ${getCurrencySymbol(currency)} = ${parseFloat(tlKarsiligi).toLocaleString("tr-TR")} TL olarak tahsil edildi`}
+                  </p>
+                )}
               </div>
             </div>
 

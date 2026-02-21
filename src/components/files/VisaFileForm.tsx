@@ -62,6 +62,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
+  const [pastFiles, setPastFiles] = useState<VisaFile[]>([]);
 
   const countryOptions = TARGET_COUNTRIES.filter(c => c.value !== "all");
 
@@ -114,6 +115,25 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     loadCompanies();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Pasaport numarası ile geçmiş başvuru kontrolü
+  useEffect(() => {
+    const checkPastFiles = async () => {
+      const trimmed = pasaportNo.trim();
+      if (trimmed.length < 3) { setPastFiles([]); return; }
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("visa_files")
+        .select("*")
+        .ilike("pasaport_no", trimmed)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      const results = (data || []).filter((f: VisaFile) => !isEdit || f.id !== file?.id);
+      setPastFiles(results);
+    };
+    const timer = setTimeout(checkPastFiles, 500);
+    return () => clearTimeout(timer);
+  }, [pasaportNo, isEdit, file?.id]);
 
   // Firma arama filtreleme
   const filteredCompanies = useMemo(() => {
@@ -426,6 +446,31 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
           <Input label="Pasaport No" value={pasaportNo} onChange={(e) => setPasaportNo(e.target.value)} placeholder="U12345678" required />
         </div>
       </fieldset>
+
+      {/* Geçmiş Başvuru Uyarısı */}
+      {pastFiles.length > 0 && (
+        <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <p className="text-sm font-semibold text-amber-800">Bu pasaport ile {pastFiles.length} eski başvuru bulundu</p>
+          </div>
+          <div className="space-y-1.5 ml-6">
+            {pastFiles.map((pf) => (
+              <div key={pf.id} className="flex items-center gap-2 text-xs text-amber-700 bg-amber-100/60 px-2.5 py-1.5 rounded-md">
+                <span className="font-semibold">{pf.musteri_ad}</span>
+                <span className="text-amber-500">·</span>
+                <span>{pf.hedef_ulke}</span>
+                <span className="text-amber-500">·</span>
+                <span>{new Date(pf.created_at).toLocaleDateString("tr-TR")}</span>
+                <span className="text-amber-500">·</span>
+                <span className={`font-bold ${pf.sonuc === "vize_onay" ? "text-green-700" : pf.sonuc === "red" ? "text-red-600" : "text-amber-700"}`}>
+                  {pf.sonuc === "vize_onay" ? "Onay" : pf.sonuc === "red" ? "Red" : pf.arsiv_mi ? "Arşiv" : "Devam Ediyor"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Hedef Ülke */}
       <fieldset className="space-y-2">
