@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button, Input, Select, Modal } from "@/components/ui";
 import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME_PLANLARI_EXTENDED, HESAP_SAHIPLERI, FATURA_TIPLERI, ALL_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
@@ -65,6 +65,25 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [pastFiles, setPastFiles] = useState<VisaFile[]>([]);
 
   const countryOptions = TARGET_COUNTRIES.filter(c => c.value !== "all");
+  const [countrySearch, setCountrySearch] = useState("");
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
+  const countryRef = useRef<HTMLDivElement>(null);
+
+  const filteredCountries = useMemo(() => {
+    if (!countrySearch.trim()) return countryOptions;
+    const q = countrySearch.toLowerCase();
+    return countryOptions.filter(c => c.label.toLowerCase().includes(q));
+  }, [countrySearch, countryOptions]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (countryRef.current && !countryRef.current.contains(e.target as Node)) {
+        setCountryDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -483,16 +502,46 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         {ulkeManuelMi ? (
           <Input placeholder="Ülke adı girin..." value={manuelUlke} onChange={(e) => setManuelUlke(e.target.value)} required />
         ) : (
-          <select
-            value={hedefUlke}
-            onChange={(e) => setHedefUlke(e.target.value)}
-            className="w-full px-3 py-2.5 border border-navy-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
-            size={1}
-          >
-            {countryOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          <div ref={countryRef} className="relative">
+            <button
+              type="button"
+              onClick={() => { setCountryDropdownOpen(!countryDropdownOpen); setCountrySearch(""); }}
+              className="w-full px-3 py-2.5 border border-navy-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm text-left flex items-center justify-between"
+            >
+              <span>{hedefUlke}</span>
+              <svg className={`w-4 h-4 text-navy-400 transition-transform ${countryDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {countryDropdownOpen && (
+              <div className="absolute z-50 mt-1 w-full bg-white border border-navy-200 rounded-lg shadow-lg max-h-64 overflow-hidden">
+                <div className="p-2 border-b border-navy-100">
+                  <input
+                    type="text"
+                    placeholder="Ülke ara..."
+                    value={countrySearch}
+                    onChange={(e) => setCountrySearch(e.target.value)}
+                    className="w-full px-3 py-2 border border-navy-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    autoFocus
+                  />
+                </div>
+                <div className="overflow-y-auto max-h-48">
+                  {filteredCountries.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-navy-400">Sonuç bulunamadı</p>
+                  ) : (
+                    filteredCountries.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => { setHedefUlke(opt.value); setCountryDropdownOpen(false); setCountrySearch(""); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-primary-50 transition-colors ${hedefUlke === opt.value ? "bg-primary-50 text-primary-700 font-medium" : "text-navy-700"}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </fieldset>
 

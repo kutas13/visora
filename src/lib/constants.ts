@@ -101,6 +101,7 @@ export const TARGET_COUNTRIES = [
   { value: "all", label: "Tüm Ülkeler" },
   { value: "Yunanistan", label: "Yunanistan" },
   { value: "Almanya", label: "Almanya" },
+  { value: "Çin", label: "Çin" },
   { value: "Fransa", label: "Fransa" },
   { value: "Hollanda", label: "Hollanda" },
   { value: "İtalya", label: "İtalya" },
@@ -129,7 +130,6 @@ export const TARGET_COUNTRIES = [
   { value: "ABD", label: "ABD" },
   { value: "İngiltere", label: "İngiltere" },
   { value: "Kanada", label: "Kanada" },
-  { value: "Çin", label: "Çin" },
   { value: "Suudi Arabistan", label: "Suudi Arabistan" },
   { value: "Güney Kore", label: "Güney Kore" },
 ] as const;
