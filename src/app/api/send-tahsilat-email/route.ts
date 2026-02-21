@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const raw = await request.text();
     const body = JSON.parse(raw);
 
-    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType, hesapSahibi, companyInfo, faturaTipi, notlar, onOdemeGecmisi, dekontBase64, dekontName, tlKarsiligi, dosyaCurrency, dosyaTutar } = body;
+    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType, hesapSahibi, companyInfo, faturaTipi, notlar, onOdemeGecmisi, dekontBase64, dekontName, tlKarsiligi, dosyaCurrency, dosyaTutar, paymentBreakdown } = body;
 
     if (!senderEmail || !musteriAd || !tutar || !currency) {
       return NextResponse.json({ error: "Eksik alanlar" }, { status: 400 });
@@ -83,11 +83,13 @@ export async function POST(request: NextRequest) {
     } else if (yontem === "nakit") {
       const onOdemeEk = onOdemeGecmisi ? ` (${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde ${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency} ön ödeme alınmıştı)` : "";
       const tlEk = tlKarsiligi ? ` (${dosyaTutar} ${dosyaCurrency} karşılığı ${Number(tlKarsiligi).toLocaleString("tr-TR")} TL olarak tahsil edildi)` : "";
-      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} nakit olarak alınmıştır carimden çıkartabiliriz${tlEk}${onOdemeEk}`;
+      const breakdownEk = paymentBreakdown && paymentBreakdown.length > 1 ? ` (Ödeme detayı: ${paymentBreakdown.map((p: any) => `${Number(p.tutar).toLocaleString("tr-TR")} ${cSym(p.currency)}`).join(" + ")})` : "";
+      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} nakit olarak alınmıştır carimden çıkartabiliriz${tlEk}${breakdownEk}${onOdemeEk}`;
     } else {
       const onOdemeEk = onOdemeGecmisi ? ` (${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde ${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency} ön ödeme alınmıştı)` : "";
       const tlEk = tlKarsiligi ? ` (${dosyaTutar} ${dosyaCurrency} karşılığı ${Number(tlKarsiligi).toLocaleString("tr-TR")} TL olarak tahsil edildi)` : "";
-      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} hesaba ödenmiştir${hesapBilgisi} carimden çıkartabiliriz${tlEk}${onOdemeEk}`;
+      const breakdownEk = paymentBreakdown && paymentBreakdown.length > 1 ? ` (Ödeme detayı: ${paymentBreakdown.map((p: any) => `${Number(p.tutar).toLocaleString("tr-TR")} ${cSym(p.currency)}`).join(" + ")})` : "";
+      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} hesaba ödenmiştir${hesapBilgisi} carimden çıkartabiliriz${tlEk}${breakdownEk}${onOdemeEk}`;
     }
 
     // Renkler ve ikonlar
@@ -228,6 +230,15 @@ export async function POST(request: NextRequest) {
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
             <span style="font-size:13px;color:#e2e8f0;">${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency}</span>
             <br><span style="font-size:11px;color:#64748b;">${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde al\u0131nm\u0131\u015ft\u0131</span>
+          </td>
+        </tr>` : ""}
+        ${paymentBreakdown && paymentBreakdown.length > 1 ? `<tr>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">\u00d6deme Detay\u0131</span>
+          </td>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
+            <span style="font-size:14px;color:#10b981;font-weight:700;">${paymentBreakdown.map((p: any) => `${Number(p.tutar).toLocaleString("tr-TR")} ${cSym(p.currency)}`).join(" + ")}</span>
+            <br><span style="font-size:11px;color:#64748b;">Kar\u0131\u015f\u0131k d\u00f6viz \u00f6demesi</span>
           </td>
         </tr>` : ""}
         ${tlKarsiligi ? `<tr>

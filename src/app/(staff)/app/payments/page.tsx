@@ -8,6 +8,7 @@ import { ODEME_YONTEMLERI, PARA_BIRIMLERI, HESAP_SAHIPLERI } from "@/lib/constan
 import type { Payment, VisaFile, ParaBirimi, HesapSahibi } from "@/lib/supabase/types";
 
 type PaymentWithFile = Payment & { visa_files: Pick<VisaFile, "musteri_ad" | "hedef_ulke" | "ucret" | "ucret_currency"> | null };
+type PaymentEntry = { amount: string; currency: ParaBirimi };
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -31,18 +32,17 @@ export default function PaymentsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<VisaFile | null>(null);
-  const [tutar, setTutar] = useState("");
-  const [currency, setCurrency] = useState<ParaBirimi>("TL");
   const [yontem, setYontem] = useState("nakit");
   const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi>("DAVUT_TURGUT");
   const [notlar, setNotlar] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
+
   const [filterCurrency, setFilterCurrency] = useState("all");
   const [stats, setStats] = useState<Record<string, number>>({ TL: 0, EUR: 0, USD: 0 });
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
-  const [tlKarsiligi, setTlKarsiligi] = useState("");
 
   const loadData = async () => {
     setLoading(true);
@@ -57,7 +57,7 @@ export default function PaymentsPage() {
       .eq("arsiv_mi", false)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
-      .neq("cari_tipi", "firma_cari") // Firma cari dosyaları hariç (muhasebe takibinde)
+      .neq("cari_tipi", "firma_cari")
       .order("created_at", { ascending: false });
 
     setUnpaidFiles(unpaid || []);
@@ -88,19 +88,33 @@ export default function PaymentsPage() {
 
   const handleTahsilatYap = (file: VisaFile) => {
     setSelectedFile(file);
-    // Ön ödeme varsa kalan tutarı, yoksa toplam tutarı göster
     const tahsilatTutari = file.kalan_tutar || file.ucret;
-    setTutar(tahsilatTutari?.toString() || "");
-    setCurrency(file.ucret_currency || "TL");
+    setPaymentEntries([{ amount: tahsilatTutari?.toString() || "", currency: file.ucret_currency || "TL" }]);
     setYontem("nakit");
     setNotlar("");
-    setTlKarsiligi("");
+    setDekontFile(null);
+    setDekontPreview(null);
     setShowModal(true);
   };
 
+  const addPaymentEntry = () => {
+    setPaymentEntries(prev => [...prev, { amount: "", currency: "TL" }]);
+  };
+
+  const removePaymentEntry = (index: number) => {
+    if (paymentEntries.length <= 1) return;
+    setPaymentEntries(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updatePaymentEntry = (index: number, field: "amount" | "currency", value: string) => {
+    setPaymentEntries(prev => prev.map((e, i) => i === index ? { ...e, [field]: value } : e));
+  };
+
+  const hasValidEntries = paymentEntries.some(e => e.amount && parseFloat(e.amount) > 0);
+
   const handleTahsilatOnay = () => {
-    if (!selectedFile || !tutar || parseFloat(tutar) <= 0) {
-      alert("Lütfen geçerli bir tutar girin");
+    if (!selectedFile || !hasValidEntries) {
+      alert("Lütfen en az bir geçerli tutar girin");
       return;
     }
     setShowModal(false);
@@ -108,7 +122,7 @@ export default function PaymentsPage() {
   };
 
   const handleTahsilatKaydet = async () => {
-    if (!selectedFile || !tutar || isSubmitting) return;
+    if (!selectedFile || !hasValidEntries || isSubmitting) return;
     setIsSubmitting(true);
 
     try {
@@ -118,14 +132,17 @@ export default function PaymentsPage() {
 
       const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
       const userName = profile?.name || "Kullanıcı";
-      const amount = parseFloat(tutar);
+      
+      const validEntries = paymentEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
+      const primaryEntry = validEntries[0];
+      const primaryAmount = parseFloat(primaryEntry.amount);
 
       const { error: paymentError } = await supabase.from("payments").insert({
         file_id: selectedFile.id,
-        tutar: amount,
+        tutar: primaryAmount,
         yontem: yontem as "nakit" | "hesaba",
         durum: "odendi",
-        currency: currency,
+        currency: primaryEntry.currency,
         payment_type: "tahsilat",
         created_by: user.id,
       });
@@ -135,16 +152,17 @@ export default function PaymentsPage() {
       const { error: updateError } = await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", selectedFile.id);
       if (updateError) throw updateError;
 
+      const breakdownText = validEntries.map(e => formatCurrency(parseFloat(e.amount), e.currency)).join(" + ");
+
       await supabase.from("activity_logs").insert({
         type: "payment_added",
-        message: `${selectedFile.musteri_ad} için tahsilat aldı: ${formatCurrency(amount, currency)}`,
+        message: `${selectedFile.musteri_ad} için tahsilat aldı: ${breakdownText}`,
         file_id: selectedFile.id,
         actor_id: user.id,
       });
 
-      await notifyPaymentReceived(selectedFile.id, selectedFile.musteri_ad, amount, yontem, user.id, userName);
+      await notifyPaymentReceived(selectedFile.id, selectedFile.musteri_ad, primaryAmount, yontem, user.id, userName);
 
-      // Otomatik email gönder (Muhasebe'ye)
       try {
         let dekontBase64: string | null = null;
         let dekontName: string | null = null;
@@ -157,6 +175,12 @@ export default function PaymentsPage() {
           });
           dekontName = dekontFile.name;
         }
+
+        const paymentBreakdown = validEntries.length > 1 ? validEntries.map(e => ({
+          tutar: parseFloat(e.amount),
+          currency: e.currency,
+        })) : null;
+
         const emailRes = await fetch("/api/send-tahsilat-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -165,12 +189,12 @@ export default function PaymentsPage() {
             senderName: userName,
             musteriAd: selectedFile.musteri_ad,
             hedefUlke: selectedFile.hedef_ulke,
-            tutar: amount,
-            currency: currency,
+            tutar: primaryAmount,
+            currency: primaryEntry.currency,
             yontem: yontem,
             hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
             notlar: notlar.trim() || null,
-            tlKarsiligi: (tlKarsiligi.trim() && parseFloat(tlKarsiligi) > 0 && currency !== "TL") ? tlKarsiligi.trim() : (currency === "TL" && selectedFile.ucret_currency !== "TL" ? tutar : null),
+            paymentBreakdown,
             dosyaCurrency: selectedFile.ucret_currency,
             dosyaTutar: selectedFile.kalan_tutar || selectedFile.ucret,
             onOdemeGecmisi: selectedFile.on_odeme_tutar ? {
@@ -193,7 +217,7 @@ export default function PaymentsPage() {
 
       setShowConfirmModal(false);
       setSelectedFile(null);
-      setTutar("");
+      setPaymentEntries([{ amount: "", currency: "TL" }]);
       setDekontFile(null);
       setDekontPreview(null);
       loadData();
@@ -211,415 +235,241 @@ export default function PaymentsPage() {
 
   const currencyOptions = [{ value: "all", label: "Tümü" }, ...PARA_BIRIMLERI.map(p => ({ value: p.value, label: p.label }))];
 
+  const validEntries = paymentEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
+
   return (
     <div className="space-y-6">
-      {/* Sayfa Başlığı */}
       <div>
-        <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-          <span className="text-3xl">💰</span>
-          Ödemeler
-        </h1>
-        <p className="text-navy-500 mt-1">Tahsilatları yönetin ve takip edin</p>
+        <h1 className="text-xl font-bold text-navy-900">Ödemeler</h1>
+        <p className="text-navy-500 text-sm">Tahsilatları yönetin ve takip edin</p>
       </div>
 
-      {/* Özet Kartlar - Profesyonel */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Object.entries(stats).map(([curr, total]) => {
-          const borderColors: Record<string, string> = {
-            TL: "border-l-emerald-500",
-            EUR: "border-l-blue-500", 
-            USD: "border-l-amber-500",
-          };
-          const textColors: Record<string, string> = {
-            TL: "text-emerald-600",
-            EUR: "text-blue-600",
-            USD: "text-amber-600",
-          };
-          return (
-            <Card key={curr} className={`bg-white p-6 shadow-md hover:shadow-lg transition-shadow border-l-4 ${borderColors[curr]}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-navy-500 text-sm font-medium">Toplam Tahsilat</p>
-                  <p className={`text-2xl font-bold mt-2 ${textColors[curr]}`}>{formatCurrency(total, curr)}</p>
-                </div>
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${curr === "TL" ? "bg-emerald-50 text-emerald-600" : curr === "EUR" ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"}`}>
-                  {getCurrencySymbol(curr)}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
+      {/* Özet */}
+      <div className="grid grid-cols-3 gap-3">
+        {Object.entries(stats).map(([curr, total]) => (
+          <div key={curr} className="bg-white rounded-xl border border-navy-200 p-4">
+            <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">{curr}</p>
+            <p className={`text-xl font-black mt-1 ${curr === "TL" ? "text-emerald-600" : curr === "EUR" ? "text-blue-600" : "text-amber-600"}`}>
+              {total > 0 ? formatCurrency(total, curr) : "—"}
+            </p>
+          </div>
+        ))}
       </div>
 
-      {/* Tab Seçimi - Minimal */}
-      <div className="inline-flex p-1 rounded-lg bg-gray-100 border">
-        <button
-          onClick={() => setActiveTab("odenmemis")}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "odenmemis" 
-              ? "bg-white text-navy-900 shadow-sm" 
-              : "text-navy-600 hover:text-navy-900"
-          }`}
-        >
-          Ödenmemişler
-          {unpaidFiles.length > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">{unpaidFiles.length}</span>
-          )}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5 w-fit">
+        <button onClick={() => setActiveTab("odenmemis")} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === "odenmemis" ? "bg-white text-navy-900 shadow-sm" : "text-navy-500"}`}>
+          Ödenmemişler {unpaidFiles.length > 0 && <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 rounded-full">{unpaidFiles.length}</span>}
         </button>
-        <button
-          onClick={() => setActiveTab("tahsilatlar")}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            activeTab === "tahsilatlar" 
-              ? "bg-white text-navy-900 shadow-sm" 
-              : "text-navy-600 hover:text-navy-900"
-          }`}
-        >
+        <button onClick={() => setActiveTab("tahsilatlar")} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === "tahsilatlar" ? "bg-white text-navy-900 shadow-sm" : "text-navy-500"}`}>
           Tahsilatlarım
         </button>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
       ) : activeTab === "odenmemis" ? (
-        <Card className="overflow-hidden shadow-sm border">
-          <div className="bg-navy-800 px-6 py-3">
-            <h3 className="text-white font-medium flex items-center gap-2">
-              <span>⏳</span>
-              Bekleyen Tahsilatlar
-            </h3>
-          </div>
-          <div className="p-6 md:p-8">
-            {unpaidFiles.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-4xl">✓</span>
-                </div>
-                <p className="text-xl font-bold text-navy-900 mb-2">Harika!</p>
-                <p className="text-navy-500">Tüm ödemeler tahsil edilmiş.</p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop */}
-                <div className="hidden md:block overflow-x-auto rounded-2xl overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Müşteri</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Ülke</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Ücret</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Durum</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">İşlem</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {unpaidFiles.map((file, index) => (
-                        <tr key={file.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                                <span className="font-medium text-navy-600 text-sm">{file.musteri_ad.charAt(0)}</span>
-                              </div>
-                              <div>
-                                <p className="font-medium text-navy-900">{file.musteri_ad}</p>
-                                <p className="text-xs text-navy-500">{file.pasaport_no}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-sm text-navy-700">{file.hedef_ulke}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <p className="font-semibold text-lg text-navy-900">{formatCurrency(file.ucret || 0, file.ucret_currency || "TL")}</p>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex gap-1">
-                              <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-md">Cari</span>
-                              <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-md">Ödenmedi</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Button size="sm" onClick={() => handleTahsilatYap(file)}>
-                              Tahsilat Yap
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile */}
-                <div className="md:hidden space-y-4">
-                  {unpaidFiles.map((file) => {
-                    const curr = file.ucret_currency || "TL";
-                    const borderColors: Record<string, string> = { TL: "border-l-emerald-500", EUR: "border-l-blue-500", USD: "border-l-amber-500" };
-                    return (
-                      <Card key={file.id} className={`p-4 border-l-4 ${borderColors[curr] || borderColors.TL} shadow-sm hover:shadow-md transition-shadow`}>
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                              <span className="font-medium text-navy-600">{file.musteri_ad.charAt(0)}</span>
-                            </div>
-                            <div>
-                              <p className="font-medium text-navy-900">{file.musteri_ad}</p>
-                              <p className="text-sm text-navy-500">{file.pasaport_no}</p>
-                            </div>
-                          </div>
-                          <span className="text-sm text-navy-600">{file.hedef_ulke}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-lg font-semibold text-navy-900">{formatCurrency(file.ucret || 0, file.ucret_currency || "TL")}</p>
-                            <div className="flex gap-1.5 mt-2">
-                              <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-700 rounded-md">Cari</span>
-                              <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-md">Ödenmedi</span>
-                            </div>
-                          </div>
-                          <Button size="sm" onClick={() => handleTahsilatYap(file)}>
-                            Tahsilat Yap
-                          </Button>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        </Card>
-      ) : (
-        <Card className="overflow-hidden shadow-sm border">
-          <div className="bg-navy-800 px-6 py-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-white font-medium flex items-center gap-2">
-                <span>📋</span>
-                Tahsilat Geçmişim
-              </h3>
-              <Select 
-                options={currencyOptions} 
-                value={filterCurrency} 
-                onChange={(e) => setFilterCurrency(e.target.value)}
-                className="text-sm"
-              />
+        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
+          {unpaidFiles.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-navy-400">Tüm ödemeler tahsil edilmiş</p>
             </div>
+          ) : (
+            <div className="divide-y divide-navy-100">
+              {unpaidFiles.map((file) => (
+                <div key={file.id} className="flex items-center justify-between p-4 hover:bg-navy-50/50 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 bg-navy-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="font-semibold text-navy-600 text-sm">{file.musteri_ad.charAt(0)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-navy-900 text-sm truncate">{file.musteri_ad}</p>
+                      <p className="text-xs text-navy-400">{file.hedef_ulke} · {file.pasaport_no}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <p className="font-bold text-navy-900">{formatCurrency(file.kalan_tutar || file.ucret || 0, file.ucret_currency || "TL")}</p>
+                      {file.on_odeme_tutar && (
+                        <p className="text-[10px] text-blue-600">ön ödeme: {file.on_odeme_tutar} {file.on_odeme_currency}</p>
+                      )}
+                    </div>
+                    <button onClick={() => handleTahsilatYap(file)} className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded-lg transition-colors">
+                      Tahsilat
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
+          <div className="flex items-center justify-between p-3 border-b border-navy-100">
+            <p className="text-sm font-medium text-navy-600">{filteredPayments.length} kayıt</p>
+            <select value={filterCurrency} onChange={(e) => setFilterCurrency(e.target.value)} className="text-xs border border-navy-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500">
+              {currencyOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
           </div>
-          <div className="p-6 md:p-8">
-            {filteredPayments.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-3xl">📋</span>
+          {filteredPayments.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-navy-400">Tahsilat kaydı bulunamadı</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-navy-50">
+              {filteredPayments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between p-3 hover:bg-navy-50/30 transition-colors">
+                  <div className="min-w-0">
+                    <p className="font-medium text-navy-900 text-sm truncate">{p.visa_files?.musteri_ad || "-"}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-navy-400">{p.visa_files?.hedef_ulke}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.payment_type === "pesin_satis" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
+                        {p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat"}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.yontem === "nakit" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"}`}>
+                        {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-navy-900 text-sm">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
+                    <p className="text-[10px] text-navy-400">{formatDate(p.created_at)}</p>
+                  </div>
                 </div>
-                <p className="text-navy-500">Tahsilat kaydı bulunamadı.</p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop */}
-                <div className="hidden md:block overflow-x-auto rounded-2xl overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Müşteri</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Tutar</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Tip</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Yöntem</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-navy-700">Tarih</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPayments.map((p, index) => (
-                        <tr key={p.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                          <td className="py-3 px-4">
-                            <p className="font-medium text-navy-900">{p.visa_files?.musteri_ad || "-"}</p>
-                            <p className="text-xs text-navy-500">{p.visa_files?.hedef_ulke}</p>
-                          </td>
-                          <td className="py-3 px-4 font-semibold text-lg text-navy-900">{formatCurrency(Number(p.tutar), p.currency || "TL")}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-md ${p.payment_type === "pesin_satis" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                              {p.payment_type === "pesin_satis" ? "Peşin Satış" : "Tahsilat"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-md ${p.yontem === "nakit" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                              {p.yontem === "nakit" ? "💵 Nakit" : "🏦 Hesaba"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-navy-500">{formatDate(p.created_at)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile */}
-                <div className="md:hidden space-y-4">
-                  {filteredPayments.map((p) => {
-                    const curr = p.currency || "TL";
-                    const borderColors: Record<string, string> = { TL: "border-l-emerald-500", EUR: "border-l-blue-500", USD: "border-l-amber-500" };
-                    return (
-                      <Card key={p.id} className={`p-4 border-l-4 ${borderColors[curr] || borderColors.TL} shadow-sm`}>
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-medium text-navy-900">{p.visa_files?.musteri_ad || "-"}</p>
-                            <p className="text-xs text-navy-500">{p.visa_files?.hedef_ulke}</p>
-                          </div>
-                          <p className="font-semibold text-lg text-navy-900">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex gap-1.5">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-md ${p.payment_type === "pesin_satis" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                              {p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat"}
-                            </span>
-                            <span className={`px-2 py-1 text-xs font-medium rounded-md ${p.yontem === "nakit" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                              {p.yontem === "nakit" ? "💵 Nakit" : "🏦 Hesaba"}
-                            </span>
-                          </div>
-                          <p className="text-xs text-navy-500">{formatDate(p.created_at)}</p>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        </Card>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Tahsilat Detay Modal */}
+      {/* Tahsilat Modal */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Tahsilat Bilgileri" size="sm">
         {selectedFile && (
           <div className="space-y-4">
-            <div className="bg-gradient-to-r from-navy-50 to-white rounded-xl p-4 border border-navy-200">
-              <p className="text-sm text-navy-500 mb-1">Müşteri</p>
-              <p className="font-bold text-navy-900 text-lg">{selectedFile.musteri_ad}</p>
-              <p className="text-sm text-navy-600">{selectedFile.hedef_ulke}</p>
-              <p className="text-xl font-bold text-primary-600 mt-3">
-                Beklenen: {formatCurrency(selectedFile.ucret || 0, selectedFile.ucret_currency || "TL")}
-              </p>
+            <div className="bg-navy-50 rounded-xl p-4 border border-navy-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-navy-900">{selectedFile.musteri_ad}</p>
+                  <p className="text-xs text-navy-500">{selectedFile.hedef_ulke}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-navy-400">Beklenen</p>
+                  <p className="font-bold text-primary-600">{formatCurrency(selectedFile.kalan_tutar || selectedFile.ucret || 0, selectedFile.ucret_currency || "TL")}</p>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2">
-                <Input label="Tahsilat Tutarı *" type="number" placeholder="0" value={tutar} onChange={(e) => setTutar(e.target.value)} required />
+            {/* Ödeme Kalemleri */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Ödeme Kalemleri</p>
+                <button type="button" onClick={addPaymentEntry} className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                  Kalem Ekle
+                </button>
               </div>
-              <Select label="Para Birimi" options={PARA_BIRIMLERI} value={currency} onChange={(e) => setCurrency(e.target.value as ParaBirimi)} />
-            </div>
+              {paymentEntries.map((entry, index) => (
+                <div key={index} className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label={index === 0 ? "Tutar" : undefined}
+                      type="number"
+                      placeholder="0"
+                      value={entry.amount}
+                      onChange={(e) => updatePaymentEntry(index, "amount", e.target.value)}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <select
+                      value={entry.currency}
+                      onChange={(e) => updatePaymentEntry(index, "currency", e.target.value)}
+                      className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="TL">TL ₺</option>
+                      <option value="EUR">EUR €</option>
+                      <option value="USD">USD $</option>
+                    </select>
+                  </div>
+                  {paymentEntries.length > 1 && (
+                    <button type="button" onClick={() => removePaymentEntry(index)} className="p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  )}
+                </div>
+              ))}
 
-            {/* Dosya dövizli ama TL ile ödeme yapıldıysa */}
-            {selectedFile && selectedFile.ucret_currency !== "TL" && currency === "TL" && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                <p className="text-xs font-semibold text-blue-700">Dosya ücreti {selectedFile.ucret_currency} ama TL olarak tahsil ediliyor</p>
-                <p className="text-xs text-blue-600">Girdiğiniz TL tutarı muhasebeye bildirilecek.</p>
-              </div>
-            )}
-            {selectedFile && selectedFile.ucret_currency !== "TL" && currency !== "TL" && (
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tlKarsiligi !== ""}
-                    onChange={() => setTlKarsiligi(tlKarsiligi !== "" ? "" : " ")}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-navy-700">Müşteri TL olarak ödedi</span>
-                </label>
-                {tlKarsiligi !== "" && (
-                  <Input
-                    label={`TL Karşılığı (${tutar} ${getCurrencySymbol(currency)} = ? TL)`}
-                    type="number"
-                    placeholder="Ödenen TL tutarı"
-                    value={tlKarsiligi.trim()}
-                    onChange={(e) => setTlKarsiligi(e.target.value)}
-                  />
-                )}
-              </div>
-            )}
+              {/* Özet */}
+              {validEntries.length > 1 && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mt-2">
+                  <p className="text-xs font-semibold text-emerald-700">
+                    Toplam: {validEntries.map(e => `${parseFloat(e.amount).toLocaleString("tr-TR")} ${getCurrencySymbol(e.currency)}`).join(" + ")}
+                  </p>
+                </div>
+              )}
+
+              {/* Farklı döviz bilgisi */}
+              {validEntries.length === 1 && validEntries[0].currency !== (selectedFile.ucret_currency || "TL") && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                  <p className="text-xs text-blue-700">
+                    Dosya ücreti <strong>{selectedFile.ucret_currency}</strong> ama <strong>{validEntries[0].currency}</strong> olarak tahsil ediliyor. Bu bilgi muhasebeye iletilecek.
+                  </p>
+                </div>
+              )}
+            </div>
 
             <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={yontem} onChange={(e) => setYontem(e.target.value)} />
 
             {yontem === "hesaba" && (
               <div className="space-y-3">
-                <Select 
-                  label="Hesap Sahibi" 
-                  options={HESAP_SAHIPLERI} 
-                  value={hesapSahibi} 
-                  onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} 
-                />
+                <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
                 <div>
-                  <label className="block text-sm font-medium text-navy-600 mb-1">Dekont Yükle (PDF veya Görsel)</label>
+                  <label className="block text-xs font-medium text-navy-600 mb-1">Dekont Yükle</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
                     onChange={(e) => {
                       const f = e.target.files?.[0] || null;
                       setDekontFile(f);
-                      if (f && f.type.startsWith("image/")) {
-                        setDekontPreview(URL.createObjectURL(f));
-                      } else {
-                        setDekontPreview(null);
-                      }
+                      setDekontPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
                     }}
                     className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-navy-600"
                   />
                   {dekontPreview && (
-                    <div className="mt-2 relative w-20 h-20 rounded-lg overflow-hidden border border-navy-200">
+                    <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-navy-200">
                       <img src={dekontPreview} alt="Dekont" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">×</button>
+                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px]">×</button>
                     </div>
                   )}
                   {dekontFile && !dekontPreview && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      {dekontFile.name}
-                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="ml-auto text-red-600 font-bold">×</button>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2 py-1.5 rounded-lg">
+                      <span className="truncate">{dekontFile.name}</span>
+                      <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="text-red-600 font-bold flex-shrink-0">×</button>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Ön ödeme bilgisi */}
             {selectedFile?.on_odeme_tutar && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <h4 className="text-sm font-semibold text-blue-800 mb-2">💳 Ön Ödeme Geçmişi</h4>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-blue-700">
-                    {new Date(selectedFile.created_at).toLocaleDateString("tr-TR")} tarihinde
-                  </span>
-                  <span className="font-bold text-blue-800">
-                    {selectedFile.on_odeme_tutar} {selectedFile.on_odeme_currency} alınmıştır
-                  </span>
-                </div>
-                <div className="mt-2 text-xs text-blue-600 bg-blue-100 rounded-lg p-2">
-                  <strong>Toplam:</strong> {selectedFile.ucret} {selectedFile.ucret_currency} • 
-                  <strong> Kalan:</strong> {selectedFile.kalan_tutar} {selectedFile.ucret_currency}
-                </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-blue-800 mb-1">Ön Ödeme Geçmişi</p>
+                <p className="text-xs text-blue-700">
+                  {new Date(selectedFile.created_at).toLocaleDateString("tr-TR")} · {selectedFile.on_odeme_tutar} {selectedFile.on_odeme_currency} alınmıştır
+                </p>
+                <p className="text-[10px] text-blue-600 mt-1">Toplam: {selectedFile.ucret} {selectedFile.ucret_currency} · Kalan: {selectedFile.kalan_tutar} {selectedFile.ucret_currency}</p>
               </div>
             )}
 
-            {/* Not Alanı */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-navy-600">
-                Muhasebe Notunuz <span className="text-navy-400">(isteğe bağlı)</span>
-              </label>
-              <textarea
-                value={notlar}
-                onChange={(e) => setNotlar(e.target.value)}
-                placeholder="Ek bilgi veya açıklama..."
-                className="w-full px-4 py-3 border border-navy-300 rounded-xl resize-none text-sm"
-                rows={3}
-              />
+            <div>
+              <label className="text-xs font-medium text-navy-500">Not <span className="text-navy-300">(isteğe bağlı)</span></label>
+              <textarea value={notlar} onChange={(e) => setNotlar(e.target.value)} placeholder="Ek bilgi..." className="w-full mt-1 px-3 py-2 border border-navy-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" rows={2} />
             </div>
 
-            <div className="flex gap-3 pt-4 border-t border-navy-200">
-              <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">
-                İptal
-              </Button>
-              <Button type="button" onClick={handleTahsilatOnay} className="flex-1" disabled={!tutar || parseFloat(tutar) <= 0}>
-                Devam →
-              </Button>
+            <div className="flex gap-3 pt-3 border-t border-navy-100">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">İptal</button>
+              <button type="button" onClick={handleTahsilatOnay} disabled={!hasValidEntries} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
             </div>
           </div>
         )}
@@ -629,44 +479,30 @@ export default function PaymentsPage() {
       <Modal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} title="Tahsilatı Onayla" size="sm">
         {selectedFile && (
           <div className="space-y-4">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <span className="text-4xl">💰</span>
-                </div>
-                <p className="text-navy-700 mb-2">
-                  <strong>{selectedFile.musteri_ad}</strong> için
-                </p>
-                <p className="text-4xl font-bold text-green-700">
-                  {formatCurrency(parseFloat(tutar), currency)}
-                </p>
-                <p className="text-sm text-navy-500 mt-2 bg-white/50 rounded-full px-4 py-1 inline-block">
-                  {yontem === "nakit" ? "Nakit (Cariden Düşüş)" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
-                </p>
-                {((tlKarsiligi.trim() && parseFloat(tlKarsiligi) > 0 && currency !== "TL") || (currency === "TL" && selectedFile.ucret_currency !== "TL")) && (
-                  <p className="text-xs text-blue-700 mt-2 bg-blue-50 rounded-full px-3 py-1 inline-block">
-                    {selectedFile.ucret_currency !== "TL" && currency === "TL"
-                      ? `Dosya: ${selectedFile.kalan_tutar || selectedFile.ucret} ${selectedFile.ucret_currency} → TL olarak tahsil edildi`
-                      : `${tutar} ${getCurrencySymbol(currency)} = ${parseFloat(tlKarsiligi).toLocaleString("tr-TR")} TL olarak tahsil edildi`}
-                  </p>
-                )}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
+              <p className="text-sm text-navy-600 mb-1"><strong>{selectedFile.musteri_ad}</strong></p>
+              <div className="space-y-1 mt-3">
+                {validEntries.map((e, i) => (
+                  <p key={i} className="text-2xl font-black text-emerald-700">{formatCurrency(parseFloat(e.amount), e.currency)}</p>
+                ))}
               </div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <p className="text-amber-800 text-sm text-center flex items-center justify-center gap-2">
-                <span>⚠️</span>
-                Bu işlem geri alınamaz. Emin misiniz?
+              {validEntries.length > 1 && (
+                <p className="text-xs text-emerald-600 mt-2 bg-emerald-100 rounded-full px-3 py-1 inline-block">Karışık döviz ödemesi</p>
+              )}
+              <p className="text-xs text-navy-500 mt-2">
+                {yontem === "nakit" ? "Nakit" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
               </p>
             </div>
 
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-amber-800 text-xs text-center">Bu işlem geri alınamaz. Emin misiniz?</p>
+            </div>
+
             <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => { setShowConfirmModal(false); setShowModal(true); }} className="flex-1" disabled={isSubmitting}>
-                ← Geri
-              </Button>
-              <Button type="button" onClick={handleTahsilatKaydet} className="flex-1 bg-green-600 hover:bg-green-700" disabled={isSubmitting}>
-                {isSubmitting ? "Kaydediliyor..." : "✓ Tahsilatı Kaydet"}
-              </Button>
+              <button type="button" onClick={() => { setShowConfirmModal(false); setShowModal(true); }} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors" disabled={isSubmitting}>Geri</button>
+              <button type="button" onClick={handleTahsilatKaydet} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors" disabled={isSubmitting}>
+                {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
+              </button>
             </div>
           </div>
         )}
