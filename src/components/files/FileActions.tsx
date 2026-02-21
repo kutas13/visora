@@ -72,7 +72,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
 
       switch (confirmAction) {
         case "dosya_hazir":
-          updateData = { dosya_hazir: true, dosya_hazir_at: timestamp };
+          updateData = { dosya_hazir: true, dosya_hazir_at: timestamp, evrak_eksik_mi: false, evrak_durumu: "geldi" as any };
           logMessage = `${file.musteri_ad} dosyasını hazır olarak işaretledi`;
           notifTitle = "Dosya Hazır";
           break;
