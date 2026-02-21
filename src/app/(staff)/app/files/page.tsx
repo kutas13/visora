@@ -45,6 +45,7 @@ export default function FilesPage() {
   const [filterArsiv, setFilterArsiv] = useState(false);
   const [isManualCountry, setIsManualCountry] = useState(false);
   const [manualCountryFilter, setManualCountryFilter] = useState("");
+  const [stepFilter, setStepFilter] = useState<string>("all");
 
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -93,16 +94,7 @@ export default function FilesPage() {
       console.error("Dosyalar yüklenirken hata:", error);
       setFiles([]);
     } else if (data) {
-      const sorted = [...data].sort((a, b) => {
-        if (a.islem_tipi === "randevulu" && b.islem_tipi !== "randevulu") return -1;
-        if (a.islem_tipi !== "randevulu" && b.islem_tipi === "randevulu") return 1;
-        if (a.islem_tipi === "randevulu" && b.islem_tipi === "randevulu") {
-          const dateA = a.randevu_tarihi ? new Date(a.randevu_tarihi).getTime() : Infinity;
-          const dateB = b.randevu_tarihi ? new Date(b.randevu_tarihi).getTime() : Infinity;
-          return dateA - dateB;
-        }
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      });
+      const sorted = [...data].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setFiles(sorted);
     }
     setLoading(false);
@@ -200,10 +192,35 @@ export default function FilesPage() {
         </div>
       </Card>
 
-      {/* Sıralama Bilgisi */}
-      <div className="flex items-center gap-2 text-sm text-navy-500 bg-navy-50 p-3 rounded-xl">
-        <svg className="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        <span><strong>Sıralama:</strong> Randevulu → en yakın tarih; Randevusuz → en eski kayıt</span>
+      {/* Adım Filtreleri */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {[
+          { key: "all", label: "Hepsi", color: "navy" },
+          { key: "yeni", label: "Yeni", color: "slate" },
+          { key: "evrak_eksik", label: "Evrak Eksik", color: "orange" },
+          { key: "dosya_hazir", label: "Dosya Hazır", color: "blue" },
+          { key: "islemde", label: "İşleme Girdi", color: "indigo" },
+        ].map((step) => {
+          const count = step.key === "all" ? files.length
+            : step.key === "yeni" ? files.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi).length
+            : step.key === "evrak_eksik" ? files.filter(f => f.evrak_eksik_mi && !f.dosya_hazir).length
+            : step.key === "dosya_hazir" ? files.filter(f => f.dosya_hazir && !f.basvuru_yapildi).length
+            : files.filter(f => f.basvuru_yapildi && !f.islemden_cikti).length;
+          return (
+            <button
+              key={step.key}
+              onClick={() => setStepFilter(step.key)}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                stepFilter === step.key
+                  ? "bg-navy-900 text-white shadow-md"
+                  : "bg-white text-navy-600 border border-navy-200 hover:border-navy-400"
+              }`}
+            >
+              {step.label}
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter === step.key ? "bg-white/20" : "bg-navy-100 text-navy-500"}`}>{count}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Dosya Listesi */}
@@ -211,7 +228,7 @@ export default function FilesPage() {
         <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-semibold flex items-center gap-2">
-              📋 Dosyalar
+              Dosyalar
               <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{files.length}</span>
             </h3>
           </div>
@@ -222,7 +239,13 @@ export default function FilesPage() {
             <div className="flex items-center justify-center py-16">
               <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
             </div>
-          ) : files.length === 0 ? (
+          ) : (() => {
+            const displayFiles = stepFilter === "all" ? files
+              : stepFilter === "yeni" ? files.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi)
+              : stepFilter === "evrak_eksik" ? files.filter(f => f.evrak_eksik_mi && !f.dosya_hazir)
+              : stepFilter === "dosya_hazir" ? files.filter(f => f.dosya_hazir && !f.basvuru_yapildi)
+              : files.filter(f => f.basvuru_yapildi && !f.islemden_cikti);
+            return displayFiles.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-24 h-24 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-5xl">📂</span>
@@ -247,7 +270,7 @@ export default function FilesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {files.map((file, index) => (
+                    {displayFiles.map((file, index) => (
                       <tr 
                         key={file.id} 
                         className={`border-b border-navy-100 hover:bg-gradient-to-r hover:from-primary-50 hover:to-white transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-navy-50/50'}`}
@@ -317,7 +340,7 @@ export default function FilesPage() {
 
               {/* Mobil Kartlar */}
               <div className="md:hidden space-y-4">
-                {files.map((file) => (
+                {displayFiles.map((file) => (
                   <Card key={file.id} className="p-4 hover:shadow-lg transition-shadow border-l-4 border-l-primary-500">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
@@ -360,7 +383,8 @@ export default function FilesPage() {
                 ))}
               </div>
             </>
-          )}
+          );
+          })()}
         </div>
       </Card>
 
