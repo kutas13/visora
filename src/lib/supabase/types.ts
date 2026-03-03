@@ -16,7 +16,7 @@ export type ParaBirimi = "TL" | "EUR" | "USD";
 export type OdemePlani = "pesin" | "cari";
 
 // Ödeme tipi
-export type PaymentType = "pesin_satis" | "tahsilat";
+export type PaymentType = "pesin_satis" | "tahsilat" | "firma_cari";
 
 // Hesap sahipleri
 export type HesapSahibi = "DAVUT_TURGUT" | "SIRRI_TURGUT";
