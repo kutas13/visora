@@ -38,29 +38,24 @@ export async function POST(request: NextRequest) {
 
     const searchTerm = passportNo.trim();
 
-    // Türkçe karakter normalizasyonu (ı↔I, i↔İ sorunu)
-    const toTurkishUpper = (s: string) =>
-      s.replace(/ı/g, "I").replace(/i/g, "İ").replace(/ğ/g, "Ğ").replace(/ü/g, "Ü")
-       .replace(/ş/g, "Ş").replace(/ö/g, "Ö").replace(/ç/g, "Ç").toUpperCase();
-    const toTurkishLower = (s: string) =>
-      s.replace(/I/g, "ı").replace(/İ/g, "i").replace(/Ğ/g, "ğ").replace(/Ü/g, "ü")
-       .replace(/Ş/g, "ş").replace(/Ö/g, "ö").replace(/Ç/g, "ç").toLowerCase();
+    // Türkçe karakter normalizasyonu - tüm varyasyonları ele al
+    const normalizeForSearch = (s: string) => {
+      return s.toLowerCase()
+        .replace(/[ıi]/g, '[ıi]')
+        .replace(/[üu]/g, '[üu]')
+        .replace(/[öo]/g, '[öo]')  
+        .replace(/[şs]/g, '[şs]')
+        .replace(/[çc]/g, '[çc]')
+        .replace(/[ğg]/g, '[ğg]');
+    };
 
-    const upper = toTurkishUpper(searchTerm);
-    const lower = toTurkishLower(searchTerm);
+    const normalizedTerm = normalizeForSearch(searchTerm);
 
-    // Tüm varyasyonlarla ara (orijinal + büyük harf + küçük harf)
+    // PostgreSQL regex ile Türkçe karakterleri esnek ara
     const { data, error } = await supabase
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
-      .or([
-        `pasaport_no.ilike.%${searchTerm}%`,
-        `musteri_ad.ilike.%${searchTerm}%`,
-        `pasaport_no.ilike.%${upper}%`,
-        `musteri_ad.ilike.%${upper}%`,
-        `pasaport_no.ilike.%${lower}%`,
-        `musteri_ad.ilike.%${lower}%`,
-      ].join(","));
+      .or(`pasaport_no.~*."${normalizedTerm}",musteri_ad.~*."${normalizedTerm}"`);
 
     if (error) {
       console.error("Pasaport sorgu hatası:", error.message, error.details);

@@ -294,11 +294,13 @@ export default function FilesPage() {
                             <span className="font-bold text-navy-900">{file.ucret?.toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</span>
                             <div className="flex gap-1">
                               <Badge variant={file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
-                                {file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
+                                {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
                               </Badge>
-                              <Badge variant={file.odeme_durumu === "odendi" ? "success" : "error"} size="sm">
-                                {file.odeme_durumu === "odendi" ? "Ödendi" : "Ödenmedi"}
-                              </Badge>
+                              {file.cari_tipi !== "firma_cari" && (
+                                <Badge variant={file.odeme_durumu === "odendi" ? "success" : "error"} size="sm">
+                                  {file.odeme_durumu === "odendi" ? "Ödendi" : "Ödenmedi"}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -365,8 +367,14 @@ export default function FilesPage() {
                       </div>
                     </div>
                     <div className="flex gap-1 mb-3">
-                      <Badge variant={file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">{file.odeme_plani === "pesin" ? "Peşin" : "Cari"}</Badge>
-                      <Badge variant={file.odeme_durumu === "odendi" ? "success" : "error"} size="sm">{file.odeme_durumu === "odendi" ? "Ödendi" : "Ödenmedi"}</Badge>
+                      <Badge variant={file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
+                        {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
+                      </Badge>
+                      {file.cari_tipi !== "firma_cari" && (
+                        <Badge variant={file.odeme_durumu === "odendi" ? "success" : "error"} size="sm">
+                          {file.odeme_durumu === "odendi" ? "Ödendi" : "Ödenmedi"}
+                        </Badge>
+                      )}
                       {file.evrak_eksik_mi && <Badge variant="error" size="sm">Eksik</Badge>}
                     </div>
                     <div className="flex gap-2 pt-3 border-t border-navy-100">

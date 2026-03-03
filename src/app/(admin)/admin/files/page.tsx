@@ -187,11 +187,13 @@ export default function AdminFilesPage() {
                       <p className="font-semibold text-navy-900">{file.ucret?.toLocaleString("tr-TR")} {sym(file.ucret_currency)}</p>
                       <div className="flex gap-1 mt-0.5">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${file.odeme_plani === "pesin" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-                          {file.cari_tipi === "firma_cari" ? "Firma" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
+                          {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${file.odeme_durumu === "odendi" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                          {file.odeme_durumu === "odendi" ? "Ödendi" : "Bekliyor"}
-                        </span>
+                        {file.cari_tipi !== "firma_cari" && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${file.odeme_durumu === "odendi" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                            {file.odeme_durumu === "odendi" ? "Ödendi" : "Bekliyor"}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-3 px-4 text-navy-500 text-xs">{fmtDate(file.randevu_tarihi)}</td>
