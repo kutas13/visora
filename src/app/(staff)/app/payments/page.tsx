@@ -69,7 +69,37 @@ export default function PaymentsPage() {
       .order("created_at", { ascending: false })
       .limit(50);
 
-    setPayments(paymentData || []);
+    // Firma cari dosyaları da tahsilat olarak ekle
+    const { data: firmaCariFiles } = await supabase
+      .from("visa_files")
+      .select("*")
+      .eq("assigned_user_id", user.id)
+      .eq("cari_tipi", "firma_cari")
+      .eq("arsiv_mi", false)
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    // Firma cari dosyaları payment formatına dönüştür
+    const firmaCariAsPayments = (firmaCariFiles || []).map(file => ({
+      id: `firma_${file.id}`,
+      file_id: file.id,
+      tutar: file.ucret || 0,
+      currency: file.ucret_currency || "TL",
+      yontem: "firma_cari" as any,
+      durum: "odendi" as any,
+      payment_type: "firma_cari" as any,
+      created_by: user.id,
+      created_at: file.created_at,
+      visa_files: {
+        musteri_ad: file.musteri_ad,
+        hedef_ulke: file.hedef_ulke,
+        ucret: file.ucret,
+        ucret_currency: file.ucret_currency
+      }
+    }));
+
+    const allPayments = [...(paymentData || []), ...firmaCariAsPayments];
+    setPayments(allPayments);
 
     if (paymentData) {
       const totals: Record<string, number> = { TL: 0, EUR: 0, USD: 0 };
@@ -325,12 +355,14 @@ export default function PaymentsPage() {
                     <p className="font-medium text-navy-900 text-sm truncate">{p.visa_files?.musteri_ad || "-"}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="text-[10px] text-navy-400">{p.visa_files?.hedef_ulke}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.payment_type === "pesin_satis" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
-                        {p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat"}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.payment_type === "pesin_satis" ? "bg-green-50 text-green-700" : p.payment_type === "firma_cari" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"}`}>
+                        {p.payment_type === "pesin_satis" ? "Peşin" : p.payment_type === "firma_cari" ? "Firma Cari" : "Tahsilat"}
                       </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.yontem === "nakit" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"}`}>
-                        {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
-                      </span>
+                      {p.payment_type !== "firma_cari" && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.yontem === "nakit" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"}`}>
+                          {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">

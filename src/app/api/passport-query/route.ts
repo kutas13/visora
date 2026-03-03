@@ -38,24 +38,32 @@ export async function POST(request: NextRequest) {
 
     const searchTerm = passportNo.trim();
 
-    // Türkçe karakter normalizasyonu - tüm varyasyonları ele al
-    const normalizeForSearch = (s: string) => {
-      return s.toLowerCase()
-        .replace(/[ıi]/g, '[ıi]')
-        .replace(/[üu]/g, '[üu]')
-        .replace(/[öo]/g, '[öo]')  
-        .replace(/[şs]/g, '[şs]')
-        .replace(/[çc]/g, '[çc]')
-        .replace(/[ğg]/g, '[ğg]');
-    };
+    // Basit ILIKE aramaya dön ama Türkçe karakterler için birden fazla sorgu
+    const variants = [
+      searchTerm,
+      searchTerm.replace(/ı/g, 'i').replace(/i/g, 'ı'),
+      searchTerm.replace(/İ/g, 'I').replace(/I/g, 'İ'),
+      searchTerm.replace(/ü/g, 'u').replace(/u/g, 'ü'),
+      searchTerm.replace(/Ü/g, 'U').replace(/U/g, 'Ü'),
+      searchTerm.replace(/ö/g, 'o').replace(/o/g, 'ö'),
+      searchTerm.replace(/Ö/g, 'O').replace(/O/g, 'Ö'),
+      searchTerm.replace(/ş/g, 's').replace(/s/g, 'ş'),
+      searchTerm.replace(/Ş/g, 'S').replace(/S/g, 'Ş'),
+      searchTerm.replace(/ç/g, 'c').replace(/c/g, 'ç'),
+      searchTerm.replace(/Ç/g, 'C').replace(/C/g, 'Ç'),
+      searchTerm.replace(/ğ/g, 'g').replace(/g/g, 'ğ'),
+      searchTerm.replace(/Ğ/g, 'G').replace(/G/g, 'Ğ'),
+    ];
 
-    const normalizedTerm = normalizeForSearch(searchTerm);
+    const orConditions = variants.flatMap(v => [
+      `pasaport_no.ilike.%${v}%`,
+      `musteri_ad.ilike.%${v}%`
+    ]);
 
-    // PostgreSQL regex ile Türkçe karakterleri esnek ara
     const { data, error } = await supabase
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
-      .or(`pasaport_no.~*."${normalizedTerm}",musteri_ad.~*."${normalizedTerm}"`);
+      .or(orConditions.join(","));
 
     if (error) {
       console.error("Pasaport sorgu hatası:", error.message, error.details);
