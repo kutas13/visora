@@ -25,9 +25,9 @@ export async function GET() {
 
     const xmlText = await response.text();
     
-    // XML parse et - basit regex kullanarak
-    const usdMatch = xmlText.match(/<Currency[^>]*Kod="USD"[^>]*>.*?<ForexSelling>([\d.,]+)<\/ForexSelling>.*?<\/Currency>/s);
-    const eurMatch = xmlText.match(/<Currency[^>]*Kod="EUR"[^>]*>.*?<ForexSelling>([\d.,]+)<\/ForexSelling>.*?<\/Currency>/s);
+    // XML parse et - basit regex kullanarak (newline'ları da yakalayacak şekilde)
+    const usdMatch = xmlText.match(/<Currency[^>]*Kod="USD"[^>]*>[\s\S]*?<ForexSelling>([\d.,]+)<\/ForexSelling>[\s\S]*?<\/Currency>/);
+    const eurMatch = xmlText.match(/<Currency[^>]*Kod="EUR"[^>]*>[\s\S]*?<ForexSelling>([\d.,]+)<\/ForexSelling>[\s\S]*?<\/Currency>/);
     
     if (!usdMatch || !eurMatch) throw new Error('Currency data not found');
 
