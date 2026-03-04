@@ -46,6 +46,7 @@ export default function StaffAtamalarPage() {
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState<string | null>(null);
   const [filterDurum, setFilterDurum] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [staffEmail, setStaffEmail] = useState<string | null>(null);
   const [staffName, setStaffName] = useState("");
   const [countdown, setCountdown] = useState(CHECK_INTERVAL);
@@ -159,6 +160,12 @@ export default function StaffAtamalarPage() {
 
   const filtered = assignments.filter((a) => {
     if (filterDurum !== "all" && a.durum !== filterDurum) return false;
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      const name = (a.musteri_ad || "").toLowerCase();
+      const pnr = (a.pnr || "").toLowerCase();
+      if (!name.includes(q) && !pnr.includes(q)) return false;
+    }
     return true;
   });
 
@@ -288,7 +295,13 @@ export default function StaffAtamalarPage() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Search + Filters */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative">
+          <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input type="text" placeholder="İsim veya PNR ara..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 pr-3 py-2 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-56" />
+        </div>
+      </div>
       <div className="flex gap-1.5 bg-white border border-navy-200 rounded-xl p-1 shadow-sm w-fit">
         {durumOptions.map((o) => (
           <button
