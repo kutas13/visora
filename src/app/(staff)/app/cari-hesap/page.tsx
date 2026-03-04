@@ -55,7 +55,34 @@ export default function CariHesapPage() {
       .eq("payment_type", "tahsilat")
       .order("created_at", { ascending: false });
 
-    setPayments(paymentData || []);
+    // Firma cari dosyaları da dahil et (otomatik tahsilat olarak)
+    const { data: firmaCariFiles } = await supabase
+      .from("visa_files")
+      .select("*")
+      .eq("assigned_user_id", user.id)
+      .eq("cari_tipi", "firma_cari")
+      .eq("arsiv_mi", false)
+      .order("created_at", { ascending: false });
+
+    // Firma cari dosyaları payment formatına dönüştür
+    const firmaCariAsPayments = (firmaCariFiles || []).map(file => ({
+      id: `firma_${file.id}`,
+      file_id: file.id,
+      tutar: file.ucret || 0,
+      currency: file.ucret_currency || "TL",
+      yontem: "firma_cari" as any,
+      durum: "odendi" as any,
+      payment_type: "firma_cari" as any,
+      created_by: user.id,
+      created_at: file.created_at,
+      visa_files: {
+        musteri_ad: file.musteri_ad,
+        hedef_ulke: file.hedef_ulke
+      }
+    }));
+
+    const allPayments = [...(paymentData || []), ...firmaCariAsPayments];
+    setPayments(allPayments);
 
     const calc: Record<string, CurrencyTotals> = {};
     (files || []).forEach((f) => {
@@ -64,7 +91,7 @@ export default function CariHesapPage() {
       calc[c].borc += Number(f.ucret) || 0;
     });
 
-    (paymentData || []).forEach((p) => {
+    allPayments.forEach((p) => {
       const c = p.currency || "TL";
       if (!calc[c]) calc[c] = { borc: 0, tahsilat: 0, kalan: 0 };
       calc[c].tahsilat += Number(p.tutar) || 0;

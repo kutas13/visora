@@ -101,9 +101,9 @@ export default function PaymentsPage() {
     const allPayments = [...(paymentData || []), ...firmaCariAsPayments];
     setPayments(allPayments);
 
-    if (paymentData) {
+    if (allPayments) {
       const totals: Record<string, number> = { TL: 0, EUR: 0, USD: 0 };
-      paymentData.forEach(p => {
+      allPayments.forEach(p => {
         if (p.durum === "odendi") {
           const curr = p.currency || "TL";
           totals[curr] = (totals[curr] || 0) + Number(p.tutar);
@@ -211,6 +211,9 @@ export default function PaymentsPage() {
           currency: e.currency,
         })) : null;
 
+        // TL karşılığı hesapla (dosya farklı currency, tahsilat TL ise)
+        const tlKarsiligi = selectedFile.ucret_currency !== "TL" && primaryEntry.currency === "TL" ? primaryAmount.toString() : null;
+
         const emailRes = await fetch("/api/send-tahsilat-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -227,6 +230,7 @@ export default function PaymentsPage() {
             paymentBreakdown,
             dosyaCurrency: selectedFile.ucret_currency,
             dosyaTutar: selectedFile.kalan_tutar || selectedFile.ucret,
+            tlKarsiligi,
             onOdemeGecmisi: selectedFile.on_odeme_tutar ? {
               tutar: selectedFile.on_odeme_tutar,
               currency: selectedFile.on_odeme_currency,
