@@ -462,42 +462,85 @@ export default function PaymentsPage() {
                 </div>
               )}
 
-              {/* Kur hesaplaması */}
-              {validEntries.length === 1 && validEntries[0].amount && (
+              {/* Hızlı Dönüşüm Butonları */}
+              {selectedFile && selectedFile.ucret_currency !== "TL" && (
                 <div className="space-y-2">
-                  {validEntries[0].currency !== (selectedFile.ucret_currency || "TL") && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
-                      <p className="text-xs text-blue-700">
-                        Dosya ücreti <strong>{selectedFile.ucret_currency}</strong> ama <strong>{validEntries[0].currency}</strong> olarak tahsil ediliyor. Bu bilgi muhasebeye iletilecek.
-                      </p>
-                    </div>
-                  )}
-                  
-                  {/* TL karşılığı hesaplama */}
-                  {validEntries[0].currency !== "TL" && exchangeRates[validEntries[0].currency] && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-emerald-700">TL Karşılığı (TCMB)</p>
-                        <button type="button" onClick={loadExchangeRates} className="text-[10px] text-emerald-600 hover:text-emerald-800" disabled={ratesLoading}>
-                          {ratesLoading ? "Güncelleniyor..." : "🔄 Güncelle"}
-                        </button>
-                      </div>
-                      <p className="text-xs text-emerald-600 mt-1">
-                        {parseFloat(validEntries[0].amount).toLocaleString("tr-TR")} {validEntries[0].currency} = <strong>{(parseFloat(validEntries[0].amount) * exchangeRates[validEntries[0].currency]).toLocaleString("tr-TR")} TL</strong>
-                      </p>
-                      <p className="text-[10px] text-emerald-500">Kur: 1 {validEntries[0].currency} = {exchangeRates[validEntries[0].currency]} TL</p>
-                    </div>
-                  )}
-                  
-                  {/* Dosya farklı currency ise onun da TL karşılığı */}
-                  {selectedFile.ucret_currency && selectedFile.ucret_currency !== "TL" && exchangeRates[selectedFile.ucret_currency] && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-2.5">
-                      <p className="text-xs font-semibold text-gray-700">Dosya Tutarı (TL)</p>
-                      <p className="text-xs text-gray-600">
-                        {(selectedFile.kalan_tutar || selectedFile.ucret || 0).toLocaleString("tr-TR")} {selectedFile.ucret_currency} = <strong>{((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toLocaleString("tr-TR")} TL</strong>
-                      </p>
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Hızlı Doldur</p>
+                    <button type="button" onClick={loadExchangeRates} className="text-[10px] text-navy-400 hover:text-navy-600" disabled={ratesLoading}>
+                      {ratesLoading ? "Güncelleniyor..." : "🔄 Kur Güncelle"}
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {/* TL Karşılığı Al */}
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const tlAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toFixed(0);
+                        setPaymentEntries([{ amount: tlAmount, currency: "TL" }]);
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg transition-colors"
+                    >
+                      TL Karşılığı Al ({((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toLocaleString("tr-TR", {maximumFractionDigits: 0})} ₺)
+                    </button>
+
+                    {/* Orijinal Currency */}
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setPaymentEntries([{ amount: (selectedFile.kalan_tutar || selectedFile.ucret || 0).toString(), currency: selectedFile.ucret_currency }]);
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors"
+                    >
+                      {selectedFile.ucret_currency} Al ({(selectedFile.kalan_tutar || selectedFile.ucret || 0).toLocaleString("tr-TR")} {selectedFile.ucret_currency})
+                    </button>
+
+                    {/* Diğer Currency (USD için EUR, EUR için USD) */}
+                    {selectedFile.ucret_currency === "USD" && exchangeRates.EUR && (
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const eurAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.USD / exchangeRates.EUR).toFixed(0);
+                          setPaymentEntries([{ amount: eurAmount, currency: "EUR" }]);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg transition-colors"
+                      >
+                        EUR Al ({((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR", {maximumFractionDigits: 0})} €)
+                      </button>
+                    )}
+
+                    {selectedFile.ucret_currency === "EUR" && exchangeRates.USD && (
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const usdAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.EUR / exchangeRates.USD).toFixed(0);
+                          setPaymentEntries([{ amount: usdAmount, currency: "USD" }]);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg transition-colors"
+                      >
+                        USD Al ({((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR", {maximumFractionDigits: 0})} $)
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Farklı döviz bilgisi */}
+              {validEntries.length === 1 && validEntries[0].currency !== (selectedFile.ucret_currency || "TL") && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5">
+                  <p className="text-xs text-blue-700">
+                    Dosya ücreti <strong>{selectedFile.ucret_currency}</strong> ama <strong>{validEntries[0].currency}</strong> olarak tahsil ediliyor. Bu bilgi muhasebeye iletilecek.
+                  </p>
+                </div>
+              )}
+
+              {/* TL karşılığı gösterimi */}
+              {validEntries.length === 1 && validEntries[0].amount && validEntries[0].currency !== "TL" && exchangeRates[validEntries[0].currency] && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+                  <p className="text-xs text-emerald-600">
+                    {parseFloat(validEntries[0].amount).toLocaleString("tr-TR")} {validEntries[0].currency} = <strong>{(parseFloat(validEntries[0].amount) * exchangeRates[validEntries[0].currency]).toLocaleString("tr-TR")} TL</strong>
+                  </p>
+                  <p className="text-[10px] text-emerald-500">Kur: 1 {validEntries[0].currency} = {exchangeRates[validEntries[0].currency]} TL</p>
                 </div>
               )}
             </div>
