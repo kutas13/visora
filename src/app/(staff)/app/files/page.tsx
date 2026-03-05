@@ -33,6 +33,23 @@ function getCurrencySymbol(currency: string) {
   return symbols[currency] || currency;
 }
 
+const AVATAR_COLORS = [
+  { bg: "from-blue-500 to-blue-600", text: "text-white" },
+  { bg: "from-violet-500 to-purple-600", text: "text-white" },
+  { bg: "from-emerald-500 to-teal-600", text: "text-white" },
+  { bg: "from-rose-500 to-pink-600", text: "text-white" },
+  { bg: "from-amber-500 to-orange-600", text: "text-white" },
+  { bg: "from-cyan-500 to-blue-600", text: "text-white" },
+  { bg: "from-indigo-500 to-violet-600", text: "text-white" },
+  { bg: "from-teal-500 to-emerald-600", text: "text-white" },
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 export default function FilesPage() {
   const [files, setFiles] = useState<VisaFileWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,9 +303,11 @@ export default function FilesPage() {
                       >
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center shadow-sm">
-                              <span className="text-primary-600 font-bold">{file.musteri_ad.charAt(0)}</span>
-                            </div>
+                            {(() => { const c = getAvatarColor(file.musteri_ad); return (
+                              <div className={`w-10 h-10 bg-gradient-to-br ${c.bg} rounded-xl flex items-center justify-center shadow-md ring-2 ring-white`}>
+                                <span className={`${c.text} font-bold text-sm`}>{file.musteri_ad.charAt(0).toUpperCase()}</span>
+                              </div>
+                            ); })()}
                             <div>
                               <p className="font-semibold text-navy-900">{file.musteri_ad}</p>
                               <p className="text-xs text-navy-500">{file.pasaport_no}</p>
@@ -355,9 +374,11 @@ export default function FilesPage() {
                   <Card key={file.id} className="p-4 hover:shadow-lg transition-shadow border-l-4 border-l-primary-500">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center">
-                          <span className="text-primary-600 font-bold text-lg">{file.musteri_ad.charAt(0)}</span>
-                        </div>
+                        {(() => { const c = getAvatarColor(file.musteri_ad); return (
+                          <div className={`w-12 h-12 bg-gradient-to-br ${c.bg} rounded-xl flex items-center justify-center shadow-md ring-2 ring-white`}>
+                            <span className={`${c.text} font-bold text-lg`}>{file.musteri_ad.charAt(0).toUpperCase()}</span>
+                          </div>
+                        ); })()}
                         <div>
                           <p className="font-bold text-navy-900">{file.musteri_ad}</p>
                           <p className="text-sm text-navy-500">{file.pasaport_no}</p>
