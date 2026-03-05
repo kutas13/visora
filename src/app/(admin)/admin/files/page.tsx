@@ -65,6 +65,13 @@ export default function AdminFilesPage() {
 
   const loadData = async () => {
     const supabase = createClient();
+
+    await supabase
+      .from("visa_files")
+      .update({ arsiv_mi: true })
+      .eq("arsiv_mi", false)
+      .not("sonuc", "is", null);
+
     const [filesRes, profilesRes] = await Promise.all([
       supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("arsiv_mi", false).order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").eq("role", "staff"),
@@ -186,14 +193,14 @@ export default function AdminFilesPage() {
                     <td className="py-3 px-4 text-navy-600">{file.hedef_ulke}</td>
                     <td className="py-3 px-4">
                       <p className="font-semibold text-navy-900">{file.ucret?.toLocaleString("tr-TR")} {sym(file.ucret_currency)}</p>
-                      <div className="flex gap-1 mt-0.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${file.odeme_plani === "pesin" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                      <div className="flex gap-1.5 mt-1 flex-wrap">
+                        <Badge variant={file.cari_tipi === "firma_cari" ? "purple" : file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
                           {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
-                        </span>
+                        </Badge>
                         {file.cari_tipi !== "firma_cari" && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${file.odeme_durumu === "odendi" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                          <Badge variant={file.odeme_durumu === "odendi" ? "success" : "error"} size="sm">
                             {file.odeme_durumu === "odendi" ? "Ödendi" : "Bekliyor"}
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     </td>

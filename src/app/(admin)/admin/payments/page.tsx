@@ -59,35 +59,51 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     async function loadData() {
       const supabase = createClient();
-      const [unpaidRes, paymentsRes] = await Promise.all([
+      const [unpaidRes, paymentsRes, firmaCariRes] = await Promise.all([
         supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("arsiv_mi", false).eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").eq("odeme_durumu", "odenmedi").order("created_at", { ascending: false }),
         supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke), profiles:created_by(name)").order("created_at", { ascending: false }),
+        supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
       ]);
 
       setUnpaidFiles(unpaidRes.data || []);
-      setPayments(paymentsRes.data || []);
 
-      if (paymentsRes.data) {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
-        const ns: Record<string, { bugun: number; hafta: number; toplam: number }> = {
-          TL: { bugun: 0, hafta: 0, toplam: 0 },
-          EUR: { bugun: 0, hafta: 0, toplam: 0 },
-          USD: { bugun: 0, hafta: 0, toplam: 0 },
-        };
-        paymentsRes.data.forEach(p => {
-          if (p.durum === "odendi") {
-            const curr = p.currency || "TL";
-            const pDate = new Date(p.created_at); pDate.setHours(0, 0, 0, 0);
-            if (ns[curr]) {
-              ns[curr].toplam += Number(p.tutar);
-              if (pDate.getTime() === today.getTime()) ns[curr].bugun += Number(p.tutar);
-              if (pDate >= weekAgo) ns[curr].hafta += Number(p.tutar);
-            }
+      const firmaCariAsPayments: PaymentWithDetails[] = (firmaCariRes.data || []).map((file: any) => ({
+        id: `firma_${file.id}`,
+        file_id: file.id,
+        tutar: file.ucret || 0,
+        currency: file.ucret_currency || "TL",
+        yontem: "firma_cari" as any,
+        durum: "odendi" as any,
+        payment_type: "firma_cari" as any,
+        created_by: file.assigned_user_id,
+        created_at: file.created_at,
+        visa_files: { musteri_ad: file.musteri_ad, hedef_ulke: file.hedef_ulke },
+        profiles: file.profiles,
+      }));
+
+      const allPayments = [...(paymentsRes.data || []), ...firmaCariAsPayments]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setPayments(allPayments);
+
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+      const ns: Record<string, { bugun: number; hafta: number; toplam: number }> = {
+        TL: { bugun: 0, hafta: 0, toplam: 0 },
+        EUR: { bugun: 0, hafta: 0, toplam: 0 },
+        USD: { bugun: 0, hafta: 0, toplam: 0 },
+      };
+      allPayments.forEach(p => {
+        if (p.durum === "odendi") {
+          const curr = p.currency || "TL";
+          const pDate = new Date(p.created_at); pDate.setHours(0, 0, 0, 0);
+          if (ns[curr]) {
+            ns[curr].toplam += Number(p.tutar);
+            if (pDate.getTime() === today.getTime()) ns[curr].bugun += Number(p.tutar);
+            if (pDate >= weekAgo) ns[curr].hafta += Number(p.tutar);
           }
-        });
-        setStats(ns);
-      }
+        }
+      });
+      setStats(ns);
       setLoading(false);
     }
     loadData();
@@ -203,14 +219,18 @@ export default function AdminPaymentsPage() {
                   </td>
                   <td className="py-2.5 px-4 text-right font-semibold text-navy-900">{fmtCur(Number(p.tutar), p.currency || "TL")}</td>
                   <td className="py-2.5 px-4 text-center">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.payment_type === "pesin_satis" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                      {p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat"}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.payment_type === "pesin_satis" ? "bg-green-100 text-green-700" : p.payment_type === "firma_cari" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                      {p.payment_type === "pesin_satis" ? "Peşin" : p.payment_type === "firma_cari" ? "Firma Cari" : "Tahsilat"}
                     </span>
                   </td>
                   <td className="py-2.5 px-4 text-center">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.yontem === "nakit" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                      {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
-                    </span>
+                    {p.payment_type === "firma_cari" ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-50 text-purple-600">Fatura</span>
+                    ) : (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.yontem === "nakit" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
+                      </span>
+                    )}
                   </td>
                   <td className="py-2.5 px-4">
                     <div className="flex items-center gap-2">

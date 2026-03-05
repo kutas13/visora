@@ -60,6 +60,14 @@ export default function FilesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) setCurrentUserId(user.id);
+
+    if (!filterArsiv) {
+      await supabase
+        .from("visa_files")
+        .update({ arsiv_mi: true })
+        .eq("arsiv_mi", false)
+        .not("sonuc", "is", null);
+    }
     
     let query = supabase
       .from("visa_files")
@@ -291,10 +299,10 @@ export default function FilesPage() {
                           <Badge variant={file.islem_tipi === "randevulu" ? "info" : "default"}>{file.hedef_ulke}</Badge>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-bold text-navy-900">{file.ucret?.toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</span>
-                            <div className="flex gap-1">
-                              <Badge variant={file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
+                          <div className="flex flex-col gap-1.5">
+                            <span className="font-bold text-navy-900 text-sm">{file.ucret?.toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</span>
+                            <div className="flex gap-1.5 flex-wrap">
+                              <Badge variant={file.cari_tipi === "firma_cari" ? "purple" : file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
                                 {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
                               </Badge>
                               {file.cari_tipi !== "firma_cari" && (
@@ -367,8 +375,8 @@ export default function FilesPage() {
                         <p className="font-bold">{file.ucret?.toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</p>
                       </div>
                     </div>
-                    <div className="flex gap-1 mb-3">
-                      <Badge variant={file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
+                    <div className="flex gap-1.5 mb-3 flex-wrap">
+                      <Badge variant={file.cari_tipi === "firma_cari" ? "purple" : file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
                         {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
                       </Badge>
                       {file.cari_tipi !== "firma_cari" && (
