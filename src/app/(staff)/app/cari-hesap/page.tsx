@@ -43,7 +43,6 @@ export default function CariHesapPage() {
       .eq("assigned_user_id", user.id)
       .eq("odeme_plani", "cari")
       .neq("cari_tipi", "firma_cari")
-      .eq("arsiv_mi", false)
       .order("created_at", { ascending: false });
 
     setCariFiles(files || []);
@@ -61,7 +60,6 @@ export default function CariHesapPage() {
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("cari_tipi", "firma_cari")
-      .eq("arsiv_mi", false)
       .order("created_at", { ascending: false });
 
     // Firma cari dosyaları payment formatına dönüştür

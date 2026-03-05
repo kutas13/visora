@@ -62,7 +62,7 @@ export default function AdminDashboard() {
       // Tüm sorguları paralel çalıştır (hız optimizasyonu)
       const [profileRes, filesRes, staffRes, paymentsRes] = await Promise.all([
         user ? supabase.from("profiles").select("name").eq("id", user.id).single<{ name: string }>() : null,
-        supabase.from("visa_files").select("*").eq("arsiv_mi", false).returns<VisaFile[]>(),
+        supabase.from("visa_files").select("*").returns<VisaFile[]>(),
         supabase.from("profiles").select("*").eq("role", "staff").returns<Profile[]>(),
         supabase.from("payments").select("*").eq("durum", "odendi").returns<Payment[]>(),
       ]);

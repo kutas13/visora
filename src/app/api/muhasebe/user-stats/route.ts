@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Tüm verileri tek seferde çek (admin cari hesap sayfasıyla aynı mantık)
     const [profilesRes, filesRes, paymentsRes] = await Promise.all([
       supabase.from("profiles").select("*").order("name"),
-      supabase.from("visa_files").select("*").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").eq("arsiv_mi", false).order("created_at", { ascending: false }),
+      supabase.from("visa_files").select("*").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
       supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke, assigned_user_id)").eq("payment_type", "tahsilat").order("created_at", { ascending: false }),
     ]);
 

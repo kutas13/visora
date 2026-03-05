@@ -51,7 +51,7 @@ export default function AdminCalendarPage() {
     const sb = createClient();
     const today = new Date(); today.setHours(0,0,0,0);
     const { data: appts } = await sb.from("visa_files").select("*, profiles:assigned_user_id(name)")
-      .eq("islem_tipi","randevulu").not("randevu_tarihi","is",null).eq("arsiv_mi",false)
+      .eq("islem_tipi","randevulu").not("randevu_tarihi","is",null)
       .gte("randevu_tarihi", today.toISOString()).order("randevu_tarihi",{ascending:true});
     const { data: staffData } = await sb.from("profiles").select("*").eq("role","staff");
     setAllAppts(appts||[]); setStaff(staffData||[]); setLoading(false);

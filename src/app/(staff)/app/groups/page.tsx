@@ -48,7 +48,7 @@ export default function GroupsPage() {
     setCurrentUserId(user.id);
 
     const [filesRes, groupsRes, membersRes] = await Promise.all([
-      supabase.from("visa_files").select("*").eq("assigned_user_id", user.id).eq("arsiv_mi", false).order("musteri_ad"),
+      supabase.from("visa_files").select("*").eq("assigned_user_id", user.id).order("musteri_ad"),
       supabase.from("visa_groups").select("*").order("created_at", { ascending: false }),
       supabase.from("visa_group_members").select("*, visa_files(*)"),
     ]);

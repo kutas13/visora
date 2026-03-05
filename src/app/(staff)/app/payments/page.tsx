@@ -56,7 +56,6 @@ export default function PaymentsPage() {
       .from("visa_files")
       .select("*")
       .eq("assigned_user_id", user.id)
-      .eq("arsiv_mi", false)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
       .neq("cari_tipi", "firma_cari")
@@ -77,7 +76,6 @@ export default function PaymentsPage() {
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("cari_tipi", "firma_cari")
-      .eq("arsiv_mi", false)
       .order("created_at", { ascending: false })
       .limit(25);
 

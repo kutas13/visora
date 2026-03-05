@@ -66,7 +66,7 @@ export default function AdminGroupsPage() {
     if (user) setCurrentUserId(user.id);
 
     const [filesRes, groupsRes, membersRes] = await Promise.all([
-      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("arsiv_mi", false).order("musteri_ad"),
+      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").order("musteri_ad"),
       (supabase as any).from("visa_groups").select("*").order("created_at", { ascending: false }),
       (supabase as any).from("visa_group_members").select("*, visa_files(*, profiles:assigned_user_id(name))"),
     ]);

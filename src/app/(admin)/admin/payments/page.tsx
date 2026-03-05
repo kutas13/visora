@@ -60,7 +60,7 @@ export default function AdminPaymentsPage() {
     async function loadData() {
       const supabase = createClient();
       const [unpaidRes, paymentsRes, firmaCariRes] = await Promise.all([
-        supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("arsiv_mi", false).eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").eq("odeme_durumu", "odenmedi").order("created_at", { ascending: false }),
+        supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").eq("odeme_durumu", "odenmedi").order("created_at", { ascending: false }),
         supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke), profiles:created_by(name)").order("created_at", { ascending: false }),
         supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
       ]);
