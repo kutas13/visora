@@ -51,13 +51,27 @@ export default function RaporlarPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient();
-      const [filesRes, paymentsRes, staffRes] = await Promise.all([
+      const [filesRes, paymentsRes, staffRes, firmaCariRes] = await Promise.all([
         supabase.from("visa_files").select("*").returns<VisaFile[]>(),
         supabase.from("payments").select("*").eq("durum", "odendi").returns<Payment[]>(),
         supabase.from("profiles").select("*").eq("role", "staff").returns<Profile[]>(),
+        supabase.from("visa_files").select("*").eq("cari_tipi", "firma_cari").returns<VisaFile[]>(),
       ]);
+
+      const firmaCariAsPayments = (firmaCariRes.data || []).map((file) => ({
+        id: `firma_${file.id}`,
+        file_id: file.id,
+        tutar: file.ucret || 0,
+        currency: file.ucret_currency || "TL",
+        yontem: "firma_cari" as any,
+        durum: "odendi" as any,
+        payment_type: "firma_cari" as any,
+        created_by: file.assigned_user_id,
+        created_at: file.created_at,
+      }));
+
       setFiles(filesRes.data || []);
-      setPayments(paymentsRes.data || []);
+      setPayments([...(paymentsRes.data || []), ...firmaCariAsPayments]);
       setStaff(staffRes.data || []);
       setLoading(false);
     }
@@ -112,7 +126,8 @@ export default function RaporlarPage() {
     const successRate = approvedFiles + rejectedFiles > 0 ? Math.round((approvedFiles / (approvedFiles + rejectedFiles)) * 100) : 0;
     const pesinCount = filteredPayments.filter((p) => p.payment_type === "pesin_satis").length;
     const tahsilatCount = filteredPayments.filter((p) => p.payment_type === "tahsilat").length;
-    return { revenue, totalFiles, approvedFiles, rejectedFiles, pendingFiles, successRate, pesinCount, tahsilatCount, totalPayments: filteredPayments.length };
+    const firmaCariCount = filteredPayments.filter((p) => p.payment_type === "firma_cari").length;
+    return { revenue, totalFiles, approvedFiles, rejectedFiles, pendingFiles, successRate, pesinCount, tahsilatCount, firmaCariCount, totalPayments: filteredPayments.length };
   }, [filteredPayments, filteredFiles]);
 
   if (loading) {
@@ -249,7 +264,7 @@ export default function RaporlarPage() {
         <div className="bg-white rounded-xl border border-navy-200 p-4">
           <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Tahsilat</p>
           <p className="text-2xl font-black text-amber-600 mt-1">{kpis.totalPayments}</p>
-          <p className="text-[10px] text-navy-400">{kpis.pesinCount} peşin · {kpis.tahsilatCount} cari</p>
+          <p className="text-[10px] text-navy-400">{kpis.pesinCount} peşin · {kpis.tahsilatCount} cari · {kpis.firmaCariCount} firma</p>
         </div>
         <div className="col-span-2 lg:col-span-1 bg-white rounded-xl border border-navy-200 p-4">
           <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Gelir</p>

@@ -19,11 +19,12 @@ const USER_AVATARS: Record<string, string> = {
 };
 
 function getStatusBadge(file: VisaFile) {
+  const isChina = file.hedef_ulke === "Çin";
   if (file.sonuc === "vize_onay") return <Badge variant="success">Onay</Badge>;
   if (file.sonuc === "red") return <Badge variant="error">Red</Badge>;
   if (file.islemden_cikti) return <Badge variant="purple">Çıktı</Badge>;
   if (file.basvuru_yapildi) return <Badge variant="info">İşlemde</Badge>;
-  if (file.dosya_hazir) return <Badge variant="info">Hazır</Badge>;
+  if (file.dosya_hazir) return <Badge variant="info">{isChina ? "Onay Geldi" : "Hazır"}</Badge>;
   if (file.evrak_eksik_mi) return <Badge variant="warning">Eksik</Badge>;
   return <Badge variant="default">Yeni</Badge>;
 }

@@ -147,6 +147,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
     const hesaba = payments.filter((p) => p.yontem === "hesaba").length;
     const pesin = payments.filter((p) => p.payment_type === "pesin_satis").length;
     const cari = payments.filter((p) => p.payment_type === "tahsilat").length;
+    const firmaCari = payments.filter((p) => p.payment_type === "firma_cari").length;
 
     return {
       method: [
@@ -156,6 +157,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
       type: [
         { name: "Peşin Satış", value: pesin },
         { name: "Tahsilat", value: cari },
+        { name: "Firma Cari", value: firmaCari },
       ].filter((d) => d.value > 0),
     };
   }, [payments]);
@@ -341,8 +343,9 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
                   <ResponsiveContainer width="100%" height={120}>
                     <PieChart>
                       <Pie data={paymentMethodData.type} cx="50%" cy="50%" outerRadius={45} innerRadius={25} dataKey="value" stroke="none">
-                        <Cell fill="#2563eb" />
-                        <Cell fill="#f97316" />
+                        {paymentMethodData.type.map((entry, i) => (
+                          <Cell key={i} fill={["#2563eb", "#f97316", "#8b5cf6"][i] || COLORS[i]} />
+                        ))}
                       </Pie>
                       <Tooltip content={<CustomTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
@@ -376,7 +379,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
           <h3 className="text-white font-semibold flex items-center gap-2">
             <span className="text-lg">{"💵"}</span> {"Detaylı Gelir Raporu"}
           </h3>
-          <p className="text-emerald-200 text-xs mt-1">{"Personel ve döviz bazlı tahsilat detayları"}</p>
+          <p className="text-emerald-200 text-xs mt-1">{"Personel ve döviz bazlı tüm gelir detayları (tahsilat, peşin, firma cari)"}</p>
         </div>
         <div className="p-6 space-y-6">
           {/* Personel Bazlı Gelir Tablosu */}
@@ -395,6 +398,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
                     <th className="text-center py-3 px-3 font-bold text-navy-700">{"USD ($)"}</th>
                     <th className="text-center py-3 px-3 font-bold text-navy-700">{"Peşin"}</th>
                     <th className="text-center py-3 px-3 font-bold text-navy-700">{"Tahsilat"}</th>
+                    <th className="text-center py-3 px-3 font-bold text-navy-700">{"Firma Cari"}</th>
                     <th className="text-center py-3 px-3 font-bold text-navy-700">{"Toplam İşlem"}</th>
                   </tr>
                 </thead>
@@ -406,6 +410,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
                     const usd = sPayments.filter(p => p.currency === "USD").reduce((a, p) => a + Number(p.tutar), 0);
                     const pesin = sPayments.filter(p => p.payment_type === "pesin_satis").length;
                     const tahsilat = sPayments.filter(p => p.payment_type === "tahsilat").length;
+                    const firmaCari = sPayments.filter(p => p.payment_type === "firma_cari").length;
                     return (
                       <tr key={s.id} className="border-b border-navy-100 hover:bg-emerald-50/30 transition-colors">
                         <td className="py-3 px-4">
@@ -441,6 +446,9 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
                         <td className="py-3 px-3 text-center">
                           <span className="inline-block bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full text-xs font-bold">{tahsilat}</span>
                         </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className="inline-block bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full text-xs font-bold">{firmaCari}</span>
+                        </td>
                         <td className="py-3 px-3 text-center font-bold text-navy-800">{sPayments.length}</td>
                       </tr>
                     );
@@ -459,6 +467,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
                     </td>
                     <td className="py-3 px-3 text-center text-blue-700">{payments.filter(p => p.payment_type === "pesin_satis").length}</td>
                     <td className="py-3 px-3 text-center text-orange-600">{payments.filter(p => p.payment_type === "tahsilat").length}</td>
+                    <td className="py-3 px-3 text-center text-purple-700">{payments.filter(p => p.payment_type === "firma_cari").length}</td>
                     <td className="py-3 px-3 text-center text-navy-900">{payments.length}</td>
                   </tr>
                 </tbody>

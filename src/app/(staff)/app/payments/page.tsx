@@ -464,61 +464,96 @@ export default function PaymentsPage() {
 
               {/* Hızlı Dönüşüm Butonları */}
               {selectedFile && selectedFile.ucret_currency !== "TL" && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Hızlı Doldur</p>
-                    <button type="button" onClick={loadExchangeRates} className="text-[10px] text-navy-400 hover:text-navy-600" disabled={ratesLoading}>
-                      {ratesLoading ? "Güncelleniyor..." : "🔄 Kur Güncelle"}
+                    <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Oto Kur</p>
+                    <button
+                      type="button"
+                      onClick={loadExchangeRates}
+                      className="flex items-center gap-1 text-[10px] font-medium text-navy-400 hover:text-primary-600 transition-colors"
+                      disabled={ratesLoading}
+                    >
+                      <svg className={`w-3 h-3 ${ratesLoading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                      {ratesLoading ? "Güncelleniyor..." : "Kur Güncelle"}
                     </button>
                   </div>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {/* TL Karşılığı Al */}
-                    <button 
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* TL Karşılığı */}
+                    <button
                       type="button"
                       onClick={() => {
                         const tlAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toFixed(0);
                         setPaymentEntries([{ amount: tlAmount, currency: "TL" }]);
                       }}
-                      className="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg transition-colors"
+                      className="group relative overflow-hidden rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 text-left transition-all hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-100 active:scale-[0.98]"
                     >
-                      TL Karşılığı Al ({((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toLocaleString("tr-TR", {maximumFractionDigits: 0})} ₺)
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500 text-white text-xs font-bold shadow-sm">₺</span>
+                        <span className="text-xs font-bold text-emerald-800">TL Al</span>
+                      </div>
+                      <p className="text-sm font-black text-emerald-700">
+                        {((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toLocaleString("tr-TR", {maximumFractionDigits: 0})} ₺
+                      </p>
+                      <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-200/40 rounded-bl-2xl" />
                     </button>
 
                     {/* Orijinal Currency */}
-                    <button 
+                    <button
                       type="button"
                       onClick={() => {
                         setPaymentEntries([{ amount: (selectedFile.kalan_tutar || selectedFile.ucret || 0).toString(), currency: selectedFile.ucret_currency }]);
                       }}
-                      className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors"
+                      className="group relative overflow-hidden rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 text-left transition-all hover:border-blue-400 hover:shadow-md hover:shadow-blue-100 active:scale-[0.98]"
                     >
-                      {selectedFile.ucret_currency} Al ({(selectedFile.kalan_tutar || selectedFile.ucret || 0).toLocaleString("tr-TR")} {selectedFile.ucret_currency})
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500 text-white text-xs font-bold shadow-sm">{getCurrencySymbol(selectedFile.ucret_currency)}</span>
+                        <span className="text-xs font-bold text-blue-800">{selectedFile.ucret_currency} Al</span>
+                      </div>
+                      <p className="text-sm font-black text-blue-700">
+                        {(selectedFile.kalan_tutar || selectedFile.ucret || 0).toLocaleString("tr-TR")} {getCurrencySymbol(selectedFile.ucret_currency)}
+                      </p>
+                      <div className="absolute top-0 right-0 w-8 h-8 bg-blue-200/40 rounded-bl-2xl" />
                     </button>
 
-                    {/* Diğer Currency (USD için EUR, EUR için USD) */}
+                    {/* USD -> EUR */}
                     {selectedFile.ucret_currency === "USD" && exchangeRates.EUR && (
-                      <button 
+                      <button
                         type="button"
                         onClick={() => {
                           const eurAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.USD / exchangeRates.EUR).toFixed(0);
                           setPaymentEntries([{ amount: eurAmount, currency: "EUR" }]);
                         }}
-                        className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-lg transition-colors"
+                        className="group relative overflow-hidden rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100 p-3 text-left transition-all hover:border-violet-400 hover:shadow-md hover:shadow-violet-100 active:scale-[0.98]"
                       >
-                        EUR Al ({((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR", {maximumFractionDigits: 0})} €)
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-violet-500 text-white text-xs font-bold shadow-sm">€</span>
+                          <span className="text-xs font-bold text-violet-800">EUR Al</span>
+                        </div>
+                        <p className="text-sm font-black text-violet-700">
+                          {((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR", {maximumFractionDigits: 0})} €
+                        </p>
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-violet-200/40 rounded-bl-2xl" />
                       </button>
                     )}
 
+                    {/* EUR -> USD */}
                     {selectedFile.ucret_currency === "EUR" && exchangeRates.USD && (
-                      <button 
+                      <button
                         type="button"
                         onClick={() => {
                           const usdAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.EUR / exchangeRates.USD).toFixed(0);
                           setPaymentEntries([{ amount: usdAmount, currency: "USD" }]);
                         }}
-                        className="px-3 py-1.5 text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg transition-colors"
+                        className="group relative overflow-hidden rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-3 text-left transition-all hover:border-amber-400 hover:shadow-md hover:shadow-amber-100 active:scale-[0.98]"
                       >
-                        USD Al ({((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR", {maximumFractionDigits: 0})} $)
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-500 text-white text-xs font-bold shadow-sm">$</span>
+                          <span className="text-xs font-bold text-amber-800">USD Al</span>
+                        </div>
+                        <p className="text-sm font-black text-amber-700">
+                          {((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR", {maximumFractionDigits: 0})} $
+                        </p>
+                        <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200/40 rounded-bl-2xl" />
                       </button>
                     )}
                   </div>

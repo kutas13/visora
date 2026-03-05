@@ -33,10 +33,15 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   const isArchived = file.arsiv_mi;
   const isReadOnly = isCompleted && !isAdmin;
 
+  const isChina = file.hedef_ulke === "Çin";
+
   // Adım durumları
-  const step1Done = file.dosya_hazir; // Dosya Hazır
-  const step2Done = file.basvuru_yapildi; // İşleme Girdi
-  const step3Done = file.islemden_cikti; // İşlemden Çıktı
+  const step1Done = file.dosya_hazir;
+  const step2Done = file.basvuru_yapildi;
+  const step3Done = file.islemden_cikti;
+
+  const step1Label = isChina ? "Onay Geldi" : "Dosya Hazır";
+  const step3Label = isChina ? "Çıktı" : "İşlemden Çıktı";
 
   // Hangi buton aktif? (Sıralı kilit sistemi)
   const canStep1 = !step1Done && !isCompleted && !isArchived;
@@ -73,8 +78,10 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       switch (confirmAction) {
         case "dosya_hazir":
           updateData = { dosya_hazir: true, dosya_hazir_at: timestamp, evrak_eksik_mi: false, evrak_durumu: "geldi" as any };
-          logMessage = `${file.musteri_ad} dosyasını hazır olarak işaretledi`;
-          notifTitle = "Dosya Hazır";
+          logMessage = isChina
+            ? `${file.musteri_ad} dosyası için onay geldi`
+            : `${file.musteri_ad} dosyasını hazır olarak işaretledi`;
+          notifTitle = isChina ? "Onay Geldi" : "Dosya Hazır";
           break;
         case "isleme_girdi":
           updateData = { basvuru_yapildi: true, basvuru_yapildi_at: timestamp };
@@ -157,6 +164,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         sonuc_tarihi: sonucTarihi,
         vize_bitis_tarihi: sonuc === "vize_onay" ? vizeBitisTarihi : null,
         musteri_telefon: musteriTelefon.trim() || null,
+        arsiv_mi: true,
       };
 
       const { error } = await supabase.from("visa_files").update(updateData).eq("id", file.id);
@@ -165,12 +173,20 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       const sonucText = sonuc === "vize_onay" ? "Vize Onaylandı" : "Reddedildi";
       const logMessage = `${file.musteri_ad} dosyası işlemden çıktı: ${sonucText}`;
 
-      await supabase.from("activity_logs").insert({
-        type: "islemden_cikti",
-        message: logMessage,
-        file_id: file.id,
-        actor_id: user.id,
-      });
+      await supabase.from("activity_logs").insert([
+        {
+          type: "islemden_cikti",
+          message: logMessage,
+          file_id: file.id,
+          actor_id: user.id,
+        },
+        {
+          type: "arsivle",
+          message: `${file.musteri_ad} dosyası otomatik arşivlendi (${sonucText})`,
+          file_id: file.id,
+          actor_id: user.id,
+        },
+      ]);
 
       await notifyFileStatusChanged(file.id, file.musteri_ad, `İşlemden Çıktı - ${sonucText}`, logMessage, user.id, userName);
 
@@ -188,7 +204,9 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   const getConfirmMessage = () => {
     switch (confirmAction) {
       case "dosya_hazir":
-        return `"${file.musteri_ad}" dosyasını HAZIR olarak işaretlemek istediğinize emin misiniz? Bu işlem geri alınamaz.`;
+        return isChina
+          ? `"${file.musteri_ad}" dosyasını ONAY GELDİ olarak işaretlemek istediğinize emin misiniz? Bu işlem geri alınamaz.`
+          : `"${file.musteri_ad}" dosyasını HAZIR olarak işaretlemek istediğinize emin misiniz? Bu işlem geri alınamaz.`;
       case "isleme_girdi":
         return `"${file.musteri_ad}" dosyasını İŞLEME GİRDİ olarak işaretlemek istediğinize emin misiniz?`;
       case "arsivle":
@@ -236,16 +254,16 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Adım 1: Dosya Hazır */}
+      {/* Adım 1: Dosya Hazır / Onay Geldi (Çin) */}
       <Button
         size="sm"
         variant={canStep1 ? "primary" : "ghost"}
         onClick={() => canStep1 && openConfirmModal("dosya_hazir")}
         disabled={!canStep1 || isLoading || actionInProgress !== null}
-        title={!canStep1 ? (step1Done ? "✓ Dosya zaten hazır" : "") : "Dosyayı hazır olarak işaretle"}
+        title={!canStep1 ? (step1Done ? `✓ ${step1Label}` : "") : `${step1Label} olarak işaretle`}
         className={canStep1 ? "" : "opacity-50 cursor-not-allowed"}
       >
-        {step1Done ? "✓ Dosya Hazır" : "1. Dosya Hazır"}
+        {step1Done ? `✓ ${step1Label}` : `1. ${step1Label}`}
       </Button>
 
       {/* Adım 2: İşleme Girdi - Sadece step1 tamamlandıysa görünür */}
@@ -262,17 +280,17 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         </Button>
       )}
 
-      {/* Adım 3: İşlemden Çıktı - Sadece step2 tamamlandıysa görünür */}
+      {/* Adım 3: İşlemden Çıktı / Çıktı (Çin) */}
       {step2Done && (
         <Button
           size="sm"
           variant={canStep3 ? "primary" : "ghost"}
           onClick={() => canStep3 && handleIslemdenCikti()}
           disabled={!canStep3 || isLoading || actionInProgress !== null}
-          title={!canStep3 ? (step3Done ? "✓ Dosya işlemden çıktı" : "") : "Sonucu gir ve işlemi tamamla"}
+          title={!canStep3 ? (step3Done ? `✓ ${step3Label}` : "") : "Sonucu gir ve işlemi tamamla"}
           className={canStep3 ? "" : "opacity-50 cursor-not-allowed"}
         >
-          {step3Done ? "✓ İşlemden Çıktı" : "3. İşlemden Çıktı"}
+          {step3Done ? `✓ ${step3Label}` : `3. ${step3Label}`}
         </Button>
       )}
 

@@ -10,11 +10,12 @@ import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, VisaFileWithProfile } from "@/lib/supabase/types";
 
 function getStatusBadge(file: VisaFile) {
+  const isChina = file.hedef_ulke === "Çin";
   if (file.sonuc === "vize_onay") return <Badge variant="success">Vize Onay</Badge>;
   if (file.sonuc === "red") return <Badge variant="error">Reddedildi</Badge>;
-  if (file.islemden_cikti) return <Badge variant="purple">İşlemden Çıktı</Badge>;
+  if (file.islemden_cikti) return <Badge variant="purple">{isChina ? "Çıktı" : "İşlemden Çıktı"}</Badge>;
   if (file.basvuru_yapildi) return <Badge variant="info">İşlemde</Badge>;
-  if (file.dosya_hazir) return <Badge variant="info">Dosya Hazır</Badge>;
+  if (file.dosya_hazir) return <Badge variant="info">{isChina ? "Onay Geldi" : "Dosya Hazır"}</Badge>;
   if (file.evrak_eksik_mi) return <Badge variant="warning">Evrak Eksik</Badge>;
   if (file.evrak_durumu === "gelmedi") return <Badge variant="warning">Evrak Gelmedi</Badge>;
   return <Badge variant="default">Yeni</Badge>;
