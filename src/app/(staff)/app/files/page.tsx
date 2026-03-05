@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, Button, Input, Select, Checkbox, Modal, Badge } from "@/components/ui";
+import { Card, Button, Input, Select, Checkbox, Modal, Badge, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 import VisaFileForm from "@/components/files/VisaFileForm";
 import FileActions from "@/components/files/FileActions";
 import FileDetailModal from "@/components/files/FileDetailModal";
@@ -31,14 +31,6 @@ function formatDateTime(dateStr: string | null) {
 function getCurrencySymbol(currency: string) {
   const symbols: Record<string, string> = { TL: "₺", EUR: "€", USD: "$" };
   return symbols[currency] || currency;
-}
-
-function getAvatarStyle(file: VisaFile) {
-  if (file.sonuc === "vize_onay") return { bg: "bg-emerald-500", ring: "ring-emerald-200", text: "text-white" };
-  if (file.sonuc === "red") return { bg: "bg-red-500", ring: "ring-red-200", text: "text-white" };
-  if (file.basvuru_yapildi) return { bg: "bg-blue-500", ring: "ring-blue-200", text: "text-white" };
-  if (file.dosya_hazir) return { bg: "bg-amber-400", ring: "ring-amber-200", text: "text-white" };
-  return { bg: "bg-slate-200", ring: "ring-slate-100", text: "text-slate-600" };
 }
 
 export default function FilesPage() {
@@ -293,17 +285,13 @@ export default function FilesPage() {
                         className={`border-b border-navy-100 hover:bg-gradient-to-r hover:from-primary-50 hover:to-white transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-navy-50/50'}`}
                       >
                         <td className="py-4 px-4">
-                          {(() => { const av = getAvatarStyle(file); return (
                           <div className="flex items-center gap-3">
-                            <div className={`relative w-9 h-9 ${av.bg} rounded-full flex items-center justify-center ring-[3px] ${av.ring} transition-all`}>
-                              <span className={`${av.text} font-bold text-[13px] leading-none`}>{file.musteri_ad.charAt(0).toUpperCase()}</span>
-                            </div>
+                            <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />
                             <div className="min-w-0">
                               <p className="font-semibold text-navy-900 truncate">{file.musteri_ad}</p>
                               <p className="text-[11px] text-navy-400 font-mono">{file.pasaport_no}</p>
                             </div>
                           </div>
-                          ); })()}
                         </td>
                         <td className="py-4 px-4">
                           <Badge variant={file.islem_tipi === "randevulu" ? "info" : "default"}>{file.hedef_ulke}</Badge>
@@ -364,17 +352,13 @@ export default function FilesPage() {
                 {displayFiles.map((file) => (
                   <Card key={file.id} className="p-4 hover:shadow-lg transition-shadow border-l-4 border-l-primary-500">
                     <div className="flex justify-between items-start mb-3">
-                      {(() => { const av = getAvatarStyle(file); return (
                       <div className="flex items-center gap-3">
-                        <div className={`relative w-11 h-11 ${av.bg} rounded-full flex items-center justify-center ring-[3px] ${av.ring} transition-all`}>
-                          <span className={`${av.text} font-bold text-base leading-none`}>{file.musteri_ad.charAt(0).toUpperCase()}</span>
-                        </div>
+                        <CustomerAvatar name={file.musteri_ad} size="lg" status={resolveAvatarStatus(file)} />
                         <div className="min-w-0">
                           <p className="font-bold text-navy-900 truncate">{file.musteri_ad}</p>
                           <p className="text-sm text-navy-400 font-mono">{file.pasaport_no}</p>
                         </div>
                       </div>
-                      ); })()}
                       {getStatusBadge(file)}
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm mb-4">

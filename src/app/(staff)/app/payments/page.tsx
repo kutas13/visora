@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, Button, Badge, Modal, Input, Select } from "@/components/ui";
+import { Card, Button, Badge, Modal, Input, Select, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { notifyPaymentReceived } from "@/lib/notifications";
 import { ODEME_YONTEMLERI, PARA_BIRIMLERI, HESAP_SAHIPLERI } from "@/lib/constants";
@@ -332,9 +332,7 @@ export default function PaymentsPage() {
               {unpaidFiles.map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-4 hover:bg-navy-50/50 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 bg-navy-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="font-semibold text-navy-600 text-sm">{file.musteri_ad.charAt(0)}</span>
-                    </div>
+                    <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />
                     <div className="min-w-0">
                       <p className="font-semibold text-navy-900 text-sm truncate">{file.musteri_ad}</p>
                       <p className="text-xs text-navy-400">{file.hedef_ulke} · {file.pasaport_no}</p>

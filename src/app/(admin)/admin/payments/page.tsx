@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Select } from "@/components/ui";
+import { Select, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { PARA_BIRIMLERI } from "@/lib/constants";
@@ -171,8 +171,13 @@ export default function AdminPaymentsPage() {
                 {unpaidFiles.map(file => (
                   <tr key={file.id} className="border-b border-navy-50 hover:bg-navy-50/50">
                     <td className="py-2.5 px-4">
-                      <p className="font-medium text-navy-900">{file.musteri_ad}</p>
-                      <p className="text-[11px] text-navy-400">{file.pasaport_no}</p>
+                      <div className="flex items-center gap-2.5">
+                        <CustomerAvatar name={file.musteri_ad} size="sm" status={resolveAvatarStatus(file)} />
+                        <div>
+                          <p className="font-medium text-navy-900">{file.musteri_ad}</p>
+                          <p className="text-[11px] text-navy-400">{file.pasaport_no}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-2.5 px-4 text-navy-600">{file.hedef_ulke}</td>
                     <td className="py-2.5 px-4 text-right font-semibold text-navy-900">{fmtCur(file.ucret || 0, file.ucret_currency || "TL")}</td>

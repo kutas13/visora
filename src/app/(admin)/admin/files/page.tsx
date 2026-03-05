@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Badge, Modal, Select } from "@/components/ui";
+import { Badge, Modal, Select, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileTransferred } from "@/lib/notifications";
@@ -187,8 +187,13 @@ export default function AdminFilesPage() {
                 {filteredFiles.map((file) => (
                   <tr key={file.id} className="border-b border-navy-50 hover:bg-navy-50/50 transition-colors">
                     <td className="py-3 px-4">
-                      <p className="font-semibold text-navy-900">{file.musteri_ad}</p>
-                      <p className="text-xs text-navy-400">{file.pasaport_no}</p>
+                      <div className="flex items-center gap-2.5">
+                        <CustomerAvatar name={file.musteri_ad} size="sm" status={resolveAvatarStatus(file)} />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-navy-900">{file.musteri_ad}</p>
+                          <p className="text-xs text-navy-400">{file.pasaport_no}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-navy-600">{file.hedef_ulke}</td>
                     <td className="py-3 px-4">
