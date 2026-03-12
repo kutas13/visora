@@ -27,6 +27,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   const [sonucTarihi, setSonucTarihi] = useState(new Date().toISOString().split("T")[0]);
   const [vizeBitisTarihi, setVizeBitisTarihi] = useState("");
   const [musteriTelefon, setMusteriTelefon] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [sonucError, setSonucError] = useState<string | null>(null);
 
   // Dosya tamamlandı mı kontrolü
@@ -242,14 +243,19 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
           const wpData = await wpRes.json().catch(() => ({}));
           console.log("WhatsApp müşteri sonuç:", wpRes.status, wpData);
 
-          if (!wpRes.ok) {
+          if (wpRes.ok) {
+            setToast({ message: `${file.musteri_ad} müşterinize WhatsApp bilgilendirme mesajı gönderildi ✅`, type: "success" });
+            setTimeout(() => setToast(null), 4000);
+          } else {
             console.error("WhatsApp müşteri hata:", wpData);
+            setToast({ message: "WhatsApp mesajı gönderilemedi", type: "error" });
+            setTimeout(() => setToast(null), 4000);
           }
         } catch (wpErr) {
           console.error("Müşteri WhatsApp gönderilemedi:", wpErr);
+          setToast({ message: "WhatsApp mesajı gönderilemedi", type: "error" });
+          setTimeout(() => setToast(null), 4000);
         }
-      } else {
-        console.log("WhatsApp müşteri atlandı:", { cleanPhoneLen: cleanPhone.length, sonuc, musteriTelefon });
       }
 
       setShowSonucModal(false);
@@ -468,6 +474,23 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
           </div>
         </div>
       </Modal>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] animate-in fade-in slide-in-from-bottom-4">
+          <div className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-sm ${
+            toast.type === "success"
+              ? "bg-emerald-50/95 border-emerald-200 text-emerald-800"
+              : "bg-red-50/95 border-red-200 text-red-800"
+          }`}>
+            <span className={`flex items-center justify-center w-8 h-8 rounded-full flex-shrink-0 ${
+              toast.type === "success" ? "bg-emerald-500" : "bg-red-500"
+            }`}>
+              <span className="text-white text-sm">{toast.type === "success" ? "✓" : "✕"}</span>
+            </span>
+            <p className="text-sm font-medium">{toast.message}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
