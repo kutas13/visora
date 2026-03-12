@@ -75,7 +75,6 @@ export async function POST(request: NextRequest) {
     const { data: files, error } = await supabase
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
-      .eq("arsiv_mi", false)
       .eq("islem_tipi", "randevulu")
       .not("randevu_tarihi", "is", null)
       .is("sonuc", null);

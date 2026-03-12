@@ -78,8 +78,7 @@ export async function POST(request: NextRequest) {
     // Tüm aktif dosyaları getir
     const { data: files } = await supabase
       .from("visa_files")
-      .select("*, profiles:assigned_user_id(id, name)")
-      .eq("arsiv_mi", false);
+      .select("*, profiles:assigned_user_id(id, name)");
 
     if (!files) {
       return NextResponse.json({ success: true, created: 0, message: "Dosya bulunamadı" });

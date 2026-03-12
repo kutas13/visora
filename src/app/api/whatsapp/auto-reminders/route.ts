@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
           .select("*, profiles:assigned_user_id(name)")
           .eq("islem_tipi", "randevulu")
           .not("randevu_tarihi", "is", null)
-          .eq("arsiv_mi", false)
           .gte("randevu_tarihi", tomorrow.toISOString())
           .lt("randevu_tarihi", endDate.toISOString())
           .order("randevu_tarihi", { ascending: true });
@@ -100,7 +99,6 @@ export async function POST(request: NextRequest) {
           .select("*, profiles:assigned_user_id(name)")
           .eq("islem_tipi", "randevulu")
           .not("randevu_tarihi", "is", null)
-          .eq("arsiv_mi", false)
           .gte("randevu_tarihi", today.toISOString())
           .lt("randevu_tarihi", endDate.toISOString())
           .order("randevu_tarihi", { ascending: true });
@@ -138,7 +136,6 @@ export async function POST(request: NextRequest) {
         .select("*, profiles:assigned_user_id(name)")
         .not("vize_bitis_tarihi", "is", null)
         .eq("sonuc", "vize_onay")
-        .eq("arsiv_mi", false)
         .gte("vize_bitis_tarihi", today.toISOString())
         .lte("vize_bitis_tarihi", sixtyDaysLater.toISOString())
         .order("vize_bitis_tarihi", { ascending: true });
@@ -267,7 +264,6 @@ Fox Turizm Vize Hizmetleri`;
         .from("visa_files")
         .select("*, profiles:assigned_user_id(name)")
         .not("vize_bitis_tarihi", "is", null)
-        .eq("arsiv_mi", false)
         .gte("vize_bitis_tarihi", today.toISOString())
         .lte("vize_bitis_tarihi", thirtyDaysLater.toISOString())
         .order("vize_bitis_tarihi", { ascending: true });
