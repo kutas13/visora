@@ -231,6 +231,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
           let phone = cleanPhone;
           if (phone.startsWith("0")) phone = "90" + phone.slice(1);
           if (!phone.startsWith("90")) phone = "90" + phone;
+          phone = "+" + phone;
 
           console.log("WhatsApp müşteri mesajı gönderiliyor:", { phone, musteriAd: file.musteri_ad });
 
