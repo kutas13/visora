@@ -152,7 +152,6 @@ async function checkAppointments() {
     const { data: files, error } = await supabase
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
-      .eq("arsiv_mi", false)
       .not("randevu_tarihi", "is", null)
       .is("sonuc", null);
 

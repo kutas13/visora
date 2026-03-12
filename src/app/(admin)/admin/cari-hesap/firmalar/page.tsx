@@ -36,8 +36,7 @@ export default function AdminFirmaCariPage() {
         supabase
           .from("visa_files")
           .select("*, profiles:assigned_user_id(name)")
-          .eq("cari_tipi", "firma_cari")
-          .eq("arsiv_mi", false),
+          .eq("cari_tipi", "firma_cari"),
       ]);
 
       const companiesData = companiesRes.data || [];

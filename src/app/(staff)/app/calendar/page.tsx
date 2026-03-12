@@ -52,7 +52,7 @@ export default function CalendarPage() {
     if (user) setUid(user.id);
     const today = new Date(); today.setHours(0,0,0,0);
     const { data } = await sb.from("visa_files").select("*, profiles:assigned_user_id(name)")
-      .eq("islem_tipi","randevulu").not("randevu_tarihi","is",null).eq("arsiv_mi",false)
+      .eq("islem_tipi","randevulu").not("randevu_tarihi","is",null)
       .gte("randevu_tarihi", today.toISOString()).order("randevu_tarihi",{ascending:true});
     setAppointments(data||[]); setLoading(false);
   };

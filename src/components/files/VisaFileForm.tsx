@@ -58,8 +58,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
-  const [tlKarsiligi, setTlKarsiligi] = useState<number | null>(null);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 0, EUR: 0, TL: 1 });
+  const [pesinEntries, setPesinEntries] = useState<{ amount: string; currency: string }[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -330,16 +330,21 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
             await supabase.from("payments").insert({
               file_id: newFile.id,
               tutar: ucretNum,
-              yontem: "nakit",
+              yontem: hesapSahibi ? "hesaba" : "nakit",
               durum: "odendi",
               currency: ucretCurrency,
               payment_type: "pesin_satis",
               created_by: user.id,
             });
 
+            const validPesinEntries = pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
+            const breakdownText = validPesinEntries.length > 0
+              ? validPesinEntries.map(e => `${parseFloat(e.amount).toLocaleString("tr-TR")} ${e.currency}`).join(" + ")
+              : `${ucretNum} ${ucretCurrency}`;
+
             await supabase.from("activity_logs").insert({
               type: "payment_added",
-              message: `Peşin satış: ${ucretNum} ${ucretCurrency}`,
+              message: `Peşin satış: ${breakdownText}`,
               file_id: newFile.id,
               actor_id: user.id,
             });
@@ -369,9 +374,10 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   emailType: "pesin_satis",
                   dekontBase64,
                   dekontName,
-                  tlKarsiligi: tlKarsiligi ? String(tlKarsiligi) : null,
                   dosyaCurrency: ucretCurrency,
                   dosyaTutar: ucretNum,
+                  tlKarsiligi: validPesinEntries.length === 1 && validPesinEntries[0].currency === "TL" && ucretCurrency !== "TL" ? validPesinEntries[0].amount : null,
+                  paymentBreakdown: validPesinEntries.length > 1 ? validPesinEntries.map(e => ({ tutar: parseFloat(e.amount), currency: e.currency })) : null,
                 }),
               });
               if (!emailRes.ok) {
@@ -591,25 +597,93 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
               </label>
             </div>
             {ucretCurrency !== "TL" && ucret && parseFloat(ucret) > 0 && exchangeRates[ucretCurrency] > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">TL Karşılığı</p>
-                <button
-                  type="button"
-                  onClick={() => setTlKarsiligi(Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]))}
-                  className={`w-full rounded-xl border-2 p-3 text-left transition-all ${tlKarsiligi ? "border-green-500 bg-green-50" : "border-green-200 bg-white hover:border-green-400"} active:scale-[0.98]`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-500 text-white text-xs font-bold">₺</span>
-                      <span className="text-sm font-bold text-green-800">TL Karşılığı Aldım</span>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Ödeme Kalemleri</p>
+                  <button type="button" onClick={() => setPesinEntries(prev => [...prev, { amount: "", currency: "TL" }])} className="text-xs text-green-600 hover:text-green-800 font-medium flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                    Kalem Ekle
+                  </button>
+                </div>
+
+                {pesinEntries.map((entry, idx) => (
+                  <div key={idx} className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Input label={idx === 0 ? "Tutar" : undefined} type="number" placeholder="0" value={entry.amount} onChange={(e) => {
+                        const next = [...pesinEntries]; next[idx] = { ...next[idx], amount: e.target.value }; setPesinEntries(next);
+                      }} />
                     </div>
-                    <span className="text-sm font-black text-green-700">{Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]).toLocaleString("tr-TR")} ₺</span>
+                    <div className="w-24">
+                      <select value={entry.currency} onChange={(e) => { const next = [...pesinEntries]; next[idx] = { ...next[idx], currency: e.target.value }; setPesinEntries(next); }} className="w-full px-2 py-2.5 border border-green-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="TL">TL ₺</option>
+                        <option value="EUR">EUR €</option>
+                        <option value="USD">USD $</option>
+                      </select>
+                    </div>
+                    {pesinEntries.length > 1 && (
+                      <button type="button" onClick={() => setPesinEntries(prev => prev.filter((_, i) => i !== idx))} className="p-2.5 text-red-400 hover:text-red-600 rounded-lg">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    )}
                   </div>
-                  {tlKarsiligi && <p className="text-[10px] text-green-600 mt-1 ml-9">Kur: 1 {ucretCurrency} = {exchangeRates[ucretCurrency]} TL</p>}
-                </button>
-                {tlKarsiligi && (
-                  <button type="button" onClick={() => setTlKarsiligi(null)} className="text-[10px] text-red-500 hover:text-red-700">Kaldır</button>
+                ))}
+
+                {pesinEntries.length > 0 && pesinEntries.some(e => e.amount && parseFloat(e.amount) > 0) && (
+                  <div className="bg-green-100 border border-green-200 rounded-lg p-2.5">
+                    <p className="text-xs font-semibold text-green-700">
+                      Toplam: {pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0).map(e => `${parseFloat(e.amount).toLocaleString("tr-TR")} ${({TL:"₺",EUR:"€",USD:"$"} as any)[e.currency] || e.currency}`).join(" + ")}
+                    </p>
+                  </div>
                 )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => {
+                    const tl = Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]);
+                    setPesinEntries([{ amount: String(tl), currency: "TL" }]);
+                  }} className="rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 text-left transition-all hover:border-emerald-400 hover:shadow-md active:scale-[0.98]">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500 text-white text-xs font-bold">₺</span>
+                      <span className="text-xs font-bold text-emerald-800">TL Aldım</span>
+                    </div>
+                    <p className="text-sm font-black text-emerald-700 ml-8">{Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]).toLocaleString("tr-TR")} ₺</p>
+                  </button>
+
+                  <button type="button" onClick={() => {
+                    setPesinEntries([{ amount: ucret, currency: ucretCurrency }]);
+                  }} className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 text-left transition-all hover:border-blue-400 hover:shadow-md active:scale-[0.98]">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500 text-white text-xs font-bold">{({TL:"₺",EUR:"€",USD:"$"} as any)[ucretCurrency]}</span>
+                      <span className="text-xs font-bold text-blue-800">{ucretCurrency} Aldım</span>
+                    </div>
+                    <p className="text-sm font-black text-blue-700 ml-8">{parseFloat(ucret).toLocaleString("tr-TR")} {({TL:"₺",EUR:"€",USD:"$"} as any)[ucretCurrency]}</p>
+                  </button>
+
+                  {ucretCurrency === "USD" && exchangeRates.EUR > 0 && (
+                    <button type="button" onClick={() => {
+                      const eur = Math.round(parseFloat(ucret) * exchangeRates.USD / exchangeRates.EUR);
+                      setPesinEntries([{ amount: String(eur), currency: "EUR" }]);
+                    }} className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100 p-2.5 text-left transition-all hover:border-violet-400 hover:shadow-md active:scale-[0.98]">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-violet-500 text-white text-xs font-bold">€</span>
+                        <span className="text-xs font-bold text-violet-800">EUR Aldım</span>
+                      </div>
+                      <p className="text-sm font-black text-violet-700 ml-8">{Math.round(parseFloat(ucret) * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR")} €</p>
+                    </button>
+                  )}
+
+                  {ucretCurrency === "EUR" && exchangeRates.USD > 0 && (
+                    <button type="button" onClick={() => {
+                      const usd = Math.round(parseFloat(ucret) * exchangeRates.EUR / exchangeRates.USD);
+                      setPesinEntries([{ amount: String(usd), currency: "USD" }]);
+                    }} className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-2.5 text-left transition-all hover:border-amber-400 hover:shadow-md active:scale-[0.98]">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-500 text-white text-xs font-bold">$</span>
+                        <span className="text-xs font-bold text-amber-800">USD Aldım</span>
+                      </div>
+                      <p className="text-sm font-black text-amber-700 ml-8">{Math.round(parseFloat(ucret) * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR")} $</p>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
