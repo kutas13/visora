@@ -58,6 +58,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
+  const [tlKarsiligi, setTlKarsiligi] = useState<number | null>(null);
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 0, EUR: 0, TL: 1 });
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +96,6 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     });
   };
 
-  // Kullanıcı adını yükle
   useEffect(() => {
     const loadUserName = async () => {
       const supabase = createClient();
@@ -103,10 +104,11 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
         const name = profile?.name || "Kullanıcı";
         setUserName(name);
-        setCariSahibi(name); // Cari sahibini otomatik ayarla
+        setCariSahibi(name);
       }
     };
     loadUserName();
+    fetch("/api/exchange-rates").then(r => r.json()).then(d => { if (d.rates) setExchangeRates(d.rates); }).catch(() => {});
   }, []);
 
   // Firma listesi yükle + edit modunda mevcut firmayı seç
@@ -367,6 +369,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   emailType: "pesin_satis",
                   dekontBase64,
                   dekontName,
+                  tlKarsiligi: tlKarsiligi ? String(tlKarsiligi) : null,
+                  dosyaCurrency: ucretCurrency,
+                  dosyaTutar: ucretNum,
                 }),
               });
               if (!emailRes.ok) {
@@ -585,6 +590,29 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                 Hesaba
               </label>
             </div>
+            {ucretCurrency !== "TL" && ucret && parseFloat(ucret) > 0 && exchangeRates[ucretCurrency] > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">TL Karşılığı</p>
+                <button
+                  type="button"
+                  onClick={() => setTlKarsiligi(Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]))}
+                  className={`w-full rounded-xl border-2 p-3 text-left transition-all ${tlKarsiligi ? "border-green-500 bg-green-50" : "border-green-200 bg-white hover:border-green-400"} active:scale-[0.98]`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-500 text-white text-xs font-bold">₺</span>
+                      <span className="text-sm font-bold text-green-800">TL Karşılığı Aldım</span>
+                    </div>
+                    <span className="text-sm font-black text-green-700">{Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]).toLocaleString("tr-TR")} ₺</span>
+                  </div>
+                  {tlKarsiligi && <p className="text-[10px] text-green-600 mt-1 ml-9">Kur: 1 {ucretCurrency} = {exchangeRates[ucretCurrency]} TL</p>}
+                </button>
+                {tlKarsiligi && (
+                  <button type="button" onClick={() => setTlKarsiligi(null)} className="text-[10px] text-red-500 hover:text-red-700">Kaldır</button>
+                )}
+              </div>
+            )}
+
             {hesapSahibi && (
               <>
                 <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi || ""} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />

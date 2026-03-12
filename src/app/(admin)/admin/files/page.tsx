@@ -66,14 +66,8 @@ export default function AdminFilesPage() {
   const loadData = async () => {
     const supabase = createClient();
 
-    await supabase
-      .from("visa_files")
-      .update({ arsiv_mi: true })
-      .eq("arsiv_mi", false)
-      .not("sonuc", "is", null);
-
     const [filesRes, profilesRes] = await Promise.all([
-      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("arsiv_mi", false).order("created_at", { ascending: false }),
+      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").is("sonuc", null).order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").eq("role", "staff"),
     ]);
     setFiles(filesRes.data || []);

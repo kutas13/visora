@@ -71,10 +71,11 @@ export async function POST(request: NextRequest) {
 
     let plainBody: string;
     if (isPesin) {
+      const tlEkPesin = tlKarsiligi ? ` (TL karşılığı ${Number(tlKarsiligi).toLocaleString("tr-TR")} TL olarak alınmıştır)` : "";
       if (yontem === "nakit") {
-        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} peşin nakit olarak alınmıştır${faturaBilgisi}`;
+        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} peşin nakit olarak alınmıştır${tlEkPesin}${faturaBilgisi}`;
       } else {
-        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} peşin hesaba ödenmiştir${hesapBilgisi}${faturaBilgisi}`;
+        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} peşin hesaba ödenmiştir${hesapBilgisi}${tlEkPesin}${faturaBilgisi}`;
       }
     } else if (isOnOdeme) {
       plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize işlemi için ${amt} ${ct} ön ödeme alınmıştır (cari hesapta kalan tutar takip edilecek)`;

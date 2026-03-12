@@ -43,7 +43,6 @@ export default function FilesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterIslemTipi, setFilterIslemTipi] = useState("all");
   const [filterUlke, setFilterUlke] = useState("all");
-  const [filterArsiv, setFilterArsiv] = useState(false);
   const [isManualCountry, setIsManualCountry] = useState(false);
   const [manualCountryFilter, setManualCountryFilter] = useState("");
   const [stepFilter, setStepFilter] = useState<string>("all");
@@ -60,19 +59,10 @@ export default function FilesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) setCurrentUserId(user.id);
-
-    if (!filterArsiv) {
-      await supabase
-        .from("visa_files")
-        .update({ arsiv_mi: true })
-        .eq("arsiv_mi", false)
-        .not("sonuc", "is", null);
-    }
     
     let query = supabase
       .from("visa_files")
-      .select("*, profiles:assigned_user_id(name)")
-      .eq("arsiv_mi", filterArsiv);
+      .select("*, profiles:assigned_user_id(name)");
 
     if (user) {
       const { data: profile } = await supabase
@@ -107,7 +97,7 @@ export default function FilesPage() {
       setFiles(sorted);
     }
     setLoading(false);
-  }, [searchTerm, filterIslemTipi, filterUlke, filterArsiv, isManualCountry, manualCountryFilter]);
+  }, [searchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter]);
 
   useEffect(() => { loadFiles(); }, [loadFiles]);
 
@@ -172,7 +162,7 @@ export default function FilesPage() {
               </svg>
               Filtreler
             </h3>
-            <button onClick={() => { setSearchTerm(""); setFilterIslemTipi("all"); setFilterUlke("all"); setFilterArsiv(false); }} className="text-sm text-navy-200 hover:text-white transition-colors">
+            <button onClick={() => { setSearchTerm(""); setFilterIslemTipi("all"); setFilterUlke("all"); }} className="text-sm text-navy-200 hover:text-white transition-colors">
               Temizle
             </button>
           </div>
@@ -189,7 +179,6 @@ export default function FilesPage() {
               {isManualCountry ? <Input placeholder="Ülke adı..." value={manualCountryFilter} onChange={(e) => setManualCountryFilter(e.target.value)} /> : <Select options={TARGET_COUNTRIES} value={filterUlke} onChange={(e) => setFilterUlke(e.target.value)} />}
             </div>
             <div className="flex flex-col justify-end gap-3">
-              <Checkbox label="Arşivlenmiş dosyaları göster" checked={filterArsiv} onChange={(e) => setFilterArsiv(e.target.checked)} />
               <Button onClick={loadFiles} className="w-full">
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -209,19 +198,22 @@ export default function FilesPage() {
           { key: "evrak_eksik", label: "Evrak Eksik", color: "orange" },
           { key: "dosya_hazir", label: "Dosya Hazır", color: "blue" },
           { key: "islemde", label: "İşleme Girdi", color: "indigo" },
+          { key: "sonuclanan", label: "Sonuçlanan", color: "emerald" },
         ].map((step) => {
-          const count = step.key === "all" ? files.length
-            : step.key === "yeni" ? files.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi).length
-            : step.key === "evrak_eksik" ? files.filter(f => f.evrak_eksik_mi && !f.dosya_hazir).length
-            : step.key === "dosya_hazir" ? files.filter(f => f.dosya_hazir && !f.basvuru_yapildi).length
-            : files.filter(f => f.basvuru_yapildi && !f.islemden_cikti).length;
+          const activeFiles = files.filter(f => !f.sonuc);
+          const count = step.key === "all" ? activeFiles.length
+            : step.key === "yeni" ? activeFiles.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi).length
+            : step.key === "evrak_eksik" ? activeFiles.filter(f => f.evrak_eksik_mi && !f.dosya_hazir).length
+            : step.key === "dosya_hazir" ? activeFiles.filter(f => f.dosya_hazir && !f.basvuru_yapildi).length
+            : step.key === "islemde" ? activeFiles.filter(f => f.basvuru_yapildi && !f.islemden_cikti).length
+            : files.filter(f => !!f.sonuc).length;
           return (
             <button
               key={step.key}
               onClick={() => setStepFilter(step.key)}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 stepFilter === step.key
-                  ? "bg-navy-900 text-white shadow-md"
+                  ? step.key === "sonuclanan" ? "bg-emerald-600 text-white shadow-md" : "bg-navy-900 text-white shadow-md"
                   : "bg-white text-navy-600 border border-navy-200 hover:border-navy-400"
               }`}
             >
@@ -249,11 +241,13 @@ export default function FilesPage() {
               <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
             </div>
           ) : (() => {
-            const displayFiles = stepFilter === "all" ? files
-              : stepFilter === "yeni" ? files.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi)
-              : stepFilter === "evrak_eksik" ? files.filter(f => f.evrak_eksik_mi && !f.dosya_hazir)
-              : stepFilter === "dosya_hazir" ? files.filter(f => f.dosya_hazir && !f.basvuru_yapildi)
-              : files.filter(f => f.basvuru_yapildi && !f.islemden_cikti);
+            const activeFiles = files.filter(f => !f.sonuc);
+            const displayFiles = stepFilter === "sonuclanan" ? files.filter(f => !!f.sonuc)
+              : stepFilter === "all" ? activeFiles
+              : stepFilter === "yeni" ? activeFiles.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi)
+              : stepFilter === "evrak_eksik" ? activeFiles.filter(f => f.evrak_eksik_mi && !f.dosya_hazir)
+              : stepFilter === "dosya_hazir" ? activeFiles.filter(f => f.dosya_hazir && !f.basvuru_yapildi)
+              : activeFiles.filter(f => f.basvuru_yapildi && !f.islemden_cikti);
             return displayFiles.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-24 h-24 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
