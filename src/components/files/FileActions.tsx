@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Modal, Input, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileStatusChanged } from "@/lib/notifications";
+import { STAFF_USERS, ADMIN_USER } from "@/lib/constants";
 import type { VisaFile, VizeSonucu } from "@/lib/supabase/types";
 
 interface FileActionsProps {
@@ -189,6 +190,49 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       ]);
 
       await notifyFileStatusChanged(file.id, file.musteri_ad, `İşlemden Çıktı - ${sonucText}`, logMessage, user.id, userName);
+
+      if (musteriTelefon && musteriTelefon.length >= 10 && sonuc === "vize_onay") {
+        try {
+          const staffInfo = [...STAFF_USERS, ADMIN_USER].find(
+            s => s.name.toUpperCase() === userName.toUpperCase()
+          );
+          const staffPhone = staffInfo?.phone || "";
+          const staffHitap = staffInfo?.hitap || userName;
+          const bitisTarihStr = vizeBitisTarihi
+            ? new Date(vizeBitisTarihi).toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" })
+            : "";
+
+          const message = [
+            `Sayın ${file.musteri_ad},`,
+            ``,
+            `${file.hedef_ulke} vize başvurunuz *onaylanmıştır*. ✅`,
+            ``,
+            `📅 Vize Bitiş Tarihi: ${bitisTarihStr}`,
+            ``,
+            `Pasaportunuzu ofisimizden teslim alabilirsiniz.`,
+            ``,
+            `Vize bitiş tarihiniz yaklaştığında tarafınıza tekrar bilgilendirme yapılacaktır.`,
+            ``,
+            `Bizi tercih ettiğiniz için teşekkür ederiz. 🙏`,
+            ``,
+            `*Fox Turizm*`,
+            `${staffHitap}`,
+            staffPhone ? `📞 ${staffPhone}` : ``,
+          ].filter(Boolean).join("\n");
+
+          let phone = musteriTelefon.replace(/\D/g, "");
+          if (phone.startsWith("0")) phone = "90" + phone.slice(1);
+          if (!phone.startsWith("90")) phone = "90" + phone;
+
+          await fetch("/api/whatsapp/send-direct", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone, message }),
+          });
+        } catch (wpErr) {
+          console.error("Müşteri WhatsApp gönderilemedi:", wpErr);
+        }
+      }
 
       setShowSonucModal(false);
       onUpdate();
