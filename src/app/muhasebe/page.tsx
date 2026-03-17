@@ -138,85 +138,87 @@ export default function MuhasebePage() {
     );
   }
 
+  const devamCount = allFiles.filter(f => !f.sonuc).length;
+  const sonuclananCount = allFiles.filter(f => f.sonuc !== null).length;
+  const statusCounts: Record<string, number> = {
+    all: allFiles.length,
+    devam: devamCount,
+    sonuclanan: sonuclananCount,
+  };
+
   return (
-    <div className="min-h-screen bg-navy-50">
-      {/* Header - Admin panel stili */}
-      <header className="bg-white border-b border-navy-200 shadow-sm">
-        <div className="px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-[1400px] mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-lg">₺</span>
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">₺</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-navy-900">Muhasebe Paneli</h1>
-              <p className="text-sm text-navy-500">Fox Turizm - Dosya Görüntüleme</p>
+              <h1 className="text-lg font-bold text-gray-900">Muhasebe</h1>
+              <p className="text-xs text-gray-500">Fox Turizm</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => window.location.href = "/muhasebe/firmalar"}
-              className="border-navy-200 text-navy-600 hover:bg-navy-50"
+              className="text-xs"
             >
               Firmalar
             </Button>
             <button
               onClick={loadData}
-              className="p-2 rounded-lg text-navy-500 hover:bg-navy-100 hover:text-navy-700 transition-colors"
+              className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
               title="Yenile"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
-            <div className="text-right border-l border-navy-200 pl-4">
-              <p className="text-sm font-medium text-navy-800">SIRRI</p>
-              <p className="text-xs text-navy-500">muhasebe@foxturizm.com</p>
-            </div>
-            <Button variant="outline" onClick={handleLogout} className="border-navy-200 text-navy-600 hover:bg-navy-50">
+            <div className="h-6 w-px bg-gray-200" />
+            <span className="text-sm font-medium text-gray-700">SIRRI</span>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="text-xs">
               Çıkış
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="flex">
-        {/* Sol Panel - Durum Filtreleri */}
-        <aside className="w-64 flex-shrink-0 border-r border-navy-200 bg-white p-4">
-          <h3 className="text-xs font-semibold text-navy-500 uppercase tracking-wider mb-3">Durum</h3>
-          <div className="space-y-1 mb-6">
-            {STATUS_FILTERS.map((s) => {
-              const isActive = filterStatus === s.value;
-              return (
-                <button
-                  key={s.value}
-                  onClick={() => setFilterStatus(s.value)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${
-                    isActive ? "bg-primary-100 text-primary-700 border border-primary-200" : "text-navy-600 hover:bg-navy-50 border border-transparent"
-                  }`}
-                >
-                  <span className="w-6 h-6 rounded-md flex items-center justify-center bg-white/80 text-base">{s.icon}</span>
-                  <span>{s.label}</span>
-                  {isActive && (
-                    <svg className="w-4 h-4 ml-auto text-primary-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+      <div className="max-w-[1400px] mx-auto px-6 py-5">
+        {/* Durum Sekmeleri */}
+        <div className="flex items-center gap-1 mb-5 bg-white rounded-xl p-1 border border-gray-200 w-fit">
+          {STATUS_FILTERS.map((s) => {
+            const isActive = filterStatus === s.value;
+            return (
+              <button
+                key={s.value}
+                onClick={() => setFilterStatus(s.value)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <span className="text-base">{s.icon}</span>
+                <span>{s.label}</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-xs font-semibold ${
+                  isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {statusCounts[s.value] || 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-        </aside>
-
-        {/* Ana İçerik */}
-        <div className="flex-1 p-4 md:p-6 max-w-5xl">
-        {/* Filtreler */}
-        <div className="space-y-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Dosyalar:</span>
+        {/* Araç Çubuğu */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Personel Filtreleri */}
+            <div className="flex items-center gap-1.5">
               {MUHASEBE_FILTERS.map((f) => {
                 const isActive = filterStaff === f.value;
                 const avatarKey = f.value !== "all" ? f.value : "";
@@ -224,136 +226,147 @@ export default function MuhasebePage() {
                   <button
                     key={f.value}
                     onClick={() => setFilterStaff(f.value)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-                      isActive ? "bg-navy-900 text-white border-navy-900 shadow-md" : "bg-white text-navy-600 border-navy-200 hover:border-navy-400"
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                      isActive
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                     }`}
                   >
                     {avatarKey && USER_AVATARS[avatarKey] ? (
-                      <div className={`w-5 h-5 rounded-full overflow-hidden flex-shrink-0 ${isActive ? "ring-1 ring-white" : "ring-1 ring-navy-200"}`}>
+                      <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
                         <Image src={USER_AVATARS[avatarKey]} alt={f.label} width={20} height={20} className="w-full h-full object-cover" />
                       </div>
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    )}
+                    ) : null}
                     {f.label}
                   </button>
                 );
               })}
             </div>
-            <div className="flex flex-1 flex-wrap items-center gap-3 min-w-0">
-              <div className="flex-1 min-w-[200px] sm:max-w-[260px]">
-                <Input
-                  placeholder="İsim, pasaport veya ülke ara..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
-                dateFilterActive ? "bg-primary-50 border-primary-200" : "bg-white border-navy-200"
-              }`}>
-                <svg className="w-4 h-4 text-navy-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <input
-                  type="date"
-                  value={dateStart}
-                  onChange={(e) => setDateStart(e.target.value)}
-                  className="w-[130px] px-2 py-1.5 border border-navy-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-                />
-                <span className="text-navy-400 text-sm">–</span>
-                <input
-                  type="date"
-                  value={dateEnd}
-                  onChange={(e) => setDateEnd(e.target.value)}
-                  className="w-[130px] px-2 py-1.5 border border-navy-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
-                />
+
+            <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+            {/* Arama */}
+            <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="İsim, pasaport, ülke..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-400"
+              />
+            </div>
+
+            <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+            {/* Tarih Aralığı */}
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <input
+                type="date"
+                value={dateStart}
+                onChange={(e) => setDateStart(e.target.value)}
+                className="px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+              />
+              <span className="text-gray-300 text-sm">–</span>
+              <input
+                type="date"
+                value={dateEnd}
+                onChange={(e) => setDateEnd(e.target.value)}
+                className="px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+              />
+              <button
+                onClick={() => setDateFilterActive(!dateFilterActive)}
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  dateFilterActive
+                    ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {dateFilterActive ? "Aktif" : "Filtrele"}
+              </button>
+              {dateFilterActive && (
                 <button
-                  onClick={() => setDateFilterActive(!dateFilterActive)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    dateFilterActive ? "bg-primary-600 text-white hover:bg-primary-700" : "bg-navy-100 text-navy-600 hover:bg-navy-200"
-                  }`}
+                  onClick={() => { setDateFilterActive(false); setDateStart(toDateStr(monthAgo)); setDateEnd(toDateStr(today)); }}
+                  className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                  title="Temizle"
                 >
-                  {dateFilterActive ? "Aktif" : "Uygula"}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                {dateFilterActive && (
-                  <button
-                    onClick={() => { setDateFilterActive(false); setDateStart(toDateStr(monthAgo)); setDateEnd(toDateStr(today)); }}
-                    className="p-1.5 rounded-md text-navy-400 hover:bg-navy-100 hover:text-navy-600 transition-colors"
-                    title="Temizle"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </div>
-          <p className="text-xs text-navy-400 font-medium">
-            {filteredFiles.length} dosya
+        </div>
+
+        {/* Dosya Sayısı */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm text-gray-500">
+            <span className="font-semibold text-gray-800">{filteredFiles.length}</span> dosya listeleniyor
           </p>
         </div>
 
         {/* Dosya Tablosu */}
-        <Card className="overflow-hidden shadow-lg border border-navy-200">
-          <div className="bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-4">
-            <h3 className="text-white font-semibold flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Dosyalar
-              <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{filteredFiles.length}</span>
-            </h3>
-          </div>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             {filteredFiles.length === 0 ? (
-              <div className="p-12 text-center">
-                <div className="w-16 h-16 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <div className="p-16 text-center">
+                <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <p className="text-navy-500 font-medium">Dosya bulunamadı</p>
-                <p className="text-sm text-navy-400 mt-1">{searchTerm || filterStaff !== "all" || dateFilterActive ? "Filtreleri değiştirmeyi deneyin" : "Henüz dosya yok"}</p>
+                <p className="text-gray-600 font-medium">Dosya bulunamadı</p>
+                <p className="text-sm text-gray-400 mt-1">Filtre ayarlarını değiştirmeyi deneyin</p>
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-navy-200 bg-navy-50/50">
-                    <th className="text-left py-3 px-4 text-navy-600 font-medium">Müşteri</th>
-                    <th className="text-left py-3 px-4 text-navy-600 font-medium">Ülke</th>
-                    <th className="text-right py-3 px-4 text-navy-600 font-medium">Ücret</th>
-                    <th className="text-center py-3 px-4 text-navy-600 font-medium">Ödeme Durumu</th>
-                    <th className="text-left py-3 px-4 text-navy-600 font-medium">Dosyayı Yapan</th>
-                    <th className="text-right py-3 px-4 text-navy-600 font-medium">Tarih</th>
-                    <th className="text-center py-3 px-4 text-navy-600 font-medium">Özgeçmiş</th>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Müşteri</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ülke</th>
+                    <th className="text-right py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ücret</th>
+                    <th className="text-center py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ödeme</th>
+                    <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Personel</th>
+                    <th className="text-right py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tarih</th>
+                    <th className="text-center py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Detay</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-50">
                   {filteredFiles.map((f) => (
-                    <tr key={f.id} className="border-b border-navy-100 hover:bg-navy-50/50 transition-colors">
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-navy-900">{f.musteri_ad}</p>
-                        <p className="text-xs text-navy-400">{f.pasaport_no}</p>
+                    <tr key={f.id} className="hover:bg-gray-50/80 transition-colors group">
+                      <td className="py-3.5 px-5">
+                        <p className="font-medium text-gray-900">{f.musteri_ad}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{f.pasaport_no}</p>
                       </td>
-                      <td className="py-3 px-4 text-navy-600">{f.hedef_ulke}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-navy-900">
+                      <td className="py-3.5 px-5 text-gray-600">{f.hedef_ulke}</td>
+                      <td className="py-3.5 px-5 text-right font-semibold text-gray-900">
                         {fmt(Number(f.ucret) || 0, f.ucret_currency || "TL")}
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-3.5 px-5 text-center">
                         {f.odeme_durumu === "odendi" ? (
-                          <Badge variant="success" size="sm">Ödendi</Badge>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Ödendi
+                          </span>
                         ) : (
-                          <Badge variant="warning" size="sm">Ödenmedi</Badge>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            Ödenmedi
+                          </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-navy-600">{f.profiles?.name || "-"}</td>
-                      <td className="py-3 px-4 text-right text-navy-500">{formatDate(f.created_at)}</td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-3.5 px-5">
+                        <span className="text-gray-600">{f.profiles?.name || "—"}</span>
+                      </td>
+                      <td className="py-3.5 px-5 text-right text-gray-500 text-xs">{formatDate(f.created_at)}</td>
+                      <td className="py-3.5 px-5 text-center">
                         <button
                           onClick={() => { setDetailFileId(f.id); setShowDetailModal(true); }}
-                          className="px-2 py-1.5 text-xs font-medium bg-primary-100 text-primary-700 hover:bg-primary-200 rounded-lg transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors opacity-70 group-hover:opacity-100"
                         >
                           Görüntüle
                         </button>
@@ -364,7 +377,6 @@ export default function MuhasebePage() {
               </table>
             )}
           </div>
-        </Card>
         </div>
       </div>
 
