@@ -41,6 +41,11 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function toDateStr(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function MuhasebePage() {
   const [allFiles, setAllFiles] = useState<VisaFileWithProfile[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -48,6 +53,11 @@ export default function MuhasebePage() {
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const today = new Date();
+  const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const [dateStart, setDateStart] = useState(toDateStr(monthAgo));
+  const [dateEnd, setDateEnd] = useState(toDateStr(today));
+  const [dateFilterActive, setDateFilterActive] = useState(false);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const loadData = useCallback(async () => {
@@ -99,8 +109,16 @@ export default function MuhasebePage() {
         f.hedef_ulke?.toLowerCase().includes(q)
       );
     }
+    if (dateFilterActive && dateStart && dateEnd) {
+      const start = new Date(dateStart); start.setHours(0, 0, 0, 0);
+      const end = new Date(dateEnd); end.setHours(23, 59, 59, 999);
+      result = result.filter(f => {
+        const d = new Date(f.created_at);
+        return d >= start && d <= end;
+      });
+    }
     return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [allFiles, filterStaff, filterStatus, searchTerm, getCariKey]);
+  }, [allFiles, filterStaff, filterStatus, searchTerm, dateFilterActive, dateStart, dateEnd, getCariKey]);
 
   const handleLogout = async () => {
     const { createClient } = await import("@/lib/supabase/client");
@@ -167,7 +185,7 @@ export default function MuhasebePage() {
         {/* Sol Panel - Durum Filtreleri */}
         <aside className="w-64 flex-shrink-0 border-r border-navy-200 bg-white p-4">
           <h3 className="text-xs font-semibold text-navy-500 uppercase tracking-wider mb-3">Durum</h3>
-          <div className="space-y-1">
+          <div className="space-y-1 mb-6">
             {STATUS_FILTERS.map((s) => {
               const isActive = filterStatus === s.value;
               return (
@@ -188,6 +206,47 @@ export default function MuhasebePage() {
                 </button>
               );
             })}
+          </div>
+
+          <h3 className="text-xs font-semibold text-navy-500 uppercase tracking-wider mb-3">Tarih Aralığı</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-navy-500 mb-1">Başlangıç</label>
+              <input
+                type="date"
+                value={dateStart}
+                onChange={(e) => setDateStart(e.target.value)}
+                className="w-full px-2.5 py-2 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-navy-500 mb-1">Bitiş</label>
+              <input
+                type="date"
+                value={dateEnd}
+                onChange={(e) => setDateEnd(e.target.value)}
+                className="w-full px-2.5 py-2 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDateFilterActive(!dateFilterActive)}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  dateFilterActive ? "bg-primary-600 text-white" : "bg-navy-100 text-navy-600 hover:bg-navy-200"
+                }`}
+              >
+                {dateFilterActive ? "Aktif" : "Uygula"}
+              </button>
+              {dateFilterActive && (
+                <button
+                  onClick={() => { setDateFilterActive(false); setDateStart(toDateStr(monthAgo)); setDateEnd(toDateStr(today)); }}
+                  className="px-2 py-2 text-navy-500 hover:text-navy-700"
+                  title="Temizle"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              )}
+            </div>
           </div>
         </aside>
 
@@ -257,7 +316,7 @@ export default function MuhasebePage() {
                   </svg>
                 </div>
                 <p className="text-navy-500 font-medium">Dosya bulunamadı</p>
-                <p className="text-sm text-navy-400 mt-1">{searchTerm || filterStaff !== "all" ? "Filtreleri değiştirmeyi deneyin" : "Henüz cari dosya yok"}</p>
+                <p className="text-sm text-navy-400 mt-1">{searchTerm || filterStaff !== "all" || dateFilterActive ? "Filtreleri değiştirmeyi deneyin" : "Henüz dosya yok"}</p>
               </div>
             ) : (
               <table className="w-full text-sm">
