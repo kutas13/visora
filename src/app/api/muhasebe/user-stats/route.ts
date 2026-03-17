@@ -27,57 +27,49 @@ export async function GET(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Tüm verileri tek seferde çek (admin cari hesap sayfasıyla aynı mantık)
-    const [profilesRes, filesRes, paymentsRes] = await Promise.all([
+    // Muhasebe TÜM dosyaları görsün (admin ile aynı - cari/peşin/firma_cari fark etmez)
+    const [profilesRes, filesRes] = await Promise.all([
       supabase.from("profiles").select("*").order("name"),
-      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
-      supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke, assigned_user_id), profiles:created_by(name)").eq("payment_type", "tahsilat").order("created_at", { ascending: false }),
+      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").order("created_at", { ascending: false }),
     ]);
 
     const profiles = profilesRes.data || [];
     const files = filesRes.data || [];
-    const payments = paymentsRes.data || [];
 
-    // Kullanıcı bazlı cari hesap hesapla - cari_sahibi varsa ona göre, yoksa assigned_user_id
-    const getCariKey = (f: { cari_sahibi?: string | null; assigned_user_id: string }) => {
+    // Dosyayı yapan: cari için cari_sahibi, diğerleri için assigned_user_id profili
+    const getAssigneeKey = (f: { cari_sahibi?: string | null; assigned_user_id: string }) => {
       if (f.cari_sahibi) return f.cari_sahibi.toUpperCase();
-      const prof = profiles.find(p => p.id === f.assigned_user_id);
+      const prof = profiles.find((p: { id: string }) => p.id === f.assigned_user_id);
       return prof?.name?.toUpperCase() || f.assigned_user_id;
     };
-    const staffList = profiles
-      .filter(p => p.role === "staff" || p.role === "admin")
-      .map(profile => {
-        const profileKey = profile.name?.toUpperCase() || profile.id;
-        const userFiles = files.filter(f => getCariKey(f) === profileKey);
-        const userPayments = payments.filter(p => userFiles.some(f => f.id === p.file_id));
 
-        const totals: Record<string, { borc: number; tahsilat: number; kalan: number }> = {};
+    // Sahibe göre grupla (hiçbir dosya kaybolmasın)
+    const ownerToFiles = new Map<string, typeof files>();
+    files.forEach((f: { cari_sahibi?: string | null; assigned_user_id: string }) => {
+      const key = getAssigneeKey(f) || "Bilinmeyen";
+      if (!ownerToFiles.has(key)) ownerToFiles.set(key, []);
+      ownerToFiles.get(key)!.push(f);
+    });
 
-        userFiles.forEach(f => {
-          const c = f.ucret_currency || "TL";
-          if (!totals[c]) totals[c] = { borc: 0, tahsilat: 0, kalan: 0 };
-          totals[c].borc += Number(f.ucret) || 0;
-        });
-
-        userPayments.forEach(p => {
-          const c = p.currency || "TL";
-          if (!totals[c]) totals[c] = { borc: 0, tahsilat: 0, kalan: 0 };
-          totals[c].tahsilat += Number(p.tutar) || 0;
-        });
-
-        Object.keys(totals).forEach(c => {
-          totals[c].kalan = totals[c].borc - totals[c].tahsilat;
-        });
-
-        return {
-          profile,
-          totals,
-          files: userFiles,
-          payments: userPayments,
-          bekleyenOdeme: userFiles.filter(f => f.odeme_durumu === "odenmedi").length,
-        };
+    const order = ["BAHAR", "ERCAN", "YUSUF", "DAVUT"];
+    const staffList = Array.from(ownerToFiles.entries())
+      .map(([key, userFiles]) => {
+        const firstFile = userFiles[0] as { assigned_user_id: string };
+        const profile = profiles.find((p: { name?: string }) => p.name?.toUpperCase() === key)
+          || profiles.find((p: { id: string }) => p.id === firstFile?.assigned_user_id)
+          || { id: firstFile?.assigned_user_id || key, name: key, role: "staff" as const };
+        return { profile, files: userFiles, totals: {} as Record<string, { borc: number; tahsilat: number; kalan: number }>, payments: [] as any[], bekleyenOdeme: 0 };
       })
-      .filter(s => s.files.length > 0 || s.payments.length > 0);
+      .sort((a, b) => {
+        const aKey = a.profile.name?.toUpperCase() || "";
+        const bKey = b.profile.name?.toUpperCase() || "";
+        const ai = order.indexOf(aKey);
+        const bi = order.indexOf(bKey);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
+        return aKey.localeCompare(bKey);
+      });
 
     return NextResponse.json({ staffList });
   } catch (err: any) {
