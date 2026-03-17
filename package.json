@@ -12,6 +12,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.93.3",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
+    "exceljs": "^4.4.0",
     "imapflow": "^1.2.9",
     "jszip": "^3.10.1",
     "next": "14.2.5",

@@ -41,6 +41,18 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function normalize(str: string) {
+  return str
+    .toLowerCase()
+    .replace(/İ/gi, "i").replace(/I/g, "i")
+    .replace(/ı/g, "i")
+    .replace(/ğ/g, "g").replace(/Ğ/g, "g")
+    .replace(/ü/g, "u").replace(/Ü/g, "u")
+    .replace(/ş/g, "s").replace(/Ş/g, "s")
+    .replace(/ö/g, "o").replace(/Ö/g, "o")
+    .replace(/ç/g, "c").replace(/Ç/g, "c");
+}
+
 function toDateStr(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -102,11 +114,11 @@ export default function MuhasebePage() {
       result = result.filter(f => f.sonuc !== null);
     }
     if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase().trim();
+      const q = normalize(searchTerm.trim());
       result = result.filter(f =>
-        f.musteri_ad?.toLowerCase().includes(q) ||
-        f.pasaport_no?.toLowerCase().includes(q) ||
-        f.hedef_ulke?.toLowerCase().includes(q)
+        normalize(f.musteri_ad || "").includes(q) ||
+        normalize(f.pasaport_no || "").includes(q) ||
+        normalize(f.hedef_ulke || "").includes(q)
       );
     }
     if (dateFilterActive && dateStart && dateEnd) {
