@@ -113,23 +113,37 @@ function normalize(s: string) {
 let rowIdCounter = 0;
 function nextRowId() { return `row_${++rowIdCounter}_${Date.now()}`; }
 
-function loadPastReports(): PastReport[] {
+async function fetchPastReports(): Promise<PastReport[]> {
   try {
-    const raw = localStorage.getItem("gunluk_rapor_gecmis");
-    return raw ? JSON.parse(raw) : [];
+    const res = await fetch("/api/gunluk-rapor/list");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.reports || []).map((r: any) => ({
+      id: r.id,
+      tarih: r.tarih,
+      personel: r.personel,
+      kayitSayisi: r.kayit_sayisi,
+      musteriSayisi: r.musteri_sayisi,
+      gonderimTarih: r.created_at,
+      rows: r.rows,
+    }));
   } catch { return []; }
 }
 
-function savePastReport(report: PastReport) {
-  const all = loadPastReports();
-  all.unshift(report);
-  if (all.length > 50) all.length = 50;
-  localStorage.setItem("gunluk_rapor_gecmis", JSON.stringify(all));
+async function savePastReportToDb(report: { tarih: string; kayitSayisi: number; musteriSayisi: number; rows: ExcelRow[]; isRevize: boolean }) {
+  await fetch("/api/gunluk-rapor/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(report),
+  });
 }
 
-function deletePastReport(id: string) {
-  const all = loadPastReports().filter(r => r.id !== id);
-  localStorage.setItem("gunluk_rapor_gecmis", JSON.stringify(all));
+async function deletePastReportFromDb(id: string) {
+  await fetch("/api/gunluk-rapor/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
 }
 
 export default function GunlukRaporPage() {
@@ -182,7 +196,7 @@ export default function GunlukRaporPage() {
       }
     } catch { /* fallback */ }
 
-    setPastReports(loadPastReports());
+    fetchPastReports().then(setPastReports);
     setLoading(false);
   }, []);
 
@@ -253,12 +267,9 @@ export default function GunlukRaporPage() {
   }, [rows]);
 
   const addEmptyRow = useCallback((fileId: string) => {
-    const parentRows = rows.filter(r => r.fileId === fileId);
-    if (!parentRows.length) return;
-    const parent = parentRows[0];
     const newRow: ReportRow = {
       id: nextRowId(), fileId, type: "VIZ",
-      musteriAd: "", hedefUlke: parent.hedefUlke,
+      musteriAd: "", hedefUlke: "",
       ucret: 0, ucretCurrency: "", tarih: "",
       biletTut: 0, servis: 0, toplam: 0,
       kartNo: "", cariAdi: "",
@@ -386,14 +397,14 @@ export default function GunlukRaporPage() {
         throw new Error(d.error || "Mail gönderilemedi");
       }
       const customerCount = new Set(payload.filter(r => r.yolcuAdi).map(r => r.yolcuAdi)).size || uniqueFileIds.length;
-      savePastReport({
-        id: `rpt_${Date.now()}`,
-        tarih: raporTarih, personel: userName,
-        kayitSayisi: payload.length, musteriSayisi: customerCount,
-        gonderimTarih: new Date().toISOString(),
+      await savePastReportToDb({
+        tarih: raporTarih,
+        kayitSayisi: payload.length,
+        musteriSayisi: customerCount,
         rows: payload,
+        isRevize: !!isRevize,
       });
-      setPastReports(loadPastReports());
+      fetchPastReports().then(setPastReports);
       setStatusMsg({ type: "success", text: isRevize ? "Revize rapor gönderildi!" : "Mail muhasebeye gönderildi!" });
       setPreviewOpen(false);
     } catch (err: any) {
@@ -476,7 +487,7 @@ export default function GunlukRaporPage() {
                       </>
                     )}
                     <button
-                      onClick={() => { deletePastReport(r.id); setPastReports(loadPastReports()); }}
+                      onClick={async () => { await deletePastReportFromDb(r.id); fetchPastReports().then(setPastReports); }}
                       className="px-2.5 py-1.5 text-xs font-medium bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
                     >Sil</button>
                   </div>
