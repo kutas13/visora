@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Card, Input, Badge } from "@/components/ui";
+import { Button } from "@/components/ui";
 import type { VisaFile } from "@/lib/supabase/types";
 
 type VisaFileWithCompany = VisaFile & { companies?: { firma_adi: string } | null };
-
 type RecordType = "VIZ" | "SIG" | "RAN" | "DAV";
 
 interface ReportRow {
@@ -23,11 +22,37 @@ interface ReportRow {
   toplam: number;
   kartNo: string;
   cariAdi: string;
-  editable: {
-    tarih: boolean;
-    biletTut: boolean;
-    kartNo: boolean;
-  };
+}
+
+interface ExcelRow {
+  biletNo: number;
+  hyKodu: string;
+  id: string;
+  acenta: string;
+  yolcuAdi: string;
+  tarih: string;
+  biletTut: number;
+  servis: number;
+  toplam: number;
+  parkur1: string;
+  parkur2: string;
+  parkur3: string;
+  satisSecli: string;
+  kartNo: string;
+  cariAdi: string;
+  uyelikNo: string;
+  pnr: string;
+  odeme: string;
+  mil: string;
+  not: string;
+}
+
+interface PastReport {
+  tarih: string;
+  personel: string;
+  kayitSayisi: number;
+  musteriSayisi: number;
+  gonderimTarih: string;
 }
 
 const SCHENGEN_ULKELER = [
@@ -51,7 +76,7 @@ const PARKUR_MAP: Record<RecordType, { p1: string; p2: string; p3: string; satis
 };
 
 const ACENTA_MAP: Record<RecordType, string | null> = {
-  VIZ: null, // ulke adı kullanılacak
+  VIZ: null,
   SIG: "SIGORTA",
   RAN: "RANDEVU",
   DAV: "DAVETIYE",
@@ -76,8 +101,32 @@ function toDateStr(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+function normalize(s: string) {
+  return s.toLowerCase()
+    .replace(/İ/gi, "i").replace(/I/g, "i").replace(/ı/g, "i")
+    .replace(/ğ/g, "g").replace(/Ğ/g, "g")
+    .replace(/ü/g, "u").replace(/Ü/g, "u")
+    .replace(/ş/g, "s").replace(/Ş/g, "s")
+    .replace(/ö/g, "o").replace(/Ö/g, "o")
+    .replace(/ç/g, "c").replace(/Ç/g, "c");
+}
+
 let rowIdCounter = 0;
 function nextRowId() { return `row_${++rowIdCounter}_${Date.now()}`; }
+
+function loadPastReports(): PastReport[] {
+  try {
+    const raw = localStorage.getItem("gunluk_rapor_gecmis");
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function savePastReport(report: PastReport) {
+  const all = loadPastReports();
+  all.unshift(report);
+  if (all.length > 50) all.length = 50;
+  localStorage.setItem("gunluk_rapor_gecmis", JSON.stringify(all));
+}
 
 export default function GunlukRaporPage() {
   const [userFiles, setUserFiles] = useState<VisaFileWithCompany[]>([]);
@@ -93,8 +142,11 @@ export default function GunlukRaporPage() {
   const [userEmail, setUserEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [emailPreview, setEmailPreview] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewRows, setPreviewRows] = useState<ExcelRow[]>([]);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [pastReports, setPastReports] = useState<PastReport[]>([]);
+  const [activeTab, setActiveTab] = useState<"rapor" | "gecmis">("rapor");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -124,28 +176,17 @@ export default function GunlukRaporPage() {
         setEurRate(data.rates?.EUR || 38);
         setUsdRate(data.rates?.USD || 36);
       }
-    } catch { /* fallback values already set */ }
+    } catch { /* fallback */ }
 
+    setPastReports(loadPastReports());
     setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    const q = searchTerm.toLowerCase().trim()
-      .replace(/İ/gi, "i").replace(/I/g, "i").replace(/ı/g, "i")
-      .replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s")
-      .replace(/ö/g, "o").replace(/ç/g, "c");
-
-    const normalize = (s: string) => s.toLowerCase()
-      .replace(/İ/gi, "i").replace(/I/g, "i").replace(/ı/g, "i")
-      .replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s")
-      .replace(/ö/g, "o").replace(/ç/g, "c");
-
+    if (!searchTerm.trim()) { setSearchResults([]); return; }
+    const q = normalize(searchTerm.trim());
     const addedFileIds = new Set(rows.map(r => r.fileId));
     const filtered = userFiles.filter(f =>
       !addedFileIds.has(f.id) && (
@@ -172,22 +213,13 @@ export default function GunlukRaporPage() {
     const currencyLabel = file.ucret_currency === "EUR" ? "EURO" : file.ucret_currency === "USD" ? "DOLAR" : "TL";
 
     const vizRow: ReportRow = {
-      id: nextRowId(),
-      fileId: file.id,
-      type: "VIZ",
-      musteriAd: file.musteri_ad || "",
-      hedefUlke: file.hedef_ulke || "",
-      ucret: Number(file.ucret) || 0,
-      ucretCurrency: currencyLabel,
-      tarih: "",
-      biletTut,
+      id: nextRowId(), fileId: file.id, type: "VIZ",
+      musteriAd: file.musteri_ad || "", hedefUlke: file.hedef_ulke || "",
+      ucret: Number(file.ucret) || 0, ucretCurrency: currencyLabel,
+      tarih: "", biletTut,
       servis: Math.round((satisTL - biletTut) * 100) / 100,
-      toplam: satisTL,
-      kartNo: "NAKIT",
-      cariAdi: cariLabel,
-      editable: { tarih: true, biletTut: true, kartNo: false },
+      toplam: satisTL, kartNo: "NAKIT", cariAdi: cariLabel,
     };
-
     setRows(prev => [...prev, vizRow]);
     setSearchTerm("");
     setShowSearch(false);
@@ -199,27 +231,18 @@ export default function GunlukRaporPage() {
     const parent = parentRows[0];
 
     const newRow: ReportRow = {
-      id: nextRowId(),
-      fileId,
-      type,
-      musteriAd: parent.musteriAd,
-      hedefUlke: parent.hedefUlke,
-      ucret: 0,
-      ucretCurrency: parent.ucretCurrency,
-      tarih: "",
-      biletTut: 0,
-      servis: 0,
-      toplam: 0,
+      id: nextRowId(), fileId, type,
+      musteriAd: parent.musteriAd, hedefUlke: parent.hedefUlke,
+      ucret: 0, ucretCurrency: parent.ucretCurrency,
+      tarih: "", biletTut: 0, servis: 0, toplam: 0,
       kartNo: type === "SIG" ? "FK-0491" : type === "RAN" ? "" : "NAKIT",
       cariAdi: parent.cariAdi,
-      editable: {
-        tarih: true,
-        biletTut: true,
-        kartNo: type === "RAN",
-      },
     };
 
-    const lastIndex = rows.findLastIndex(r => r.fileId === fileId);
+    let lastIndex = -1;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i].fileId === fileId) { lastIndex = i; break; }
+    }
     const updated = [...rows];
     updated.splice(lastIndex + 1, 0, newRow);
     setRows(updated);
@@ -236,7 +259,6 @@ export default function GunlukRaporPage() {
         }
         return newRow;
       });
-
       return recalcServis(updated);
     });
   }, []);
@@ -244,10 +266,9 @@ export default function GunlukRaporPage() {
   const recalcServis = (allRows: ReportRow[]): ReportRow[] => {
     const fileGroups = new Map<string, ReportRow[]>();
     allRows.forEach(r => {
-      if (!fileGroups.has(r.fileId)) fileGroups.set(r.fileId, []);
-      fileGroups.get(r.fileId)!.push(r);
+      const arr = fileGroups.get(r.fileId);
+      if (arr) arr.push(r); else fileGroups.set(r.fileId, [r]);
     });
-
     return allRows.map(r => {
       if (r.type !== "VIZ") return r;
       const group = fileGroups.get(r.fileId) || [];
@@ -263,55 +284,53 @@ export default function GunlukRaporPage() {
     setRows(prev => {
       const row = prev.find(r => r.id === rowId);
       if (!row) return prev;
-      if (row.type === "VIZ") {
-        return prev.filter(r => r.fileId !== row.fileId);
-      }
-      const updated = prev.filter(r => r.id !== rowId);
-      return recalcServis(updated);
+      if (row.type === "VIZ") return prev.filter(r => r.fileId !== row.fileId);
+      return recalcServis(prev.filter(r => r.id !== rowId));
     });
   }, []);
 
-  const numberedRows = useMemo(() => {
-    return rows.map((r, i) => ({ ...r, biletNo: i + 1 }));
+  const numberedRows = useMemo(() => rows.map((r, i) => ({ ...r, biletNo: i + 1 })), [rows]);
+
+  const uniqueFileIds = useMemo(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    rows.forEach(r => { if (!seen.has(r.fileId)) { seen.add(r.fileId); result.push(r.fileId); } });
+    return result;
   }, [rows]);
 
-  const handleDownload = async () => {
-    if (rows.length === 0) return;
+  const buildExcelRows = useCallback((): ExcelRow[] => {
+    return numberedRows.map(r => ({
+      biletNo: r.biletNo, hyKodu: r.type, id: "I",
+      acenta: ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase(),
+      yolcuAdi: (r.type === "VIZ" || r.type === "DAV") ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : "",
+      tarih: r.tarih, biletTut: r.biletTut, servis: r.servis, toplam: r.toplam,
+      parkur1: PARKUR_MAP[r.type].p1, parkur2: PARKUR_MAP[r.type].p2,
+      parkur3: PARKUR_MAP[r.type].p3, satisSecli: PARKUR_MAP[r.type].satis,
+      kartNo: r.kartNo, cariAdi: r.cariAdi,
+      uyelikNo: "", pnr: "", odeme: "", mil: "", not: "",
+    }));
+  }, [numberedRows]);
+
+  const openPreview = () => {
+    setPreviewRows(buildExcelRows());
+    setPreviewOpen(true);
+  };
+
+  const updatePreviewRow = (idx: number, field: keyof ExcelRow, value: any) => {
+    setPreviewRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  };
+
+  const handleDownload = async (data?: ExcelRow[]) => {
+    const payload = data || buildExcelRows();
+    if (payload.length === 0) return;
     setDownloading(true);
     try {
-      const payload = numberedRows.map(r => ({
-        biletNo: r.biletNo,
-        hyKodu: r.type,
-        id: "I",
-        acenta: ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase(),
-        yolcuAdi: (r.type === "VIZ" || r.type === "DAV")
-          ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
-          : "",
-        tarih: r.tarih,
-        biletTut: r.biletTut,
-        servis: r.servis,
-        toplam: r.toplam,
-        parkur1: PARKUR_MAP[r.type].p1,
-        parkur2: PARKUR_MAP[r.type].p2,
-        parkur3: PARKUR_MAP[r.type].p3,
-        satisSecli: PARKUR_MAP[r.type].satis,
-        kartNo: r.kartNo,
-        cariAdi: r.cariAdi,
-        uyelikNo: "",
-        pnr: "",
-        odeme: "",
-        mil: "",
-        not: "",
-      }));
-
       const res = await fetch("/api/gunluk-rapor/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rows: payload, tarih: raporTarih, personel: userName }),
       });
-
       if (!res.ok) throw new Error("Excel oluşturulamadı");
-
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -328,52 +347,28 @@ export default function GunlukRaporPage() {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (rows.length === 0) return;
+  const handleSendEmail = async (data?: ExcelRow[]) => {
+    const payload = data || buildExcelRows();
+    if (payload.length === 0) return;
     setSending(true);
     try {
-      const payload = numberedRows.map(r => ({
-        biletNo: r.biletNo,
-        hyKodu: r.type,
-        id: "I",
-        acenta: ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase(),
-        yolcuAdi: (r.type === "VIZ" || r.type === "DAV")
-          ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
-          : "",
-        tarih: r.tarih,
-        biletTut: r.biletTut,
-        servis: r.servis,
-        toplam: r.toplam,
-        parkur1: PARKUR_MAP[r.type].p1,
-        parkur2: PARKUR_MAP[r.type].p2,
-        parkur3: PARKUR_MAP[r.type].p3,
-        satisSecli: PARKUR_MAP[r.type].satis,
-        kartNo: r.kartNo,
-        cariAdi: r.cariAdi,
-        uyelikNo: "",
-        pnr: "",
-        odeme: "",
-        mil: "",
-        not: "",
-      }));
-
       const res = await fetch("/api/gunluk-rapor/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rows: payload,
-          tarih: raporTarih,
-          personel: userName,
-          senderEmail: userEmail,
-        }),
+        body: JSON.stringify({ rows: payload, tarih: raporTarih, personel: userName, senderEmail: userEmail }),
       });
-
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Mail gönderilemedi");
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Mail gönderilemedi");
       }
-
+      savePastReport({
+        tarih: raporTarih, personel: userName,
+        kayitSayisi: payload.length, musteriSayisi: uniqueFileIds.length,
+        gonderimTarih: new Date().toISOString(),
+      });
+      setPastReports(loadPastReports());
       setStatusMsg({ type: "success", text: "Mail muhasebeye gönderildi!" });
+      setPreviewOpen(false);
     } catch (err: any) {
       setStatusMsg({ type: "error", text: err.message || "Hata oluştu" });
     } finally {
@@ -381,8 +376,6 @@ export default function GunlukRaporPage() {
       setTimeout(() => setStatusMsg(null), 4000);
     }
   };
-
-  const uniqueFileIds = useMemo(() => [...new Set(rows.map(r => r.fileId))], [rows]);
 
   if (loading) {
     return (
@@ -393,340 +386,338 @@ export default function GunlukRaporPage() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6">
-      {/* Üst Bar: Tarih + Kur + Aksiyonlar */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">Rapor Tarihi:</label>
-            <input
-              type="date"
-              value={raporTarih}
-              onChange={(e) => setRaporTarih(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div className="h-6 w-px bg-gray-200" />
-
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>EUR: <strong className="text-gray-900">{eurRate.toFixed(2)} TL</strong></span>
-            <span>USD: <strong className="text-gray-900">{usdRate.toFixed(2)} TL</strong></span>
-          </div>
-
-          <div className="flex-1" />
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDownload}
-              disabled={rows.length === 0 || downloading}
-              className="text-xs"
-            >
-              {downloading ? "İndiriliyor..." : "Excel İndir"}
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSendEmail}
-              disabled={rows.length === 0 || sending}
-              className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              {sending ? "Gönderiliyor..." : "Muhasebeye Mail At"}
-            </Button>
-          </div>
-        </div>
-
-        {statusMsg && (
-          <div className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium ${
-            statusMsg.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-          }`}>
-            {statusMsg.text}
-          </div>
-        )}
+    <div className="max-w-[1400px] mx-auto space-y-5">
+      {/* Tab Seçimi */}
+      <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-gray-200 w-fit">
+        <button
+          onClick={() => setActiveTab("rapor")}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === "rapor" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          Yeni Rapor
+        </button>
+        <button
+          onClick={() => setActiveTab("gecmis")}
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+            activeTab === "gecmis" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          Geçmiş Raporlarım
+          {pastReports.length > 0 && (
+            <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+              activeTab === "gecmis" ? "bg-white/20" : "bg-gray-100"
+            }`}>{pastReports.length}</span>
+          )}
+        </button>
       </div>
 
-      {/* Müşteri Ekleme */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-center gap-3 mb-3">
-          <h3 className="text-sm font-semibold text-gray-800">Müşteri Ekle</h3>
-          <span className="text-xs text-gray-400">{rows.length} kayıt eklendi</span>
-        </div>
-
-        <div className="relative">
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Müşteri adı, pasaport no veya ülke ile ara..."
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setShowSearch(true); }}
-              onFocus={() => setShowSearch(true)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
+      {activeTab === "gecmis" ? (
+        /* Geçmiş Raporlar */
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-800">Gönderilen Raporlar</h3>
           </div>
-
-          {showSearch && searchResults.length > 0 && (
-            <div className="absolute z-20 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-[300px] overflow-y-auto">
-              {searchResults.map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => addCustomer(f)}
-                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{f.musteri_ad}</p>
-                      <p className="text-xs text-gray-500">{f.hedef_ulke} &middot; {f.pasaport_no}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-800">
-                        {Number(f.ucret).toLocaleString("tr-TR")} {f.ucret_currency === "EUR" ? "€" : f.ucret_currency === "USD" ? "$" : "₺"}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {f.odeme_plani === "pesin" ? "Peşin" : f.cari_tipi === "firma_cari" ? "Firma Cari" : "Cari"}
-                      </p>
-                    </div>
+          {pastReports.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-gray-500">Henüz rapor gönderilmemiş</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {pastReports.map((r, i) => (
+                <div key={i} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                   </div>
-                </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{r.tarih.replace(/-/g, ".")}</p>
+                    <p className="text-xs text-gray-500">{r.kayitSayisi} kayıt, {r.musteriSayisi} müşteri</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400">
+                      {new Date(r.gonderimTarih).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <p className="text-xs text-emerald-600 font-medium">Gönderildi</p>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Üst Bar */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-700">Rapor Tarihi:</label>
+                <input
+                  type="date"
+                  value={raporTarih}
+                  onChange={(e) => setRaporTarih(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="h-6 w-px bg-gray-200" />
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>EUR: <strong className="text-gray-900">{eurRate.toFixed(2)} TL</strong></span>
+                <span>USD: <strong className="text-gray-900">{usdRate.toFixed(2)} TL</strong></span>
+              </div>
+              <div className="flex-1" />
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleDownload()} disabled={rows.length === 0 || downloading} className="text-xs">
+                  {downloading ? "İndiriliyor..." : "Excel İndir"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={openPreview}
+                  disabled={rows.length === 0}
+                  className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  Önizle ve Gönder
+                </Button>
+              </div>
+            </div>
+            {statusMsg && (
+              <div className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                statusMsg.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+              }`}>{statusMsg.text}</div>
+            )}
+          </div>
 
-      {/* Eklenen Müşteriler - Alt kayıt butonları */}
-      {uniqueFileIds.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">Eklenen Müşteriler</h3>
-          <div className="space-y-2">
-            {uniqueFileIds.map(fileId => {
-              const fileRows = rows.filter(r => r.fileId === fileId);
-              const vizRow = fileRows.find(r => r.type === "VIZ");
-              if (!vizRow) return null;
-              const hasSig = fileRows.some(r => r.type === "SIG");
-              const hasRan = fileRows.some(r => r.type === "RAN");
-              const hasDav = fileRows.some(r => r.type === "DAV");
-
-              return (
-                <div key={fileId} className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
-                  <span className="text-sm font-medium text-gray-800 mr-2">{vizRow.musteriAd}</span>
-                  <span className="text-xs text-gray-500 mr-auto">{vizRow.hedefUlke}</span>
-
-                  {!hasSig && (
-                    <button
-                      onClick={() => addSubRow(fileId, "SIG")}
-                      className="px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
-                    >
-                      + Sigorta
+          {/* Müşteri Ekleme */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <h3 className="text-sm font-semibold text-gray-800">Müşteri Ekle</h3>
+              <span className="text-xs text-gray-400">{rows.length} kayıt</span>
+            </div>
+            <div className="relative">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Müşteri adı, pasaport no veya ülke ara..."
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setShowSearch(true); }}
+                  onFocus={() => setShowSearch(true)}
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              {showSearch && searchResults.length > 0 && (
+                <div className="absolute z-20 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-[300px] overflow-y-auto">
+                  {searchResults.map(f => (
+                    <button key={f.id} onClick={() => addCustomer(f)} className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{f.musteri_ad}</p>
+                          <p className="text-xs text-gray-500">{f.hedef_ulke} &middot; {f.pasaport_no}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-gray-800">
+                            {Number(f.ucret).toLocaleString("tr-TR")} {f.ucret_currency === "EUR" ? "€" : f.ucret_currency === "USD" ? "$" : "₺"}
+                          </p>
+                          <p className="text-xs text-gray-400">{f.odeme_plani === "pesin" ? "Peşin" : f.cari_tipi === "firma_cari" ? "Firma Cari" : "Cari"}</p>
+                        </div>
+                      </div>
                     </button>
-                  )}
-                  {!hasRan && (
-                    <button
-                      onClick={() => addSubRow(fileId, "RAN")}
-                      className="px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-colors"
-                    >
-                      + Randevu
-                    </button>
-                  )}
-                  {!hasDav && (
-                    <button
-                      onClick={() => addSubRow(fileId, "DAV")}
-                      className="px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-600 rounded-md hover:bg-amber-100 transition-colors"
-                    >
-                      + Davet
-                    </button>
-                  )}
+                  ))}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Rapor Tablosu Önizleme */}
-      {numberedRows.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="bg-gray-900 px-5 py-3 flex items-center justify-between">
-            <h3 className="text-white font-semibold text-sm flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Excel Önizleme
-              <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{numberedRows.length} satır</span>
-            </h3>
+              )}
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">#</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">H.Y.</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">I-D</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">Acenta</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">Yolcu Adı</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">Tarih</th>
-                  <th className="py-2 px-2 text-right font-semibold text-gray-600">Bilet Tut.</th>
-                  <th className="py-2 px-2 text-right font-semibold text-gray-600">Servis</th>
-                  <th className="py-2 px-2 text-right font-semibold text-gray-600">Toplam</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">P1</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">P2</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">P3</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">Satış Şekli</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">Kart No</th>
-                  <th className="py-2 px-2 text-left font-semibold text-gray-600">Cari Adı</th>
-                  <th className="py-2 px-2 text-center font-semibold text-gray-600">Sil</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {numberedRows.map((r) => {
-                  const parkur = PARKUR_MAP[r.type];
-                  const typeColors: Record<RecordType, string> = {
-                    VIZ: "bg-green-50 text-green-700",
-                    SIG: "bg-blue-50 text-blue-700",
-                    RAN: "bg-purple-50 text-purple-700",
-                    DAV: "bg-amber-50 text-amber-700",
-                  };
-
+          {/* Eklenen Müşteriler */}
+          {uniqueFileIds.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-800 mb-3">Eklenen Müşteriler</h3>
+              <div className="space-y-2">
+                {uniqueFileIds.map(fileId => {
+                  const fileRows = rows.filter(r => r.fileId === fileId);
+                  const vizRow = fileRows.find(r => r.type === "VIZ");
+                  if (!vizRow) return null;
+                  const hasSig = fileRows.some(r => r.type === "SIG");
+                  const hasRan = fileRows.some(r => r.type === "RAN");
+                  const hasDav = fileRows.some(r => r.type === "DAV");
                   return (
-                    <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="py-2 px-2 font-medium text-gray-800">{r.biletNo}</td>
-                      <td className="py-2 px-2">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${typeColors[r.type]}`}>
-                          {r.type}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2 text-gray-600">I</td>
-                      <td className="py-2 px-2 text-gray-600">{ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()}</td>
-                      <td className="py-2 px-2 text-gray-900 font-medium">
-                        {(r.type === "VIZ" || r.type === "DAV")
-                          ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
-                          : ""}
-                      </td>
-                      <td className="py-2 px-2">
-                        <input
-                          type="date"
-                          value={r.tarih}
-                          onChange={(e) => updateRow(r.id, "tarih", e.target.value)}
-                          className="w-[120px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                      </td>
-                      <td className="py-2 px-2 text-right">
-                        {r.editable.biletTut ? (
-                          <input
-                            type="number"
-                            value={r.biletTut || ""}
-                            onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value) || 0)}
-                            className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            placeholder="0"
-                          />
-                        ) : (
-                          <span className="text-gray-800">{r.biletTut.toLocaleString("tr-TR")}</span>
-                        )}
-                      </td>
-                      <td className="py-2 px-2 text-right text-gray-600">{r.servis.toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</td>
-                      <td className="py-2 px-2 text-right font-semibold text-gray-900">{r.toplam.toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</td>
-                      <td className="py-2 px-2 text-gray-500">{parkur.p1}</td>
-                      <td className="py-2 px-2 text-gray-500">{parkur.p2}</td>
-                      <td className="py-2 px-2 text-gray-500">{parkur.p3}</td>
-                      <td className="py-2 px-2 text-gray-500">{parkur.satis}</td>
-                      <td className="py-2 px-2">
-                        {r.editable.kartNo ? (
-                          <input
-                            type="text"
-                            value={r.kartNo}
-                            onChange={(e) => updateRow(r.id, "kartNo", e.target.value)}
-                            className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            placeholder="Kart No"
-                          />
-                        ) : (
-                          <span className="text-gray-600">{r.kartNo}</span>
-                        )}
-                      </td>
-                      <td className="py-2 px-2 text-gray-600">{r.cariAdi}</td>
-                      <td className="py-2 px-2 text-center">
-                        <button
-                          onClick={() => removeRow(r.id)}
-                          className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                          title="Sil"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
+                    <div key={fileId} className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                      <span className="text-sm font-medium text-gray-800 mr-2">{vizRow.musteriAd}</span>
+                      <span className="text-xs text-gray-500 mr-auto">{vizRow.hedefUlke}</span>
+                      {!hasSig && <button onClick={() => addSubRow(fileId, "SIG")} className="px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">+ Sigorta</button>}
+                      {!hasRan && <button onClick={() => addSubRow(fileId, "RAN")} className="px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-colors">+ Randevu</button>}
+                      {!hasDav && <button onClick={() => addSubRow(fileId, "DAV")} className="px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-600 rounded-md hover:bg-amber-100 transition-colors">+ Davet</button>}
+                      <button onClick={() => removeRow(vizRow.id)} className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors ml-1" title="Müşteriyi Kaldır">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
 
-      {/* Mail Önizleme Modal */}
-      {emailPreview && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEmailPreview(false)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Mail Önizleme</h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex gap-2">
-                <span className="font-medium text-gray-500 w-16">Kime:</span>
-                <span className="text-gray-900">Muhasebe@foxturizm.com</span>
+          {/* Rapor Tablosu */}
+          {numberedRows.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div className="bg-gray-900 px-5 py-3">
+                <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Rapor Tablosu
+                  <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{numberedRows.length} satır</span>
+                </h3>
               </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-gray-500 w-16">CC:</span>
-                <span className="text-gray-900">{userEmail}</span>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs whitespace-nowrap">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      {["#","H.Y.","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış","Kart No","Cari Adı",""].map((h,i) => (
+                        <th key={i} className={`py-2 px-2 font-semibold text-gray-600 ${i >= 6 && i <= 8 ? "text-right" : "text-left"} ${i === 15 ? "text-center" : ""}`}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {numberedRows.map((r) => {
+                      const parkur = PARKUR_MAP[r.type];
+                      const tc: Record<RecordType, string> = { VIZ: "bg-green-50 text-green-700", SIG: "bg-blue-50 text-blue-700", RAN: "bg-purple-50 text-purple-700", DAV: "bg-amber-50 text-amber-700" };
+                      return (
+                        <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-2 px-2 font-medium text-gray-800">{r.biletNo}</td>
+                          <td className="py-2 px-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tc[r.type]}`}>{r.type}</span></td>
+                          <td className="py-2 px-2 text-gray-600">I</td>
+                          <td className="py-2 px-2 text-gray-600">{ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()}</td>
+                          <td className="py-2 px-2 text-gray-900 font-medium">{(r.type === "VIZ" || r.type === "DAV") ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : ""}</td>
+                          <td className="py-2 px-2">
+                            <input type="date" value={r.tarih} onChange={(e) => updateRow(r.id, "tarih", e.target.value)} className="w-[120px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                          </td>
+                          <td className="py-2 px-2 text-right">
+                            <input type="number" value={r.biletTut || ""} onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
+                          </td>
+                          <td className="py-2 px-2 text-right text-gray-600">{r.servis.toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</td>
+                          <td className="py-2 px-2 text-right font-semibold text-gray-900">{r.toplam.toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</td>
+                          <td className="py-2 px-2 text-gray-500">{parkur.p1}</td>
+                          <td className="py-2 px-2 text-gray-500">{parkur.p2}</td>
+                          <td className="py-2 px-2 text-gray-500">{parkur.p3}</td>
+                          <td className="py-2 px-2 text-gray-500">{parkur.satis}</td>
+                          <td className="py-2 px-2">
+                            {r.type === "RAN" ? (
+                              <input type="text" value={r.kartNo} onChange={(e) => updateRow(r.id, "kartNo", e.target.value)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Kart No" />
+                            ) : <span className="text-gray-600">{r.kartNo}</span>}
+                          </td>
+                          <td className="py-2 px-2 text-gray-600">{r.cariAdi}</td>
+                          <td className="py-2 px-2 text-center">
+                            <button onClick={() => removeRow(r.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Sil">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <div className="flex gap-2">
-                <span className="font-medium text-gray-500 w-16">Konu:</span>
-                <span className="text-gray-900">Günlük Rapor - {raporTarih.replace(/-/g, ".")} - {userName}</span>
-              </div>
-              <div className="border-t border-gray-200 pt-3">
-                <p className="text-gray-600">
-                  {userName} personelinin {raporTarih.replace(/-/g, ".")} tarihli günlük raporu ektedir.
-                </p>
-                <p className="text-gray-500 mt-2">
-                  Toplam {numberedRows.length} kayıt, {uniqueFileIds.length} müşteri.
-                </p>
-              </div>
-              <div className="flex gap-2 items-center text-xs text-gray-400 bg-gray-50 p-3 rounded-lg">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+            </div>
+          )}
+
+          {rows.length === 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <span>{raporTarih.replace(/-/g, ".")}.xlsx</span>
               </div>
+              <p className="text-gray-600 font-medium">Henüz müşteri eklenmedi</p>
+              <p className="text-sm text-gray-400 mt-1">Yukarıdaki arama kutusundan müşteri seçerek rapora ekleyin</p>
             </div>
-            <div className="flex gap-2 mt-6">
-              <Button variant="outline" size="sm" onClick={() => setEmailPreview(false)} className="flex-1">
-                Kapat
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => { setEmailPreview(false); handleSendEmail(); }}
-                disabled={sending}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                Gönder
-              </Button>
-            </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      {/* Boş durum */}
-      {rows.length === 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+      {/* Önizle ve Düzenle Modal */}
+      {previewOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-[95vw] shadow-2xl" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Excel Önizleme ve Düzenleme</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Tüm alanları düzenleyebilirsiniz. Düzenleme bittikten sonra gönderin.</p>
+              </div>
+              <button onClick={() => setPreviewOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Mail Bilgileri */}
+            <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap gap-6 text-sm">
+              <div><span className="text-gray-500">Kime:</span> <span className="font-medium text-gray-900">Muhasebe@foxturizm.com</span></div>
+              <div><span className="text-gray-500">CC:</span> <span className="font-medium text-gray-900">{userEmail}</span></div>
+              <div><span className="text-gray-500">Konu:</span> <span className="font-medium text-gray-900">Günlük Rapor - {raporTarih.replace(/-/g, ".")} - {userName}</span></div>
+              <div><span className="text-gray-500">Ek:</span> <span className="font-medium text-gray-900">{raporTarih.replace(/-/g, ".")}.xlsx</span></div>
+            </div>
+
+            {/* Editable Table */}
+            <div className="overflow-x-auto p-4">
+              <table className="w-full text-xs whitespace-nowrap border border-gray-200 rounded-lg overflow-hidden">
+                <thead>
+                  <tr className="bg-indigo-50">
+                    {["#","H.Y. Kodu","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış Şekli","Kart No","Cari Adı","Üyelik No","PNR","Ödeme","Mil","Not"].map((h,i) => (
+                      <th key={i} className="py-2.5 px-2 text-left font-semibold text-indigo-800 border-b border-indigo-100">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {previewRows.map((r, idx) => (
+                    <tr key={idx} className="hover:bg-indigo-50/30 transition-colors">
+                      <td className="py-1.5 px-2 text-gray-800 font-medium">{r.biletNo}</td>
+                      <td className="py-1.5 px-2"><input value={r.hyKodu} onChange={e => updatePreviewRow(idx, "hyKodu", e.target.value)} className="w-[50px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.id} onChange={e => updatePreviewRow(idx, "id", e.target.value)} className="w-[30px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.acenta} onChange={e => updatePreviewRow(idx, "acenta", e.target.value)} className="w-[90px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.yolcuAdi} onChange={e => updatePreviewRow(idx, "yolcuAdi", e.target.value)} className="w-[220px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input type="date" value={r.tarih} onChange={e => updatePreviewRow(idx, "tarih", e.target.value)} className="w-[120px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input type="number" value={r.biletTut || ""} onChange={e => updatePreviewRow(idx, "biletTut", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input type="number" value={r.servis || ""} onChange={e => updatePreviewRow(idx, "servis", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input type="number" value={r.toplam || ""} onChange={e => updatePreviewRow(idx, "toplam", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.parkur1} onChange={e => updatePreviewRow(idx, "parkur1", e.target.value)} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.parkur2} onChange={e => updatePreviewRow(idx, "parkur2", e.target.value)} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.parkur3} onChange={e => updatePreviewRow(idx, "parkur3", e.target.value)} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.satisSecli} onChange={e => updatePreviewRow(idx, "satisSecli", e.target.value)} className="w-[90px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.kartNo} onChange={e => updatePreviewRow(idx, "kartNo", e.target.value)} className="w-[80px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.cariAdi} onChange={e => updatePreviewRow(idx, "cariAdi", e.target.value)} className="w-[100px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.uyelikNo} onChange={e => updatePreviewRow(idx, "uyelikNo", e.target.value)} className="w-[60px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.pnr} onChange={e => updatePreviewRow(idx, "pnr", e.target.value)} className="w-[60px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.odeme} onChange={e => updatePreviewRow(idx, "odeme", e.target.value)} className="w-[60px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.mil} onChange={e => updatePreviewRow(idx, "mil", e.target.value)} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.not} onChange={e => updatePreviewRow(idx, "not", e.target.value)} className="w-[80px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50 rounded-b-2xl">
+              <p className="text-sm text-gray-500">{previewRows.length} satır &middot; Tüm alanlar düzenlenebilir</p>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)}>İptal</Button>
+                <Button variant="outline" size="sm" onClick={() => handleDownload(previewRows)} disabled={downloading}>
+                  {downloading ? "İndiriliyor..." : "Excel İndir"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleSendEmail(previewRows)}
+                  disabled={sending}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-6"
+                >
+                  {sending ? "Gönderiliyor..." : "Muhasebeye Gönder"}
+                </Button>
+              </div>
+            </div>
           </div>
-          <p className="text-gray-600 font-medium">Henüz müşteri eklenmedi</p>
-          <p className="text-sm text-gray-400 mt-1">Yukarıdaki arama kutusundan müşteri seçerek rapora ekleyin</p>
         </div>
       )}
     </div>
