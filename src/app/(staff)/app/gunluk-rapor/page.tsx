@@ -41,18 +41,17 @@ interface ExcelRow {
   kartNo: string;
   cariAdi: string;
   uyelikNo: string;
-  pnr: string;
-  odeme: string;
-  mil: string;
   not: string;
 }
 
 interface PastReport {
+  id: string;
   tarih: string;
   personel: string;
   kayitSayisi: number;
   musteriSayisi: number;
   gonderimTarih: string;
+  rows?: ExcelRow[];
 }
 
 const SCHENGEN_ULKELER = [
@@ -125,6 +124,11 @@ function savePastReport(report: PastReport) {
   const all = loadPastReports();
   all.unshift(report);
   if (all.length > 50) all.length = 50;
+  localStorage.setItem("gunluk_rapor_gecmis", JSON.stringify(all));
+}
+
+function deletePastReport(id: string) {
+  const all = loadPastReports().filter(r => r.id !== id);
   localStorage.setItem("gunluk_rapor_gecmis", JSON.stringify(all));
 }
 
@@ -248,6 +252,26 @@ export default function GunlukRaporPage() {
     setRows(updated);
   }, [rows]);
 
+  const addEmptyRow = useCallback((fileId: string) => {
+    const parentRows = rows.filter(r => r.fileId === fileId);
+    if (!parentRows.length) return;
+    const parent = parentRows[0];
+    const newRow: ReportRow = {
+      id: nextRowId(), fileId, type: "VIZ",
+      musteriAd: "", hedefUlke: parent.hedefUlke,
+      ucret: 0, ucretCurrency: "", tarih: "",
+      biletTut: 0, servis: 0, toplam: 0,
+      kartNo: "", cariAdi: "",
+    };
+    let lastIndex = -1;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i].fileId === fileId) { lastIndex = i; break; }
+    }
+    const updated = [...rows];
+    updated.splice(lastIndex + 1, 0, newRow);
+    setRows(updated);
+  }, [rows]);
+
   const updateRow = useCallback((rowId: string, field: keyof ReportRow, value: any) => {
     setRows(prev => {
       const updated = prev.map(r => {
@@ -307,7 +331,7 @@ export default function GunlukRaporPage() {
       parkur1: PARKUR_MAP[r.type].p1, parkur2: PARKUR_MAP[r.type].p2,
       parkur3: PARKUR_MAP[r.type].p3, satisSecli: PARKUR_MAP[r.type].satis,
       kartNo: r.kartNo, cariAdi: r.cariAdi,
-      uyelikNo: "", pnr: "", odeme: "", mil: "", not: "",
+      uyelikNo: "", not: "",
     }));
   }, [numberedRows]);
 
@@ -347,7 +371,7 @@ export default function GunlukRaporPage() {
     }
   };
 
-  const handleSendEmail = async (data?: ExcelRow[]) => {
+  const handleSendEmail = async (data?: ExcelRow[], isRevize?: boolean) => {
     const payload = data || buildExcelRows();
     if (payload.length === 0) return;
     setSending(true);
@@ -355,19 +379,22 @@ export default function GunlukRaporPage() {
       const res = await fetch("/api/gunluk-rapor/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: payload, tarih: raporTarih, personel: userName, senderEmail: userEmail }),
+        body: JSON.stringify({ rows: payload, tarih: raporTarih, personel: userName, senderEmail: userEmail, isRevize: !!isRevize }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Mail gönderilemedi");
       }
+      const customerCount = new Set(payload.filter(r => r.yolcuAdi).map(r => r.yolcuAdi)).size || uniqueFileIds.length;
       savePastReport({
+        id: `rpt_${Date.now()}`,
         tarih: raporTarih, personel: userName,
-        kayitSayisi: payload.length, musteriSayisi: uniqueFileIds.length,
+        kayitSayisi: payload.length, musteriSayisi: customerCount,
         gonderimTarih: new Date().toISOString(),
+        rows: payload,
       });
       setPastReports(loadPastReports());
-      setStatusMsg({ type: "success", text: "Mail muhasebeye gönderildi!" });
+      setStatusMsg({ type: "success", text: isRevize ? "Revize rapor gönderildi!" : "Mail muhasebeye gönderildi!" });
       setPreviewOpen(false);
     } catch (err: any) {
       setStatusMsg({ type: "error", text: err.message || "Hata oluştu" });
@@ -424,8 +451,8 @@ export default function GunlukRaporPage() {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {pastReports.map((r, i) => (
-                <div key={i} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors">
+              {pastReports.map((r) => (
+                <div key={r.id} className="px-5 py-3 flex items-center gap-4 hover:bg-gray-50 transition-colors">
                   <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -435,7 +462,25 @@ export default function GunlukRaporPage() {
                     <p className="text-sm font-medium text-gray-900">{r.tarih.replace(/-/g, ".")}</p>
                     <p className="text-xs text-gray-500">{r.kayitSayisi} kayıt, {r.musteriSayisi} müşteri</p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center gap-2">
+                    {r.rows && r.rows.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => handleDownload(r.rows)}
+                          className="px-2.5 py-1.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                        >İndir</button>
+                        <button
+                          onClick={() => { setRaporTarih(r.tarih); setPreviewRows(r.rows!); setPreviewOpen(true); }}
+                          className="px-2.5 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                        >Düzenle</button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => { deletePastReport(r.id); setPastReports(loadPastReports()); }}
+                      className="px-2.5 py-1.5 text-xs font-medium bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                    >Sil</button>
+                  </div>
+                  <div className="text-right min-w-[100px]">
                     <p className="text-xs text-gray-400">
                       {new Date(r.gonderimTarih).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </p>
@@ -549,6 +594,7 @@ export default function GunlukRaporPage() {
                       {!hasSig && <button onClick={() => addSubRow(fileId, "SIG")} className="px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">+ Sigorta</button>}
                       {!hasRan && <button onClick={() => addSubRow(fileId, "RAN")} className="px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-colors">+ Randevu</button>}
                       {!hasDav && <button onClick={() => addSubRow(fileId, "DAV")} className="px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-600 rounded-md hover:bg-amber-100 transition-colors">+ Davet</button>}
+                      <button onClick={() => addEmptyRow(fileId)} className="px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors">+ Boş Satır</button>
                       <button onClick={() => removeRow(vizRow.id)} className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors ml-1" title="Müşteriyi Kaldır">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
@@ -665,7 +711,7 @@ export default function GunlukRaporPage() {
               <table className="w-full text-xs whitespace-nowrap border border-gray-200 rounded-lg overflow-hidden">
                 <thead>
                   <tr className="bg-indigo-50">
-                    {["#","H.Y. Kodu","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış Şekli","Kart No","Cari Adı"].map((h,i) => (
+                    {["#","H.Y. Kodu","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış Şekli","Kart No","Cari Adı","Not"].map((h,i) => (
                       <th key={i} className="py-2.5 px-2 text-left font-semibold text-indigo-800 border-b border-indigo-100">{h}</th>
                     ))}
                   </tr>
@@ -688,6 +734,7 @@ export default function GunlukRaporPage() {
                       <td className="py-1.5 px-2"><input value={r.satisSecli} onChange={e => updatePreviewRow(idx, "satisSecli", e.target.value)} className="w-[90px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.kartNo} onChange={e => updatePreviewRow(idx, "kartNo", e.target.value)} className="w-[80px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.cariAdi} onChange={e => updatePreviewRow(idx, "cariAdi", e.target.value)} className="w-[100px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input value={r.not} onChange={e => updatePreviewRow(idx, "not", e.target.value)} className="w-[100px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="Not..." /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -702,9 +749,16 @@ export default function GunlukRaporPage() {
                 <Button variant="outline" size="sm" onClick={() => handleDownload(previewRows)} disabled={downloading}>
                   {downloading ? "İndiriliyor..." : "Excel İndir"}
                 </Button>
+                <button
+                  onClick={() => handleSendEmail(previewRows, true)}
+                  disabled={sending}
+                  className="px-4 py-2 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {sending ? "Gönderiliyor..." : "Revize Olarak Gönder"}
+                </button>
                 <Button
                   size="sm"
-                  onClick={() => handleSendEmail(previewRows)}
+                  onClick={() => handleSendEmail(previewRows, false)}
                   disabled={sending}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white px-6"
                 >

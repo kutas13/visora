@@ -29,9 +29,6 @@ const HEADERS = [
   "Kart No",
   "CARI ADI",
   "UYELIK NO",
-  "PNR",
-  "ODEME",
-  "MIL ",
   "NOT",
 ];
 
@@ -52,9 +49,6 @@ interface ReportRowPayload {
   kartNo: string;
   cariAdi: string;
   uyelikNo: string;
-  pnr: string;
-  odeme: string;
-  mil: string;
   not: string;
 }
 
@@ -74,7 +68,7 @@ async function generateExcelBuffer(rows: ReportRowPayload[]): Promise<Buffer> {
 
   const headerRow = sheet.addRow(HEADERS);
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true, size: 10 };
+    cell.font = { bold: true, size: 10, color: { argb: "FF000000" } };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = {
       top: { style: "thin" },
@@ -85,16 +79,16 @@ async function generateExcelBuffer(rows: ReportRowPayload[]): Promise<Buffer> {
     cell.fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FFD9E1F2" },
+      fgColor: { argb: "FFED7D31" },
     };
   });
 
   sheet.columns = [
     { width: 10 }, { width: 10 }, { width: 5 }, { width: 12 },
-    { width: 35 }, { width: 12 }, { width: 12 }, { width: 12 },
-    { width: 12 }, { width: 8 }, { width: 8 }, { width: 8 },
+    { width: 35 }, { width: 12 }, { width: 14 }, { width: 14 },
+    { width: 14 }, { width: 8 }, { width: 8 }, { width: 8 },
     { width: 14 }, { width: 12 }, { width: 16 }, { width: 12 },
-    { width: 10 }, { width: 10 }, { width: 8 }, { width: 12 },
+    { width: 16 },
   ];
 
   for (const row of rows) {
@@ -103,7 +97,7 @@ async function generateExcelBuffer(rows: ReportRowPayload[]): Promise<Buffer> {
       formatDateForExcel(row.tarih), row.biletTut || "", row.servis || "",
       row.toplam || "", row.parkur1, row.parkur2, row.parkur3,
       row.satisSecli, row.kartNo, row.cariAdi, row.uyelikNo,
-      row.pnr, row.odeme, row.mil, row.not,
+      row.not,
     ]);
     dataRow.eachCell((cell) => {
       cell.font = { size: 10 };
@@ -135,11 +129,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { rows, tarih, personel, senderEmail } = body as {
+    const { rows, tarih, personel, senderEmail, isRevize } = body as {
       rows: ReportRowPayload[];
       tarih: string;
       personel: string;
       senderEmail: string;
+      isRevize?: boolean;
     };
 
     if (!rows || rows.length === 0) {
@@ -173,12 +168,16 @@ export async function POST(request: NextRequest) {
     const fileName = `${tarihFormatted}.xlsx`;
 
     const vizCount = rows.filter(r => r.hyKodu === "VIZ").length;
-    const totalToplam = rows.reduce((sum, r) => sum + (r.toplam || 0), 0);
 
     const parts = tarihFormatted.split(".");
     const tarihGunAyYil = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : tarihFormatted;
-    const subject = `${tarihGunAyYil} GÜNLÜK RAPORUM`;
-    const textBody = `${tarihGunAyYil} tarihli günlük rapor ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).\nGenel Toplam: ${totalToplam.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL\n\nFox Turizm Vize Yönetim Sistemi`;
+    const revizeTag = isRevize ? " (REVİZE)" : "";
+    const subject = `${tarihGunAyYil} GÜNLÜK RAPORUM${revizeTag}`;
+    const textBody = `${tarihGunAyYil} tarihli günlük rapor${revizeTag} ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).\n\nFox Turizm Vize Yönetim Sistemi`;
+
+    const revizeBadge = isRevize
+      ? `<div style="margin-top:8px;"><span style="display:inline-block;background:rgba(239,68,68,0.15);color:#ef4444;font-size:10px;font-weight:800;padding:5px 16px;border-radius:20px;letter-spacing:3px;">REVİZE</span></div>`
+      : "";
 
     const html = `<!DOCTYPE html>
 <html lang="tr">
@@ -195,6 +194,7 @@ export async function POST(request: NextRequest) {
       <div style="margin-top:16px;">
         <span style="display:inline-block;background:rgba(99,102,241,0.12);color:#818cf8;font-size:10px;font-weight:800;padding:5px 16px;border-radius:20px;letter-spacing:3px;">GÜNLÜK RAPOR</span>
       </div>
+      ${revizeBadge}
     </div>
     <div style="text-align:center;padding:20px 32px 28px;">
       <p style="margin:0 0 6px;font-size:12px;color:#64748b;font-weight:500;letter-spacing:2px;text-transform:uppercase;">Rapor Tarihi</p>
@@ -205,20 +205,12 @@ export async function POST(request: NextRequest) {
     <div style="padding:24px 32px;">
       <div style="background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">
         <p style="margin:0;font-size:14px;color:#cbd5e1;line-height:1.8;">
-          ${tarihGunAyYil} tarihli günlük rapor ektedir.
+          ${tarihGunAyYil} tarihli günlük rapor${revizeTag} ektedir.
         </p>
       </div>
     </div>
     <div style="padding:4px 32px 32px;">
       <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Personel</span>
-          </td>
-          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
-            <span style="font-size:14px;color:#f1f5f9;font-weight:600;">${personel}</span>
-          </td>
-        </tr>
         <tr>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Toplam Kayıt</span>
@@ -243,7 +235,7 @@ export async function POST(request: NextRequest) {
     <p style="margin:0 0 6px;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">
       Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Fox Turizm Vize Yönetim Sistemi</span> tarafından otomatik gönderilmiştir.
     </p>
-    <p style="margin:0;font-size:9px;color:rgba(255,255,255,0.25);">© ${new Date().getFullYear()} Fox Turizm</p>
+    <p style="margin:0;font-size:9px;color:rgba(255,255,255,0.25);">&copy; ${new Date().getFullYear()} Fox Turizm</p>
   </div>
 </div>
 </body>

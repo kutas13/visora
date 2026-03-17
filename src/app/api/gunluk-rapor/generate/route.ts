@@ -20,9 +20,6 @@ interface ReportRowPayload {
   kartNo: string;
   cariAdi: string;
   uyelikNo: string;
-  pnr: string;
-  odeme: string;
-  mil: string;
   not: string;
 }
 
@@ -43,9 +40,6 @@ const HEADERS = [
   "Kart No",
   "CARI ADI",
   "UYELIK NO",
-  "PNR",
-  "ODEME",
-  "MIL ",
   "NOT",
 ];
 
@@ -60,10 +54,9 @@ function formatDateForExcel(dateStr: string): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { rows, tarih, personel } = body as {
+    const { rows, tarih } = body as {
       rows: ReportRowPayload[];
       tarih: string;
-      personel: string;
     };
 
     if (!rows || rows.length === 0) {
@@ -78,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const headerRow = sheet.addRow(HEADERS);
     headerRow.eachCell((cell) => {
-      cell.font = { bold: true, size: 10 };
+      cell.font = { bold: true, size: 10, color: { argb: "FF000000" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = {
         top: { style: "thin" },
@@ -89,31 +82,28 @@ export async function POST(request: NextRequest) {
       cell.fill = {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "FFD9E1F2" },
+        fgColor: { argb: "FFED7D31" },
       };
     });
 
     sheet.columns = [
-      { width: 10 }, // bilet no
-      { width: 10 }, // H.Y. Kodu
-      { width: 5 },  // I-D
-      { width: 12 }, // Acenta
-      { width: 35 }, // Yolcu Adi
-      { width: 12 }, // Tarih
-      { width: 12 }, // Bilet Tut.
-      { width: 12 }, // Servis
-      { width: 12 }, // Toplam
-      { width: 8 },  // Parkur1
-      { width: 8 },  // Parkur2
-      { width: 8 },  // Parkur3
-      { width: 14 }, // Satis Sekli
-      { width: 12 }, // Kart No
-      { width: 16 }, // CARI ADI
-      { width: 12 }, // UYELIK NO
-      { width: 10 }, // PNR
-      { width: 10 }, // ODEME
-      { width: 8 },  // MIL
-      { width: 12 }, // NOT
+      { width: 10 },
+      { width: 10 },
+      { width: 5 },
+      { width: 12 },
+      { width: 35 },
+      { width: 12 },
+      { width: 14 },
+      { width: 14 },
+      { width: 14 },
+      { width: 8 },
+      { width: 8 },
+      { width: 8 },
+      { width: 14 },
+      { width: 12 },
+      { width: 16 },
+      { width: 12 },
+      { width: 16 },
     ];
 
     for (const row of rows) {
@@ -134,9 +124,6 @@ export async function POST(request: NextRequest) {
         row.kartNo,
         row.cariAdi,
         row.uyelikNo,
-        row.pnr,
-        row.odeme,
-        row.mil,
         row.not,
       ]);
 
