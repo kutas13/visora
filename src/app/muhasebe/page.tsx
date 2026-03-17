@@ -14,6 +14,12 @@ const MUHASEBE_FILTERS = [
   { value: "YUSUF", label: "YUSUF" },
 ] as const;
 
+const STATUS_FILTERS = [
+  { value: "all", label: "Hepsi", icon: "📁" },
+  { value: "devam", label: "İşlemi devam edenler", icon: "🔄" },
+  { value: "sonuclanan", label: "Sonuçlananlar", icon: "✅" },
+] as const;
+
 const USER_AVATARS: Record<string, string> = {
   YUSUF: "/yusuf-avatar.png",
   DAVUT: "/davut-avatar.png",
@@ -40,6 +46,7 @@ export default function MuhasebePage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStaff, setFilterStaff] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -79,6 +86,11 @@ export default function MuhasebePage() {
     if (filterStaff !== "all") {
       result = result.filter(f => getCariKey(f) === filterStaff);
     }
+    if (filterStatus === "devam") {
+      result = result.filter(f => !f.sonuc);
+    } else if (filterStatus === "sonuclanan") {
+      result = result.filter(f => f.sonuc !== null);
+    }
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase().trim();
       result = result.filter(f =>
@@ -88,7 +100,7 @@ export default function MuhasebePage() {
       );
     }
     return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [allFiles, filterStaff, searchTerm, getCariKey]);
+  }, [allFiles, filterStaff, filterStatus, searchTerm, getCariKey]);
 
   const handleLogout = async () => {
     const { createClient } = await import("@/lib/supabase/client");
@@ -151,7 +163,36 @@ export default function MuhasebePage() {
         </div>
       </header>
 
-      <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="flex">
+        {/* Sol Panel - Durum Filtreleri */}
+        <aside className="w-64 flex-shrink-0 border-r border-navy-200 bg-white p-4">
+          <h3 className="text-xs font-semibold text-navy-500 uppercase tracking-wider mb-3">Durum</h3>
+          <div className="space-y-1">
+            {STATUS_FILTERS.map((s) => {
+              const isActive = filterStatus === s.value;
+              return (
+                <button
+                  key={s.value}
+                  onClick={() => setFilterStatus(s.value)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left ${
+                    isActive ? "bg-primary-100 text-primary-700 border border-primary-200" : "text-navy-600 hover:bg-navy-50 border border-transparent"
+                  }`}
+                >
+                  <span className="w-6 h-6 rounded-md flex items-center justify-center bg-white/80 text-base">{s.icon}</span>
+                  <span>{s.label}</span>
+                  {isActive && (
+                    <svg className="w-4 h-4 ml-auto text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* Ana İçerik */}
+        <div className="flex-1 p-4 md:p-6 max-w-5xl">
         {/* Filtreler */}
         <div className="space-y-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -266,6 +307,7 @@ export default function MuhasebePage() {
             )}
           </div>
         </Card>
+        </div>
       </div>
 
       <MuhasebeFileDetailModal fileId={detailFileId} isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setDetailFileId(null); }} />
