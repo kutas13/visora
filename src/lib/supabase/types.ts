@@ -74,6 +74,7 @@ export interface VisaFile {
   // Yeni ödeme detayları
   hesap_sahibi: HesapSahibi | null;
   cari_tipi: CariTipi | null;
+  cari_sahibi: string | null; // "DAVUT" veya personel adı (kullanici_cari için)
   company_id: string | null;
   fatura_tipi: FaturaTipi | null;
   on_odeme_tutar: number | null;
@@ -204,6 +205,7 @@ export interface Database {
           odeme_durumu?: OdemeDurumu;
           hesap_sahibi?: HesapSahibi | null;
           cari_tipi?: CariTipi | null;
+          cari_sahibi?: string | null;
           company_id?: string | null;
           fatura_tipi?: FaturaTipi | null;
           on_odeme_tutar?: number | null;
@@ -240,6 +242,7 @@ export interface Database {
           ucret_currency?: ParaBirimi;
           odeme_plani?: OdemePlani;
           odeme_durumu?: OdemeDurumu;
+          cari_sahibi?: string | null;
           created_at?: string;
           updated_at?: string;
         };

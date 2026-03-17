@@ -30,20 +30,26 @@ export async function GET(request: NextRequest) {
     // Tüm verileri tek seferde çek (admin cari hesap sayfasıyla aynı mantık)
     const [profilesRes, filesRes, paymentsRes] = await Promise.all([
       supabase.from("profiles").select("*").order("name"),
-      supabase.from("visa_files").select("*").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
-      supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke, assigned_user_id)").eq("payment_type", "tahsilat").order("created_at", { ascending: false }),
+      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
+      supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke, assigned_user_id), profiles:created_by(name)").eq("payment_type", "tahsilat").order("created_at", { ascending: false }),
     ]);
 
     const profiles = profilesRes.data || [];
     const files = filesRes.data || [];
     const payments = paymentsRes.data || [];
 
-    // Kullanıcı bazlı cari hesap hesapla (admin cari-hesap sayfasıyla birebir aynı mantık)
+    // Kullanıcı bazlı cari hesap hesapla - cari_sahibi varsa ona göre, yoksa assigned_user_id
+    const getCariKey = (f: { cari_sahibi?: string | null; assigned_user_id: string }) => {
+      if (f.cari_sahibi) return f.cari_sahibi.toUpperCase();
+      const prof = profiles.find(p => p.id === f.assigned_user_id);
+      return prof?.name?.toUpperCase() || f.assigned_user_id;
+    };
     const staffList = profiles
       .filter(p => p.role === "staff" || p.role === "admin")
       .map(profile => {
-        const userFiles = files.filter(f => f.assigned_user_id === profile.id);
-        const userPayments = payments.filter(p => p.created_by === profile.id);
+        const profileKey = profile.name?.toUpperCase() || profile.id;
+        const userFiles = files.filter(f => getCariKey(f) === profileKey);
+        const userPayments = payments.filter(p => userFiles.some(f => f.id === p.file_id));
 
         const totals: Record<string, { borc: number; tahsilat: number; kalan: number }> = {};
 

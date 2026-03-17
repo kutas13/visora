@@ -37,22 +37,28 @@ export default function CariHesapPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: files } = await supabase
+    const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
+    const profileName = profile?.name?.toUpperCase() || "";
+
+    const { data: allCariFiles } = await supabase
       .from("visa_files")
       .select("*")
-      .eq("assigned_user_id", user.id)
       .eq("odeme_plani", "cari")
       .neq("cari_tipi", "firma_cari")
       .order("created_at", { ascending: false });
 
-    setCariFiles(files || []);
+    const files = (allCariFiles || []).filter((f) =>
+      f.cari_sahibi ? f.cari_sahibi.toUpperCase() === profileName : f.assigned_user_id === user.id
+    );
+    setCariFiles(files);
 
-    const { data: paymentData } = await supabase
+    const { data: allTahsilat } = await supabase
       .from("payments")
       .select("*, visa_files(musteri_ad, hedef_ulke)")
-      .eq("created_by", user.id)
       .eq("payment_type", "tahsilat")
       .order("created_at", { ascending: false });
+
+    const paymentData = (allTahsilat || []).filter((p) => files.some((f) => f.id === p.file_id));
 
     // Firma cari dosyaları da dahil et (otomatik tahsilat olarak)
     const { data: firmaCariFiles } = await supabase
@@ -79,7 +85,7 @@ export default function CariHesapPage() {
       }
     }));
 
-    const allPayments = [...(paymentData || []), ...firmaCariAsPayments];
+    const allPayments = [...paymentData, ...firmaCariAsPayments];
     setPayments(allPayments);
 
     const calc: Record<string, CurrencyTotals> = {};

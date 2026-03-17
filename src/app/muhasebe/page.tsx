@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Button, Card, Badge, Input } from "@/components/ui";
+import MuhasebeFileDetailModal from "@/components/muhasebe/MuhasebeFileDetailModal";
 import type { Profile, VisaFile, Payment } from "@/lib/supabase/types";
 
 type PaymentWithFile = Payment & {
@@ -47,6 +48,8 @@ export default function MuhasebePage() {
   const [detailTab, setDetailTab] = useState<"dosyalar" | "tahsilatlar">("dosyalar");
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
+  const [detailFileId, setDetailFileId] = useState<string | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -401,7 +404,7 @@ export default function MuhasebePage() {
                     </button>
                   </div>
 
-                  {/* Dosyalar Tablosu */}
+                  {/* Dosyalar Tablosu - Sadece görüntüleme, tıklanınca özgeçmiş */}
                   {detailTab === "dosyalar" && (
                     <Card className="overflow-hidden bg-white/10 backdrop-blur border border-white/20">
                       {selectedData.files.length === 0 ? (
@@ -414,8 +417,10 @@ export default function MuhasebePage() {
                                 <th className="text-left px-4 py-3 text-white/50 font-medium">Müşteri</th>
                                 <th className="text-left px-4 py-3 text-white/50 font-medium">Ülke</th>
                                 <th className="text-right px-4 py-3 text-white/50 font-medium">Ücret</th>
-                                <th className="text-center px-4 py-3 text-white/50 font-medium">Durum</th>
+                                <th className="text-center px-4 py-3 text-white/50 font-medium">Ödeme Durumu</th>
+                                <th className="text-left px-4 py-3 text-white/50 font-medium">Dosyayı Yapan</th>
                                 <th className="text-right px-4 py-3 text-white/50 font-medium">Tarih</th>
+                                <th className="text-center px-4 py-3 text-white/50 font-medium">Özgeçmiş</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -433,7 +438,16 @@ export default function MuhasebePage() {
                                       <span className="px-2 py-1 rounded-full text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30">Ödenmedi</span>
                                     )}
                                   </td>
+                                  <td className="px-4 py-3 text-white/70">{(f as any).profiles?.name || "-"}</td>
                                   <td className="px-4 py-3 text-right text-white/50">{formatDate(f.created_at)}</td>
+                                  <td className="px-4 py-3 text-center">
+                                    <button
+                                      onClick={() => { setDetailFileId(f.id); setShowDetailModal(true); }}
+                                      className="px-2 py-1 text-xs font-medium bg-primary-500/20 text-primary-300 hover:bg-primary-500/30 rounded-lg transition-colors"
+                                    >
+                                      Görüntüle
+                                    </button>
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
@@ -443,7 +457,7 @@ export default function MuhasebePage() {
                     </Card>
                   )}
 
-                  {/* Tahsilatlar Tablosu */}
+                  {/* Tahsilatlar Tablosu - Kimin yaptığını göster */}
                   {detailTab === "tahsilatlar" && (
                     <Card className="overflow-hidden bg-white/10 backdrop-blur border border-white/20">
                       {selectedData.payments.length === 0 ? (
@@ -457,6 +471,7 @@ export default function MuhasebePage() {
                                 <th className="text-left px-4 py-3 text-white/50 font-medium">Ülke</th>
                                 <th className="text-right px-4 py-3 text-white/50 font-medium">Tutar</th>
                                 <th className="text-center px-4 py-3 text-white/50 font-medium">Yöntem</th>
+                                <th className="text-left px-4 py-3 text-white/50 font-medium">Tahsilatı Yapan</th>
                                 <th className="text-right px-4 py-3 text-white/50 font-medium">Tarih</th>
                               </tr>
                             </thead>
@@ -478,9 +493,10 @@ export default function MuhasebePage() {
                                         ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
                                         : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
                                     }`}>
-                                      {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
+                                      {p.yontem === "nakit" ? "Nakit" : p.yontem === "hesaba" ? "Hesaba" : "Cari"}
                                     </span>
                                   </td>
+                                  <td className="px-4 py-3 text-white/70">{(p as any).profiles?.name || "-"}</td>
                                   <td className="px-4 py-3 text-right text-white/50">{formatDate(p.created_at)}</td>
                                 </tr>
                               ))}
@@ -496,6 +512,8 @@ export default function MuhasebePage() {
           </div>
         </div>
       </div>
+
+      <MuhasebeFileDetailModal fileId={detailFileId} isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setDetailFileId(null); }} />
 
       {/* Firma Oluştur Modal */}
       {showCreateCompany && (

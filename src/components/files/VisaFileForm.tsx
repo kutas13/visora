@@ -104,12 +104,19 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
         const name = profile?.name || "Kullanıcı";
         setUserName(name);
-        setCariSahibi(name);
+        if (!file) setCariSahibi(name);
       }
     };
     loadUserName();
     fetch("/api/exchange-rates").then(r => r.json()).then(d => { if (d.rates) setExchangeRates(d.rates); }).catch(() => {});
   }, []);
+
+  // Edit modunda cariSahibi'yi dosyadan yükle
+  useEffect(() => {
+    if (file && odemePlani === "cari" && file.cari_tipi === "kullanici_cari") {
+      setCariSahibi(file.cari_sahibi || userName);
+    }
+  }, [file?.id, file?.cari_sahibi, file?.cari_tipi, odemePlani, userName]);
 
   // Firma listesi yükle + edit modunda mevcut firmayı seç
   useEffect(() => {
@@ -225,6 +232,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         // Yeni ödeme detayları
         hesap_sahibi: (odemePlani === "pesin" && hesapSahibi) ? hesapSahibi : null,
         cari_tipi: odemePlani === "firma_cari" ? "firma_cari" : (odemePlani === "cari" ? "kullanici_cari" : null),
+        cari_sahibi: (odemePlani === "cari" && cariSahibi) ? cariSahibi : null,
         company_id: (odemePlani === "firma_cari" && selectedCompany) ? selectedCompany.id : null,
         fatura_tipi: odemePlani === "firma_cari" ? faturaTipi : null,
         on_odeme_tutar: onOdemeVar ? onOdemeNum : null,

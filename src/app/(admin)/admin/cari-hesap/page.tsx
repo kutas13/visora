@@ -45,18 +45,25 @@ export default function AdminCariHesapPage() {
     const [profilesRes, filesRes, paymentsRes] = await Promise.all([
       supabase.from("profiles").select("*").order("name"),
       supabase.from("visa_files").select("*").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
-      supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke, assigned_user_id)").eq("payment_type", "tahsilat").order("created_at", { ascending: false }),
+      supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke, assigned_user_id, cari_sahibi)").eq("payment_type", "tahsilat").order("created_at", { ascending: false }),
     ]);
 
     const profiles = profilesRes.data;
     const allFiles = filesRes.data;
     const allPayments = paymentsRes.data;
 
+    const getCariKey = (f: { cari_sahibi?: string | null; assigned_user_id: string }) => {
+      if (f.cari_sahibi) return f.cari_sahibi.toUpperCase();
+      const prof = (profiles || []).find((p: Profile) => p.id === f.assigned_user_id);
+      return prof?.name?.toUpperCase() || f.assigned_user_id;
+    };
+
     const result: StaffCari[] = [];
 
-    (profiles || []).forEach((profile) => {
-      const files = (allFiles || []).filter((f) => f.assigned_user_id === profile.id);
-      const payments = (allPayments || []).filter((p) => p.created_by === profile.id);
+    (profiles || []).forEach((profile: Profile) => {
+      const profileKey = profile.name?.toUpperCase() || profile.id;
+      const files = (allFiles || []).filter((f) => getCariKey(f) === profileKey);
+      const payments = (allPayments || []).filter((p) => files.some((f) => f.id === p.file_id));
 
       const totals: Record<string, CurrencyTotals> = {};
 
