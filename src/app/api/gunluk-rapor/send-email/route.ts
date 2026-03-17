@@ -114,6 +114,12 @@ async function generateExcelBuffer(rows: ReportRowPayload[]): Promise<Buffer> {
         right: { style: "thin" },
       };
     });
+    [7, 8, 9].forEach(colIdx => {
+      const cell = dataRow.getCell(colIdx);
+      if (typeof cell.value === "number") {
+        cell.numFmt = "#,##0.00";
+      }
+    });
   }
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();
@@ -169,8 +175,10 @@ export async function POST(request: NextRequest) {
     const vizCount = rows.filter(r => r.hyKodu === "VIZ").length;
     const totalToplam = rows.reduce((sum, r) => sum + (r.toplam || 0), 0);
 
-    const subject = `Günlük Rapor • ${tarihFormatted} • ${personel}`;
-    const textBody = `${personel} personelinin ${tarihFormatted} tarihli günlük raporu ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).\nGenel Toplam: ${totalToplam.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL\n\nFox Turizm Vize Yönetim Sistemi`;
+    const parts = tarihFormatted.split(".");
+    const tarihGunAyYil = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : tarihFormatted;
+    const subject = `${tarihGunAyYil} GÜNLÜK RAPORUM`;
+    const textBody = `${tarihGunAyYil} tarihli günlük rapor ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).\nGenel Toplam: ${totalToplam.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL\n\nFox Turizm Vize Yönetim Sistemi`;
 
     const html = `<!DOCTYPE html>
 <html lang="tr">
@@ -190,13 +198,14 @@ export async function POST(request: NextRequest) {
     </div>
     <div style="text-align:center;padding:20px 32px 28px;">
       <p style="margin:0 0 6px;font-size:12px;color:#64748b;font-weight:500;letter-spacing:2px;text-transform:uppercase;">Rapor Tarihi</p>
-      <p style="margin:0;font-size:36px;font-weight:900;color:#ffffff;letter-spacing:-1px;line-height:1;">${tarihFormatted}</p>
+      <p style="margin:0;font-size:36px;font-weight:900;color:#ffffff;letter-spacing:-1px;line-height:1;">${tarihGunAyYil}</p>
+      <p style="margin:8px 0 0;font-size:16px;color:#94a3b8;font-weight:500;">GÜNLÜK RAPORUM</p>
     </div>
     <div style="margin:0 32px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent);"></div>
     <div style="padding:24px 32px;">
       <div style="background:rgba(255,255,255,0.04);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);">
         <p style="margin:0;font-size:14px;color:#cbd5e1;line-height:1.8;">
-          ${personel} personelinin günlük raporu ektedir.
+          ${tarihGunAyYil} tarihli günlük rapor ektedir.
         </p>
       </div>
     </div>
@@ -240,11 +249,9 @@ export async function POST(request: NextRequest) {
 </body>
 </html>`;
 
-    const toMuhasebe = "Muhasebe@foxturizm.com";
-
     await transporter.sendMail({
       from: { name: personel, address: senderEmail },
-      to: [toMuhasebe, senderEmail],
+      to: ["Muhasebe@foxturizm.com", "info@foxturizm.com", senderEmail],
       subject,
       text: textBody,
       html,

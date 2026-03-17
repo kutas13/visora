@@ -597,8 +597,8 @@ export default function GunlukRaporPage() {
                           <td className="py-2 px-2 text-right">
                             <input type="number" value={r.biletTut || ""} onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
                           </td>
-                          <td className="py-2 px-2 text-right text-gray-600">{r.servis.toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</td>
-                          <td className="py-2 px-2 text-right font-semibold text-gray-900">{r.toplam.toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</td>
+                          <td className="py-2 px-2 text-right text-gray-600">{r.servis.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="py-2 px-2 text-right font-semibold text-gray-900">{r.toplam.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                           <td className="py-2 px-2 text-gray-500">{parkur.p1}</td>
                           <td className="py-2 px-2 text-gray-500">{parkur.p2}</td>
                           <td className="py-2 px-2 text-gray-500">{parkur.p3}</td>
@@ -653,11 +653,11 @@ export default function GunlukRaporPage() {
             </div>
 
             {/* Mail Bilgileri */}
-            <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap gap-6 text-sm">
-              <div><span className="text-gray-500">Kime:</span> <span className="font-medium text-gray-900">Muhasebe@foxturizm.com</span></div>
-              <div><span className="text-gray-500">CC:</span> <span className="font-medium text-gray-900">{userEmail}</span></div>
-              <div><span className="text-gray-500">Konu:</span> <span className="font-medium text-gray-900">Günlük Rapor - {raporTarih.replace(/-/g, ".")} - {userName}</span></div>
-              <div><span className="text-gray-500">Ek:</span> <span className="font-medium text-gray-900">{raporTarih.replace(/-/g, ".")}.xlsx</span></div>
+            <div className="px-6 py-3 bg-orange-50 border-b border-orange-200 flex flex-wrap gap-6 text-sm">
+              <div><span className="text-orange-600 font-medium">Kime:</span> <span className="font-semibold text-orange-900">Muhasebe@foxturizm.com, info@foxturizm.com</span></div>
+              <div><span className="text-orange-600 font-medium">CC:</span> <span className="font-semibold text-orange-900">{userEmail}</span></div>
+              <div><span className="text-orange-600 font-medium">Konu:</span> <span className="font-semibold text-orange-900">{(() => { const p = raporTarih.split("-"); return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : raporTarih; })()} GÜNLÜK RAPORUM</span></div>
+              <div><span className="text-orange-600 font-medium">Ek:</span> <span className="font-semibold text-orange-900">{raporTarih.replace(/-/g, ".")}.xlsx</span></div>
             </div>
 
             {/* Editable Table */}
@@ -665,7 +665,7 @@ export default function GunlukRaporPage() {
               <table className="w-full text-xs whitespace-nowrap border border-gray-200 rounded-lg overflow-hidden">
                 <thead>
                   <tr className="bg-indigo-50">
-                    {["#","H.Y. Kodu","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış Şekli","Kart No","Cari Adı","Üyelik No","PNR","Ödeme","Mil","Not"].map((h,i) => (
+                    {["#","H.Y. Kodu","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış Şekli","Kart No","Cari Adı"].map((h,i) => (
                       <th key={i} className="py-2.5 px-2 text-left font-semibold text-indigo-800 border-b border-indigo-100">{h}</th>
                     ))}
                   </tr>
@@ -688,11 +688,6 @@ export default function GunlukRaporPage() {
                       <td className="py-1.5 px-2"><input value={r.satisSecli} onChange={e => updatePreviewRow(idx, "satisSecli", e.target.value)} className="w-[90px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.kartNo} onChange={e => updatePreviewRow(idx, "kartNo", e.target.value)} className="w-[80px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.cariAdi} onChange={e => updatePreviewRow(idx, "cariAdi", e.target.value)} className="w-[100px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
-                      <td className="py-1.5 px-2"><input value={r.uyelikNo} onChange={e => updatePreviewRow(idx, "uyelikNo", e.target.value)} className="w-[60px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
-                      <td className="py-1.5 px-2"><input value={r.pnr} onChange={e => updatePreviewRow(idx, "pnr", e.target.value)} className="w-[60px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
-                      <td className="py-1.5 px-2"><input value={r.odeme} onChange={e => updatePreviewRow(idx, "odeme", e.target.value)} className="w-[60px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
-                      <td className="py-1.5 px-2"><input value={r.mil} onChange={e => updatePreviewRow(idx, "mil", e.target.value)} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
-                      <td className="py-1.5 px-2"><input value={r.not} onChange={e => updatePreviewRow(idx, "not", e.target.value)} className="w-[80px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                     </tr>
                   ))}
                 </tbody>

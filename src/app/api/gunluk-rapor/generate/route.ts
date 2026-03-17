@@ -140,6 +140,13 @@ export async function POST(request: NextRequest) {
         row.not,
       ]);
 
+      [7, 8, 9].forEach(colIdx => {
+        const cell = dataRow.getCell(colIdx);
+        if (typeof cell.value === "number") {
+          cell.numFmt = "#,##0.00";
+        }
+      });
+
       dataRow.eachCell((cell) => {
         cell.font = { size: 10 };
         cell.border = {
