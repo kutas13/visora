@@ -208,46 +208,6 @@ export default function MuhasebePage() {
             })}
           </div>
 
-          <h3 className="text-xs font-semibold text-navy-500 uppercase tracking-wider mb-3">Tarih Aralığı</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-navy-500 mb-1">Başlangıç</label>
-              <input
-                type="date"
-                value={dateStart}
-                onChange={(e) => setDateStart(e.target.value)}
-                className="w-full px-2.5 py-2 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-navy-500 mb-1">Bitiş</label>
-              <input
-                type="date"
-                value={dateEnd}
-                onChange={(e) => setDateEnd(e.target.value)}
-                className="w-full px-2.5 py-2 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDateFilterActive(!dateFilterActive)}
-                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                  dateFilterActive ? "bg-primary-600 text-white" : "bg-navy-100 text-navy-600 hover:bg-navy-200"
-                }`}
-              >
-                {dateFilterActive ? "Aktif" : "Uygula"}
-              </button>
-              {dateFilterActive && (
-                <button
-                  onClick={() => { setDateFilterActive(false); setDateStart(toDateStr(monthAgo)); setDateEnd(toDateStr(today)); }}
-                  className="px-2 py-2 text-navy-500 hover:text-navy-700"
-                  title="Temizle"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              )}
-            </div>
-          </div>
         </aside>
 
         {/* Ana İçerik */}
@@ -282,13 +242,52 @@ export default function MuhasebePage() {
                 );
               })}
             </div>
-            <div className="flex-1 min-w-0 sm:max-w-xs">
-              <Input
-                placeholder="İsim, pasaport veya ülke ara..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
+            <div className="flex flex-1 flex-wrap items-center gap-3 min-w-0">
+              <div className="flex-1 min-w-[200px] sm:max-w-[260px]">
+                <Input
+                  placeholder="İsim, pasaport veya ülke ara..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                dateFilterActive ? "bg-primary-50 border-primary-200" : "bg-white border-navy-200"
+              }`}>
+                <svg className="w-4 h-4 text-navy-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <input
+                  type="date"
+                  value={dateStart}
+                  onChange={(e) => setDateStart(e.target.value)}
+                  className="w-[130px] px-2 py-1.5 border border-navy-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                />
+                <span className="text-navy-400 text-sm">–</span>
+                <input
+                  type="date"
+                  value={dateEnd}
+                  onChange={(e) => setDateEnd(e.target.value)}
+                  className="w-[130px] px-2 py-1.5 border border-navy-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+                />
+                <button
+                  onClick={() => setDateFilterActive(!dateFilterActive)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    dateFilterActive ? "bg-primary-600 text-white hover:bg-primary-700" : "bg-navy-100 text-navy-600 hover:bg-navy-200"
+                  }`}
+                >
+                  {dateFilterActive ? "Aktif" : "Uygula"}
+                </button>
+                {dateFilterActive && (
+                  <button
+                    onClick={() => { setDateFilterActive(false); setDateStart(toDateStr(monthAgo)); setDateEnd(toDateStr(today)); }}
+                    className="p-1.5 rounded-md text-navy-400 hover:bg-navy-100 hover:text-navy-600 transition-colors"
+                    title="Temizle"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <p className="text-xs text-navy-400 font-medium">
