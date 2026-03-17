@@ -335,7 +335,7 @@ export default function MuhasebePage() {
                     <th className="text-center py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Detay</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-200">
                   {filteredFiles.map((f) => (
                     <tr key={f.id} className="hover:bg-gray-50/80 transition-colors group">
                       <td className="py-3.5 px-5">
@@ -366,7 +366,7 @@ export default function MuhasebePage() {
                       <td className="py-3.5 px-5 text-center">
                         <button
                           onClick={() => { setDetailFileId(f.id); setShowDetailModal(true); }}
-                          className="px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors opacity-70 group-hover:opacity-100"
+                          className="px-3.5 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all active:scale-95"
                         >
                           Görüntüle
                         </button>
