@@ -76,9 +76,6 @@ export default function FilesPage() {
       }
     }
 
-    if (searchTerm) {
-      query = query.or(`musteri_ad.ilike.%${searchTerm}%,pasaport_no.ilike.%${searchTerm}%`);
-    }
     if (filterIslemTipi !== "all") {
       query = query.eq("islem_tipi", filterIslemTipi);
     }
@@ -93,7 +90,23 @@ export default function FilesPage() {
       console.error("Dosyalar yüklenirken hata:", error);
       setFiles([]);
     } else if (data) {
-      const sorted = [...data].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      let result = data;
+      if (searchTerm.trim()) {
+        const norm = (s: string) => s.toLowerCase()
+          .replace(/İ/gi, "i").replace(/I/g, "i").replace(/ı/g, "i")
+          .replace(/ğ/g, "g").replace(/Ğ/g, "g")
+          .replace(/ü/g, "u").replace(/Ü/g, "u")
+          .replace(/ş/g, "s").replace(/Ş/g, "s")
+          .replace(/ö/g, "o").replace(/Ö/g, "o")
+          .replace(/ç/g, "c").replace(/Ç/g, "c");
+        const q = norm(searchTerm.trim());
+        result = result.filter(f =>
+          norm(f.musteri_ad || "").includes(q) ||
+          norm(f.pasaport_no || "").includes(q) ||
+          norm(f.hedef_ulke || "").includes(q)
+        );
+      }
+      const sorted = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setFiles(sorted);
     }
     setLoading(false);

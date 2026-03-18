@@ -166,6 +166,7 @@ export default function GunlukRaporPage() {
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [pastReports, setPastReports] = useState<PastReport[]>([]);
   const [activeTab, setActiveTab] = useState<"rapor" | "gecmis">("rapor");
+  const [hasDraft, setHasDraft] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -198,6 +199,10 @@ export default function GunlukRaporPage() {
     } catch { /* fallback */ }
 
     fetchPastReports().then(setPastReports);
+    try {
+      const draft = localStorage.getItem("gunluk_rapor_taslak");
+      if (draft) setHasDraft(true);
+    } catch { /* */ }
     setLoading(false);
   }, []);
 
@@ -349,6 +354,33 @@ export default function GunlukRaporPage() {
     }));
   }, [numberedRows]);
 
+  const saveDraft = useCallback(() => {
+    try {
+      const draft = { raporTarih, rows };
+      localStorage.setItem("gunluk_rapor_taslak", JSON.stringify(draft));
+      setHasDraft(true);
+      setStatusMsg({ type: "success", text: "Taslak kaydedildi!" });
+      setTimeout(() => setStatusMsg(null), 2000);
+    } catch { /* */ }
+  }, [raporTarih, rows]);
+
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem("gunluk_rapor_taslak");
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.raporTarih) setRaporTarih(draft.raporTarih);
+      if (draft.rows) setRows(draft.rows);
+      setStatusMsg({ type: "success", text: "Taslak yüklendi!" });
+      setTimeout(() => setStatusMsg(null), 2000);
+    } catch { /* */ }
+  }, []);
+
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem("gunluk_rapor_taslak");
+    setHasDraft(false);
+  }, []);
+
   const openPreview = () => {
     setPreviewRows(buildExcelRows());
     setPreviewOpen(true);
@@ -408,6 +440,7 @@ export default function GunlukRaporPage() {
         isRevize: !!isRevize,
       });
       fetchPastReports().then(setPastReports);
+      clearDraft();
       setStatusMsg({ type: "success", text: isRevize ? "Revize rapor gönderildi!" : "Mail muhasebeye gönderildi!" });
       setPreviewOpen(false);
     } catch (err: any) {
@@ -526,6 +559,14 @@ export default function GunlukRaporPage() {
               </div>
               <div className="flex-1" />
               <div className="flex items-center gap-2">
+                {hasDraft && rows.length === 0 && (
+                  <button onClick={loadDraft} className="px-3 py-2 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+                    Taslağı Yükle
+                  </button>
+                )}
+                <button onClick={saveDraft} disabled={rows.length === 0} className="px-3 py-2 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  Taslak Kaydet
+                </button>
                 <Button variant="outline" size="sm" onClick={() => handleDownload()} disabled={rows.length === 0 || downloading} className="text-xs">
                   {downloading ? "İndiriliyor..." : "Excel İndir"}
                 </Button>
