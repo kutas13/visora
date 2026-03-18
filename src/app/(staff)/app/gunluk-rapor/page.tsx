@@ -22,6 +22,7 @@ interface ReportRow {
   toplam: number;
   kartNo: string;
   cariAdi: string;
+  isEmpty?: boolean;
 }
 
 interface ExcelRow {
@@ -272,7 +273,7 @@ export default function GunlukRaporPage() {
       musteriAd: "", hedefUlke: "",
       ucret: 0, ucretCurrency: "", tarih: "",
       biletTut: 0, servis: 0, toplam: 0,
-      kartNo: "", cariAdi: "",
+      kartNo: "", cariAdi: "", isEmpty: true,
     };
     let lastIndex = -1;
     for (let i = rows.length - 1; i >= 0; i--) {
@@ -336,11 +337,13 @@ export default function GunlukRaporPage() {
   const buildExcelRows = useCallback((): ExcelRow[] => {
     return numberedRows.map(r => ({
       biletNo: r.biletNo, hyKodu: r.type, id: "I",
-      acenta: ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase(),
+      acenta: r.isEmpty ? r.hedefUlke : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()),
       yolcuAdi: r.type === "VIZ" ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : (r.musteriAd || ""),
       tarih: r.tarih, biletTut: r.biletTut, servis: r.servis, toplam: r.toplam,
-      parkur1: PARKUR_MAP[r.type].p1, parkur2: PARKUR_MAP[r.type].p2,
-      parkur3: PARKUR_MAP[r.type].p3, satisSecli: PARKUR_MAP[r.type].satis,
+      parkur1: r.isEmpty ? "" : PARKUR_MAP[r.type].p1,
+      parkur2: r.isEmpty ? "" : PARKUR_MAP[r.type].p2,
+      parkur3: r.isEmpty ? "" : PARKUR_MAP[r.type].p3,
+      satisSecli: r.isEmpty ? "" : PARKUR_MAP[r.type].satis,
       kartNo: r.kartNo, cariAdi: r.cariAdi,
       uyelikNo: "", not: "",
     }));
@@ -642,22 +645,28 @@ export default function GunlukRaporPage() {
                       const parkur = PARKUR_MAP[r.type];
                       const tc: Record<RecordType, string> = { VIZ: "bg-green-50 text-green-700", SIG: "bg-blue-50 text-blue-700", RAN: "bg-purple-50 text-purple-700", DAV: "bg-amber-50 text-amber-700" };
                       return (
-                        <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
+                        <tr key={r.id} className={`hover:bg-gray-50/50 transition-colors ${r.isEmpty ? "bg-yellow-50/40" : ""}`}>
                           <td className="py-2 px-2 font-medium text-gray-800">{r.biletNo}</td>
-                          <td className="py-2 px-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tc[r.type]}`}>{r.type}</span></td>
+                          <td className="py-2 px-2">
+                            {r.isEmpty ? (
+                              <input type="text" value={r.type} onChange={(e) => updateRow(r.id, "type", e.target.value as RecordType)} className="w-[45px] px-1 py-0.5 border border-gray-200 rounded text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                            ) : (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tc[r.type]}`}>{r.type}</span>
+                            )}
+                          </td>
                           <td className="py-2 px-2 text-gray-600">I</td>
-                          <td className="py-2 px-2 text-gray-600">{ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()}</td>
+                          <td className="py-2 px-2">
+                            {r.isEmpty ? (
+                              <input type="text" value={r.hedefUlke} onChange={(e) => updateRow(r.id, "hedefUlke", e.target.value)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Acenta" />
+                            ) : (
+                              <span className="text-gray-600">{ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()}</span>
+                            )}
+                          </td>
                           <td className="py-2 px-2 text-gray-900 font-medium">
-                            {r.type === "VIZ" ? (
+                            {r.type === "VIZ" && !r.isEmpty ? (
                               `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
                             ) : (
-                              <input
-                                type="text"
-                                value={r.musteriAd}
-                                onChange={(e) => updateRow(r.id, "musteriAd", e.target.value)}
-                                className="w-[200px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                placeholder="Yolcu adı..."
-                              />
+                              <input type="text" value={r.musteriAd} onChange={(e) => updateRow(r.id, "musteriAd", e.target.value)} className="w-[200px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Yolcu adı..." />
                             )}
                           </td>
                           <td className="py-2 px-2">
@@ -666,18 +675,34 @@ export default function GunlukRaporPage() {
                           <td className="py-2 px-2 text-right">
                             <input type="number" value={r.biletTut || ""} onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
                           </td>
-                          <td className="py-2 px-2 text-right text-gray-600">{r.servis.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td className="py-2 px-2 text-right font-semibold text-gray-900">{r.toplam.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td className="py-2 px-2 text-gray-500">{parkur.p1}</td>
-                          <td className="py-2 px-2 text-gray-500">{parkur.p2}</td>
-                          <td className="py-2 px-2 text-gray-500">{parkur.p3}</td>
-                          <td className="py-2 px-2 text-gray-500">{parkur.satis}</td>
+                          <td className="py-2 px-2 text-right">
+                            {r.isEmpty ? (
+                              <input type="number" value={r.servis || ""} onChange={(e) => updateRow(r.id, "servis", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
+                            ) : (
+                              <span className="text-gray-600">{r.servis.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-right">
+                            {r.isEmpty ? (
+                              <input type="number" value={r.toplam || ""} onChange={(e) => updateRow(r.id, "toplam", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold" placeholder="0" />
+                            ) : (
+                              <span className="font-semibold text-gray-900">{r.toplam.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.p1}</td>
+                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.p2}</td>
+                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.p3}</td>
+                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.satis}</td>
                           <td className="py-2 px-2">
-                            {r.type === "RAN" ? (
+                            {r.isEmpty || r.type === "RAN" ? (
                               <input type="text" value={r.kartNo} onChange={(e) => updateRow(r.id, "kartNo", e.target.value)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Kart No" />
                             ) : <span className="text-gray-600">{r.kartNo}</span>}
                           </td>
-                          <td className="py-2 px-2 text-gray-600">{r.cariAdi}</td>
+                          <td className="py-2 px-2">
+                            {r.isEmpty ? (
+                              <input type="text" value={r.cariAdi} onChange={(e) => updateRow(r.id, "cariAdi", e.target.value)} className="w-[90px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Cari adı" />
+                            ) : <span className="text-gray-600">{r.cariAdi}</span>}
+                          </td>
                           <td className="py-2 px-2 text-center">
                             <button onClick={() => removeRow(r.id)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Sil">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
