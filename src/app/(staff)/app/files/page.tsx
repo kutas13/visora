@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, Button, Input, Select, Checkbox, Modal, Badge, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 import VisaFileForm from "@/components/files/VisaFileForm";
 import FileActions from "@/components/files/FileActions";
@@ -33,8 +33,18 @@ function getCurrencySymbol(currency: string) {
   return symbols[currency] || currency;
 }
 
+function norm(s: string) {
+  return s.toLowerCase()
+    .replace(/İ/gi, "i").replace(/I/g, "i").replace(/ı/g, "i")
+    .replace(/ğ/g, "g").replace(/Ğ/g, "g")
+    .replace(/ü/g, "u").replace(/Ü/g, "u")
+    .replace(/ş/g, "s").replace(/Ş/g, "s")
+    .replace(/ö/g, "o").replace(/Ö/g, "o")
+    .replace(/ç/g, "c").replace(/Ç/g, "c");
+}
+
 export default function FilesPage() {
-  const [files, setFiles] = useState<VisaFileWithProfile[]>([]);
+  const [allFiles, setAllFiles] = useState<VisaFileWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
@@ -76,43 +86,39 @@ export default function FilesPage() {
       }
     }
 
-    if (filterIslemTipi !== "all") {
-      query = query.eq("islem_tipi", filterIslemTipi);
-    }
-    const ulkeFilter = isManualCountry ? manualCountryFilter : filterUlke;
-    if (ulkeFilter && ulkeFilter !== "all") {
-      query = query.eq("hedef_ulke", ulkeFilter);
-    }
-
     const { data, error } = await query;
 
     if (error) {
       console.error("Dosyalar yüklenirken hata:", error);
-      setFiles([]);
+      setAllFiles([]);
     } else if (data) {
-      let result = data;
-      if (searchTerm.trim()) {
-        const norm = (s: string) => s.toLowerCase()
-          .replace(/İ/gi, "i").replace(/I/g, "i").replace(/ı/g, "i")
-          .replace(/ğ/g, "g").replace(/Ğ/g, "g")
-          .replace(/ü/g, "u").replace(/Ü/g, "u")
-          .replace(/ş/g, "s").replace(/Ş/g, "s")
-          .replace(/ö/g, "o").replace(/Ö/g, "o")
-          .replace(/ç/g, "c").replace(/Ç/g, "c");
-        const q = norm(searchTerm.trim());
-        result = result.filter(f =>
-          norm(f.musteri_ad || "").includes(q) ||
-          norm(f.pasaport_no || "").includes(q) ||
-          norm(f.hedef_ulke || "").includes(q)
-        );
-      }
-      const sorted = [...result].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setFiles(sorted);
+      const sorted = [...data].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setAllFiles(sorted);
     }
     setLoading(false);
-  }, [searchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter]);
+  }, []);
 
   useEffect(() => { loadFiles(); }, [loadFiles]);
+
+  const files = useMemo(() => {
+    let result = allFiles;
+    if (searchTerm.trim()) {
+      const q = norm(searchTerm.trim());
+      result = result.filter(f =>
+        norm(f.musteri_ad || "").includes(q) ||
+        norm(f.pasaport_no || "").includes(q) ||
+        norm(f.hedef_ulke || "").includes(q)
+      );
+    }
+    if (filterIslemTipi !== "all") {
+      result = result.filter(f => f.islem_tipi === filterIslemTipi);
+    }
+    const ulkeFilter = isManualCountry ? manualCountryFilter : filterUlke;
+    if (ulkeFilter && ulkeFilter !== "all") {
+      result = result.filter(f => f.hedef_ulke === ulkeFilter);
+    }
+    return result;
+  }, [allFiles, searchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter]);
 
   const handleFormSuccess = () => { setShowForm(false); setEditingFile(null); loadFiles(); };
   const handleEdit = (file: VisaFile) => { setEditingFile(file); setShowForm(true); };
