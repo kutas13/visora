@@ -337,13 +337,13 @@ export default function GunlukRaporPage() {
   const buildExcelRows = useCallback((): ExcelRow[] => {
     return numberedRows.map(r => ({
       biletNo: r.biletNo, hyKodu: r.type, id: "I",
-      acenta: r.isEmpty ? r.hedefUlke : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()),
+      acenta: r.isEmpty ? (r.hedefUlke?.split("|")[0] || "") : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()),
       yolcuAdi: r.type === "VIZ" ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : (r.musteriAd || ""),
       tarih: r.tarih, biletTut: r.biletTut, servis: r.servis, toplam: r.toplam,
-      parkur1: r.isEmpty ? "" : PARKUR_MAP[r.type].p1,
-      parkur2: r.isEmpty ? "" : PARKUR_MAP[r.type].p2,
-      parkur3: r.isEmpty ? "" : PARKUR_MAP[r.type].p3,
-      satisSecli: r.isEmpty ? "" : PARKUR_MAP[r.type].satis,
+      parkur1: r.isEmpty ? (r.hedefUlke?.split("|")[1] || "") : PARKUR_MAP[r.type].p1,
+      parkur2: r.isEmpty ? (r.hedefUlke?.split("|")[2] || "") : PARKUR_MAP[r.type].p2,
+      parkur3: r.isEmpty ? (r.hedefUlke?.split("|")[3] || "") : PARKUR_MAP[r.type].p3,
+      satisSecli: r.isEmpty ? (r.hedefUlke?.split("|")[4] || "") : PARKUR_MAP[r.type].satis,
       kartNo: r.kartNo, cariAdi: r.cariAdi,
       uyelikNo: "", not: "",
     }));
@@ -657,7 +657,7 @@ export default function GunlukRaporPage() {
                           <td className="py-2 px-2 text-gray-600">I</td>
                           <td className="py-2 px-2">
                             {r.isEmpty ? (
-                              <input type="text" value={r.hedefUlke} onChange={(e) => updateRow(r.id, "hedefUlke", e.target.value)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Acenta" />
+                              <input type="text" value={r.hedefUlke?.split("|")[0] || ""} onChange={(e) => { const parts = (r.hedefUlke || "||||").split("|"); parts[0] = e.target.value; updateRow(r.id, "hedefUlke", parts.join("|")); }} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Acenta" />
                             ) : (
                               <span className="text-gray-600">{ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()}</span>
                             )}
@@ -689,10 +689,10 @@ export default function GunlukRaporPage() {
                               <span className="font-semibold text-gray-900">{r.toplam.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             )}
                           </td>
-                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.p1}</td>
-                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.p2}</td>
-                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.p3}</td>
-                          <td className="py-2 px-2 text-gray-500">{r.isEmpty ? "" : parkur.satis}</td>
+                          <td className="py-2 px-2">{r.isEmpty ? <input type="text" value={r.hedefUlke?.split("|")[1] || ""} onChange={(e) => { const parts = (r.hedefUlke || "|||").split("|"); parts[1] = e.target.value; updateRow(r.id, "hedefUlke", parts.join("|")); }} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="P1" /> : <span className="text-gray-500">{parkur.p1}</span>}</td>
+                          <td className="py-2 px-2">{r.isEmpty ? <input type="text" value={r.hedefUlke?.split("|")[2] || ""} onChange={(e) => { const parts = (r.hedefUlke || "|||").split("|"); parts[2] = e.target.value; updateRow(r.id, "hedefUlke", parts.join("|")); }} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="P2" /> : <span className="text-gray-500">{parkur.p2}</span>}</td>
+                          <td className="py-2 px-2">{r.isEmpty ? <input type="text" value={r.hedefUlke?.split("|")[3] || ""} onChange={(e) => { const parts = (r.hedefUlke || "|||").split("|"); parts[3] = e.target.value; updateRow(r.id, "hedefUlke", parts.join("|")); }} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="P3" /> : <span className="text-gray-500">{parkur.p3}</span>}</td>
+                          <td className="py-2 px-2">{r.isEmpty ? <input type="text" value={r.hedefUlke?.split("|")[4] || ""} onChange={(e) => { const parts = (r.hedefUlke || "||||").split("|"); parts[4] = e.target.value; updateRow(r.id, "hedefUlke", parts.join("|")); }} className="w-[80px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Satış" /> : <span className="text-gray-500">{parkur.satis}</span>}</td>
                           <td className="py-2 px-2">
                             {r.isEmpty || r.type === "RAN" ? (
                               <input type="text" value={r.kartNo} onChange={(e) => updateRow(r.id, "kartNo", e.target.value)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Kart No" />
