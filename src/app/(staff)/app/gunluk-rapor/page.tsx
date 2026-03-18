@@ -337,7 +337,7 @@ export default function GunlukRaporPage() {
     return numberedRows.map(r => ({
       biletNo: r.biletNo, hyKodu: r.type, id: "I",
       acenta: ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase(),
-      yolcuAdi: (r.type === "VIZ" || r.type === "DAV") ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : "",
+      yolcuAdi: r.type === "VIZ" ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : (r.musteriAd || ""),
       tarih: r.tarih, biletTut: r.biletTut, servis: r.servis, toplam: r.toplam,
       parkur1: PARKUR_MAP[r.type].p1, parkur2: PARKUR_MAP[r.type].p2,
       parkur3: PARKUR_MAP[r.type].p3, satisSecli: PARKUR_MAP[r.type].satis,
@@ -647,7 +647,19 @@ export default function GunlukRaporPage() {
                           <td className="py-2 px-2"><span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tc[r.type]}`}>{r.type}</span></td>
                           <td className="py-2 px-2 text-gray-600">I</td>
                           <td className="py-2 px-2 text-gray-600">{ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()}</td>
-                          <td className="py-2 px-2 text-gray-900 font-medium">{(r.type === "VIZ" || r.type === "DAV") ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : ""}</td>
+                          <td className="py-2 px-2 text-gray-900 font-medium">
+                            {r.type === "VIZ" ? (
+                              `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
+                            ) : (
+                              <input
+                                type="text"
+                                value={r.musteriAd}
+                                onChange={(e) => updateRow(r.id, "musteriAd", e.target.value)}
+                                className="w-[200px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder="Yolcu adı..."
+                              />
+                            )}
+                          </td>
                           <td className="py-2 px-2">
                             <input type="date" value={r.tarih} onChange={(e) => updateRow(r.id, "tarih", e.target.value)} className="w-[120px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                           </td>
