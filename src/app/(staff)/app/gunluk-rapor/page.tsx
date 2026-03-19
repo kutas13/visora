@@ -102,7 +102,7 @@ function getCariLabel(file: VisaFileWithCompany): string {
     const firmaAd = file.companies?.firma_adi || "FIRMA";
     return firmaAd.toUpperCase();
   }
-  if (file.cari_sahibi) return file.cari_sahibi.toUpperCase();
+  if (file.cari_sahibi) return `${file.cari_sahibi.toUpperCase()} CARI`;
   return "";
 }
 
