@@ -82,6 +82,16 @@ const ACENTA_MAP: Record<RecordType, string | null> = {
   DAV: "DAVETIYE",
 };
 
+function toAscii(s: string): string {
+  return s
+    .replace(/İ/g, "I").replace(/ı/g, "i")
+    .replace(/Ğ/g, "G").replace(/ğ/g, "g")
+    .replace(/Ü/g, "U").replace(/ü/g, "u")
+    .replace(/Ş/g, "S").replace(/ş/g, "s")
+    .replace(/Ö/g, "O").replace(/ö/g, "o")
+    .replace(/Ç/g, "C").replace(/ç/g, "c");
+}
+
 function isSchengen(ulke: string) {
   return SCHENGEN_ULKELER.some(s => s === ulke.toUpperCase());
 }
@@ -240,7 +250,7 @@ export default function GunlukRaporPage() {
       id: nextRowId(), fileId: file.id, type: "VIZ",
       musteriAd: file.musteri_ad || "", hedefUlke: file.hedef_ulke || "",
       ucret: Number(file.ucret) || 0, ucretCurrency: currencyLabel,
-      tarih: "", biletTut,
+      tarih: toDateStr(new Date()), biletTut,
       servis: Math.round((satisTL - biletTut) * 100) / 100,
       toplam: satisTL, kartNo: "NAKIT", cariAdi: cariLabel,
     };
@@ -258,7 +268,7 @@ export default function GunlukRaporPage() {
       id: nextRowId(), fileId, type,
       musteriAd: parent.musteriAd, hedefUlke: parent.hedefUlke,
       ucret: 0, ucretCurrency: parent.ucretCurrency,
-      tarih: "", biletTut: 0, servis: 0, toplam: 0,
+      tarih: toDateStr(new Date()), biletTut: 0, servis: 0, toplam: 0,
       kartNo: type === "SIG" ? "FK-0491" : type === "RAN" ? "" : "NAKIT",
       cariAdi: parent.cariAdi,
     };
@@ -340,18 +350,22 @@ export default function GunlukRaporPage() {
   }, [rows]);
 
   const buildExcelRows = useCallback((): ExcelRow[] => {
-    return numberedRows.map(r => ({
-      biletNo: r.biletNo, hyKodu: r.type, id: "I",
-      acenta: r.isEmpty ? (r.hedefUlke?.split("|")[0] || "") : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase()),
-      yolcuAdi: r.type === "VIZ" ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : (r.musteriAd || ""),
-      tarih: r.tarih, biletTut: r.biletTut, servis: r.servis, toplam: r.toplam,
-      parkur1: r.isEmpty ? (r.hedefUlke?.split("|")[1] || "") : PARKUR_MAP[r.type].p1,
-      parkur2: r.isEmpty ? (r.hedefUlke?.split("|")[2] || "") : PARKUR_MAP[r.type].p2,
-      parkur3: r.isEmpty ? (r.hedefUlke?.split("|")[3] || "") : PARKUR_MAP[r.type].p3,
-      satisSecli: r.isEmpty ? (r.hedefUlke?.split("|")[4] || "") : PARKUR_MAP[r.type].satis,
-      kartNo: r.kartNo, cariAdi: r.cariAdi,
-      uyelikNo: "", not: "",
-    }));
+    return numberedRows.map(r => {
+      const acenta = r.isEmpty ? (r.hedefUlke?.split("|")[0] || "") : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase());
+      const yolcuAdi = r.type === "VIZ" ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : (r.musteriAd || "");
+      return {
+        biletNo: r.biletNo, hyKodu: r.type, id: "I",
+        acenta: toAscii(acenta),
+        yolcuAdi: toAscii(yolcuAdi),
+        tarih: r.tarih, biletTut: r.biletTut, servis: r.servis, toplam: r.toplam,
+        parkur1: toAscii(r.isEmpty ? (r.hedefUlke?.split("|")[1] || "") : PARKUR_MAP[r.type].p1),
+        parkur2: toAscii(r.isEmpty ? (r.hedefUlke?.split("|")[2] || "") : PARKUR_MAP[r.type].p2),
+        parkur3: toAscii(r.isEmpty ? (r.hedefUlke?.split("|")[3] || "") : PARKUR_MAP[r.type].p3),
+        satisSecli: toAscii(r.isEmpty ? (r.hedefUlke?.split("|")[4] || "") : PARKUR_MAP[r.type].satis),
+        kartNo: toAscii(r.kartNo), cariAdi: toAscii(r.cariAdi),
+        uyelikNo: "", not: "",
+      };
+    });
   }, [numberedRows]);
 
   const saveDraft = useCallback(() => {
