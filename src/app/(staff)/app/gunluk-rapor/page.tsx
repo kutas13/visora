@@ -100,9 +100,9 @@ function getCariLabel(file: VisaFileWithCompany): string {
   if (file.odeme_plani === "pesin") return "PESIN SATIS";
   if (file.cari_tipi === "firma_cari") {
     const firmaAd = file.companies?.firma_adi || "FIRMA";
-    return `${firmaAd.toUpperCase()} CARI`;
+    return firmaAd.toUpperCase();
   }
-  if (file.cari_sahibi) return `${file.cari_sahibi.toUpperCase()} CARI`;
+  if (file.cari_sahibi) return file.cari_sahibi.toUpperCase();
   return "";
 }
 
