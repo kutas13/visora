@@ -73,6 +73,9 @@ export default function Error({
         >
           Sayfa yüklenirken bir sorun oluştu. Lütfen tekrar deneyin veya ana sayfaya dönün.
         </p>
+        <p style={{ fontSize: "11px", color: "#94a3b8", marginBottom: "24px", background: "#f8fafc", padding: "8px 12px", borderRadius: "8px", textAlign: "left", wordBreak: "break-all" }}>
+          {error?.message || "Bilinmeyen hata"}
+        </p>
         <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
           <button
             onClick={() => (window.location.href = "/")}

@@ -134,21 +134,30 @@ export default function KasaPage() {
   const fetchTransactions = useCallback(async () => {
     if (!agencyId) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("kasa_transactions")
-      .select("*")
-      .eq("agency_id", agencyId)
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("kasa_transactions")
+        .select("*")
+        .eq("agency_id", agencyId)
+        .order("created_at", { ascending: false });
 
-    const txs = (data || []) as KasaTransaction[];
-    setTransactions(txs);
+      if (error) { console.error("Kasa fetch error:", error.message); setLoading(false); return; }
 
-    const bals: Record<KasaCurrency, number> = { TL: 0, EUR: 0, USD: 0 };
-    txs.forEach((t) => {
-      const sign = t.type === "gelir" ? 1 : -1;
-      bals[t.kasa] += t.amount * sign;
-    });
-    setBalances(bals);
+      const txs = (data || []).map((t: any) => ({
+        ...t,
+        kasa: t.kasa || t.kasa_type || "TL",
+        type: t.type || t.transaction_type || "gelir",
+      })) as KasaTransaction[];
+      setTransactions(txs);
+
+      const bals: Record<KasaCurrency, number> = { TL: 0, EUR: 0, USD: 0 };
+      txs.forEach((t) => {
+        const k = (["TL","EUR","USD"].includes(t.kasa) ? t.kasa : "TL") as KasaCurrency;
+        const sign = t.type === "gelir" ? 1 : -1;
+        bals[k] += t.amount * sign;
+      });
+      setBalances(bals);
+    } catch (e) { console.error("Kasa error:", e); }
     setLoading(false);
   }, [agencyId, supabase]);
 
