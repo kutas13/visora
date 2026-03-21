@@ -71,30 +71,34 @@ export default function PaymentsPage() {
 
       {/* Summary by currency */}
       <div className="grid gap-4 md:grid-cols-3">
-        {[
-          { title: "Peşin Satış", items: pesinItems, gradient: "from-green-500 to-green-600" },
-          { title: "Cari Borç", items: cariItems, gradient: "from-blue-500 to-blue-600" },
-          { title: "Firma Cari", items: firmaItems, gradient: "from-purple-500 to-purple-600" },
-        ].map(card => {
-          const byCur = sumByCurrency(card.items);
+        {(["TL", "EUR", "USD"] as const).map(cur => {
+          const curApps = apps.filter(a => (a.ucret_currency || "TL") === cur);
+          const total = curApps.reduce((s, a) => s + Number(a.ucret || 0), 0);
+          const odenen = curApps.filter(a => a.odeme_durumu === "odendi").reduce((s, a) => s + Number(a.ucret || 0), 0);
+          const bekleyen = total - odenen;
+          const curSym = cur === "USD" ? "$" : cur === "EUR" ? "€" : "₺";
+          const colors = cur === "TL" ? "from-green-500 to-green-600" : cur === "EUR" ? "from-blue-500 to-blue-600" : "from-amber-500 to-amber-600";
           return (
-            <div key={card.title} className="rounded-2xl border border-navy-200/60 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-navy-400">{card.title}</p>
-                <span className="rounded-full bg-navy-100 px-2 py-0.5 text-[10px] font-bold text-navy-500">{card.items.length}</span>
+            <div key={cur} className="overflow-hidden rounded-2xl border border-navy-200/60 bg-white shadow-sm">
+              <div className={`bg-gradient-to-r ${colors} px-5 py-3 flex items-center justify-between`}>
+                <span className="text-sm font-bold text-white">{cur}</span>
+                <span className="text-2xl font-black text-white/90">{curSym}</span>
               </div>
-              {byCur.length === 0 ? (
-                <p className="text-sm text-navy-300">—</p>
-              ) : (
-                <div className="space-y-1">
-                  {byCur.map(({ cur, total }) => (
-                    <div key={cur} className="flex items-center justify-between">
-                      <span className="text-xs text-navy-500">{cur}</span>
-                      <span className="text-lg font-bold text-navy-900">{fmt(total, cur)}</span>
-                    </div>
-                  ))}
+              <div className="p-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-navy-500">Toplam</span>
+                  <span className="text-lg font-bold text-navy-900">{curSym}{total.toLocaleString("tr-TR")}</span>
                 </div>
-              )}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-green-600">Ödenen</span>
+                  <span className="text-sm font-semibold text-green-600">{curSym}{odenen.toLocaleString("tr-TR")}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-red-500">Bekleyen</span>
+                  <span className="text-sm font-semibold text-red-500">{curSym}{bekleyen.toLocaleString("tr-TR")}</span>
+                </div>
+                <div className="mt-1 text-[10px] text-navy-400 text-right">{curApps.length} dosya</div>
+              </div>
             </div>
           );
         })}
