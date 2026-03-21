@@ -76,9 +76,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </div>
           )}
-          <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-navy-400 hover:bg-red-500/10 hover:text-red-400">
+          <button onClick={() => { localStorage.clear(); document.cookie = "agency_id=; path=/; max-age=0"; document.cookie = "app_role=; path=/; max-age=0"; window.location.href = "/"; }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-navy-400 hover:bg-red-500/10 hover:text-red-400">
             Çıkış Yap
-          </Link>
+          </button>
         </div>
       </aside>
 
