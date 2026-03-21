@@ -117,9 +117,23 @@ export default function VisaFilesPage() {
   };
 
   const handleSave = async () => {
-    if (!agencyId || !form.client_id || !form.country || !form.visa_type) return;
+    if (!agencyId) { alert("Oturum hatası. Çıkış yapıp tekrar giriş yapın."); return; }
+    if (!form.client_id) { alert("Müşteri seçmediniz."); return; }
+    if (!form.country) { alert("Ülke seçmediniz."); return; }
+    if (!form.visa_type) { alert("Vize türü girmediniz."); return; }
     setSaving(true);
-    const status = form.evrak_durumu === "geldi" && form.evrak_eksik_mi ? "Evrak Eksik" : (editingFile ? editingFile.status : "Yeni");
+
+    let status: string;
+    if (form.evrak_durumu === "geldi" && form.evrak_eksik_mi) {
+      status = "Evrak Eksik";
+    } else if (form.evrak_durumu === "geldi" && !form.evrak_eksik_mi) {
+      status = editingFile ? "Yeni" : "Yeni";
+    } else {
+      status = editingFile ? editingFile.status : "Yeni";
+    }
+    if (editingFile && form.evrak_durumu === "geldi" && !form.evrak_eksik_mi && editingFile.status === "Evrak Eksik") {
+      status = "Yeni";
+    }
 
     let companyId = form.company_id || null;
     if (form.odeme_plani === "firma_cari" && form.company_search && !companyId) {
@@ -138,10 +152,12 @@ export default function VisaFilesPage() {
     };
 
     if (editingFile) {
-      await supabase.from("applications").update(payload).eq("id", editingFile.id);
+      const { error } = await supabase.from("applications").update(payload).eq("id", editingFile.id);
+      if (error) { alert("Güncelleme hatası: " + error.message); setSaving(false); return; }
     } else {
       const { data, error } = await supabase.from("applications").insert(payload).select("id").single();
-      if (!error && data && form.islem_tipi === "randevulu" && form.randevu_tarihi) {
+      if (error) { alert("Oluşturma hatası: " + error.message); setSaving(false); return; }
+      if (data && form.islem_tipi === "randevulu" && form.randevu_tarihi) {
         const dt = new Date(form.randevu_tarihi);
         await supabase.from("appointments").insert({ agency_id: agencyId, client_id: form.client_id, application_id: data.id, date: dt.toISOString().split("T")[0], time: dt.toTimeString().slice(0, 5), location: "Belirtilmedi" });
       }
