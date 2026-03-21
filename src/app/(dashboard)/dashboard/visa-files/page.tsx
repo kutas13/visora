@@ -8,9 +8,12 @@ interface VisaFile {
   id: string; country: string; visa_type: string; status: string;
   dosya_hazir: boolean; basvuru_yapildi: boolean; islemden_cikti: boolean;
   visa_result: string | null; visa_expiry_date: string | null;
-  ucret: number | null; ucret_currency: string | null;
+  ucret: number | null; ucret_currency: string | null; odeme_plani: string | null;
+  evrak_durumu: string | null; evrak_eksik_mi: boolean | null; evrak_not: string | null;
+  randevu_tarihi: string | null; musteri_telefon: string | null;
+  assigned_user_id: string | null; client_id: string | null;
   created_at: string;
-  clients?: { full_name: string; passport_no: string | null; phone: string | null } | null;
+  clients?: any;
 }
 interface ClientRow { id: string; full_name: string; passport_no: string | null; phone: string | null; }
 interface StaffRow { id: string; full_name: string; }
@@ -33,6 +36,8 @@ function badgeColor(l: string) {
   return m[l] || "bg-navy-100 text-navy-600";
 }
 
+const defaultForm = { client_id: "", country: "", visa_type: "", islem_tipi: "randevulu", randevu_tarihi: "", evrak_durumu: "gelmedi", evrak_eksik_mi: false, evrak_not: "", ucret: "", ucret_currency: "TL", odeme_plani: "pesin", assigned_user_id: "" };
+
 export default function VisaFilesPage() {
   const supabase = createClient();
   const [agencyId, setAgencyId] = useState<string | null>(null);
@@ -45,21 +50,21 @@ export default function VisaFilesPage() {
   const [search, setSearch] = useState("");
   const [stepFilter, setStepFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ client_id: "", country: "", visa_type: "", islem_tipi: "randevulu", randevu_tarihi: "", evrak_durumu: "gelmedi", evrak_eksik_mi: false, ucret: "", ucret_currency: "TL", odeme_plani: "pesin", assigned_user_id: "" });
+  const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
+  const [form, setForm] = useState(defaultForm);
   const [clientSearch, setClientSearch] = useState("");
   const [clientDrop, setClientDrop] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [countryDrop, setCountryDrop] = useState(false);
   const [saving, setSaving] = useState(false);
   const [resultModal, setResultModal] = useState(false);
   const [resultFileId, setResultFileId] = useState("");
   const [resultType, setResultType] = useState<"vize_onay"|"red">("vize_onay");
   const [resultForm, setResultForm] = useState({ visa_expiry_date: "", musteri_telefon: "" });
-  const dropRef = useRef<HTMLDivElement>(null);
+  const clientRef = useRef<HTMLDivElement>(null);
+  const countryRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setAgencyId(localStorage.getItem("agency_id"));
-    setUserId(localStorage.getItem("user_id"));
-    setUserRole(localStorage.getItem("user_role"));
-  }, []);
+  useEffect(() => { setAgencyId(localStorage.getItem("agency_id")); setUserId(localStorage.getItem("user_id")); setUserRole(localStorage.getItem("user_role")); }, []);
 
   const fetchData = useCallback(async () => {
     if (!agencyId) return;
@@ -72,28 +77,60 @@ export default function VisaFilesPage() {
   }, [agencyId, supabase, userRole, userId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => { const h = (e: MouseEvent) => { if (dropRef.current && !dropRef.current.contains(e.target as Node)) setClientDrop(false); }; document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h); }, []);
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (clientRef.current && !clientRef.current.contains(e.target as Node)) setClientDrop(false);
+      if (countryRef.current && !countryRef.current.contains(e.target as Node)) setCountryDrop(false);
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
 
-  const filteredClients = clients.filter((c) => c.full_name.toLowerCase().includes(clientSearch.toLowerCase()));
+  const filteredClients = clients.filter(c => c.full_name.toLowerCase().includes(clientSearch.toLowerCase()));
+  const countryOptions = TARGET_COUNTRIES.map((c: { value: string; label: string }) => c.label);
+  const filteredCountries = countryOptions.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase()));
 
-  const handleAdd = async () => {
+  const openNew = () => { setEditingFile(null); setForm(defaultForm); setClientSearch(""); setCountrySearch(""); setShowForm(true); };
+  const openEdit = (f: VisaFile) => {
+    setEditingFile(f);
+    setForm({
+      client_id: f.client_id || "", country: f.country, visa_type: f.visa_type,
+      islem_tipi: f.randevu_tarihi ? "randevulu" : "randevusuz",
+      randevu_tarihi: f.randevu_tarihi ? new Date(f.randevu_tarihi).toISOString().slice(0, 16) : "",
+      evrak_durumu: f.evrak_durumu || "gelmedi", evrak_eksik_mi: f.evrak_eksik_mi || false,
+      evrak_not: f.evrak_not || "",
+      ucret: f.ucret ? String(f.ucret) : "", ucret_currency: f.ucret_currency || "TL",
+      odeme_plani: f.odeme_plani || "pesin", assigned_user_id: f.assigned_user_id || "",
+    });
+    setClientSearch(f.clients?.full_name || "");
+    setCountrySearch(f.country);
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
     if (!agencyId || !form.client_id || !form.country || !form.visa_type) return;
     setSaving(true);
-    const status = form.evrak_durumu === "geldi" && form.evrak_eksik_mi ? "Evrak Eksik" : "Yeni";
-    const { data, error } = await supabase.from("applications").insert({
+    const status = form.evrak_durumu === "geldi" && form.evrak_eksik_mi ? "Evrak Eksik" : (editingFile ? editingFile.status : "Yeni");
+    const payload = {
       agency_id: agencyId, client_id: form.client_id, country: form.country, visa_type: form.visa_type, status,
       assigned_user_id: form.assigned_user_id || userId,
       ucret: form.ucret ? Number(form.ucret) : null, ucret_currency: form.ucret_currency, odeme_plani: form.odeme_plani,
       randevu_tarihi: form.randevu_tarihi || null,
-    }).select("id").single();
+      evrak_durumu: form.evrak_durumu, evrak_eksik_mi: form.evrak_eksik_mi, evrak_not: form.evrak_not || null,
+    };
 
-    if (!error && data && form.islem_tipi === "randevulu" && form.randevu_tarihi) {
-      const dt = new Date(form.randevu_tarihi);
-      await supabase.from("appointments").insert({ agency_id: agencyId, client_id: form.client_id, application_id: data.id, date: dt.toISOString().split("T")[0], time: dt.toTimeString().slice(0,5), location: "Belirtilmedi" });
+    if (editingFile) {
+      await supabase.from("applications").update(payload).eq("id", editingFile.id);
+    } else {
+      const { data, error } = await supabase.from("applications").insert(payload).select("id").single();
+      if (!error && data && form.islem_tipi === "randevulu" && form.randevu_tarihi) {
+        const dt = new Date(form.randevu_tarihi);
+        await supabase.from("appointments").insert({ agency_id: agencyId, client_id: form.client_id, application_id: data.id, date: dt.toISOString().split("T")[0], time: dt.toTimeString().slice(0, 5), location: "Belirtilmedi" });
+      }
     }
 
-    setSaving(false); setShowForm(false); setClientSearch("");
-    setForm({ client_id: "", country: "", visa_type: "", islem_tipi: "randevulu", randevu_tarihi: "", evrak_durumu: "gelmedi", evrak_eksik_mi: false, ucret: "", ucret_currency: "TL", odeme_plani: "pesin", assigned_user_id: "" });
+    setSaving(false); setShowForm(false); setEditingFile(null); setClientSearch(""); setCountrySearch("");
+    setForm(defaultForm);
     fetchData();
   };
 
@@ -120,7 +157,7 @@ export default function VisaFilesPage() {
     setResultModal(false); fetchData();
   };
 
-  const filtered = files.filter((f) => {
+  const filtered = files.filter(f => {
     const l = getLabel(f);
     if (stepFilter !== "all") {
       if (stepFilter === "dosya_hazir" && l !== "Dosya Hazır") return false;
@@ -134,7 +171,6 @@ export default function VisaFilesPage() {
   });
 
   const counts = { total: files.length, active: files.filter(f => !f.visa_result).length, approved: files.filter(f => f.visa_result === "vize_onay").length, rejected: files.filter(f => f.visa_result === "red").length };
-  const countryOptions = TARGET_COUNTRIES.map((c: { value: string; label: string }) => c.label);
 
   return (
     <div className="space-y-6">
@@ -143,31 +179,27 @@ export default function VisaFilesPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 shadow-lg shadow-orange-500/20"><svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg></div>
           <div><h1 className="text-xl font-bold text-navy-900">Vize Dosyaları</h1><p className="text-xs text-navy-400">{counts.total} dosya</p></div>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-lg transition-all ${showForm ? "bg-navy-700 text-white" : "bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-primary-500/20"}`}>
-          {showForm ? "✕ Kapat" : "+ Yeni Dosya"}
-        </button>
+        <button onClick={openNew} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-500/20">+ Yeni Dosya</button>
       </div>
 
       {/* Summary */}
       <div className="grid gap-4 md:grid-cols-4">
-        {[{ l:"Toplam",v:counts.total,c:"from-primary-500 to-primary-600" },{ l:"Aktif",v:counts.active,c:"from-orange-400 to-orange-500" },{ l:"Onay",v:counts.approved,c:"from-green-400 to-green-500" },{ l:"Red",v:counts.rejected,c:"from-red-400 to-red-500" }].map(c=>(
-          <div key={c.l} className="rounded-2xl border border-navy-200/60 bg-white p-5 shadow-sm">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-navy-400">{c.l}</p>
-            <p className="mt-1 text-3xl font-bold text-navy-900">{c.v}</p>
-          </div>
+        {[{ l:"Toplam",v:counts.total },{ l:"Aktif",v:counts.active },{ l:"Onay",v:counts.approved },{ l:"Red",v:counts.rejected }].map(c=>(
+          <div key={c.l} className="rounded-2xl border border-navy-200/60 bg-white p-5 shadow-sm"><p className="text-[11px] font-semibold uppercase tracking-widest text-navy-400">{c.l}</p><p className="mt-1 text-3xl font-bold text-navy-900">{c.v}</p></div>
         ))}
       </div>
 
       {/* Form */}
       {showForm && (
-        <div className="animate-fade-in-up overflow-hidden rounded-2xl border-0 bg-white shadow-xl">
-          <div className="bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-4"><h3 className="font-semibold text-white">Yeni Vize Dosyası</h3></div>
+        <div className="animate-fade-in-up overflow-hidden rounded-2xl bg-white shadow-xl">
+          <div className="bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-4"><h3 className="font-semibold text-white">{editingFile ? "Dosya Düzenle" : "Yeni Vize Dosyası"}</h3></div>
           <div className="space-y-6 p-6">
+            {/* 1. Müşteri */}
             <div>
               <p className="mb-3 text-sm font-semibold text-navy-800">1. Müşteri</p>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="relative" ref={dropRef}>
-                  <input placeholder="Müşteri adı yazın..." value={clientSearch} onChange={(e) => { setClientSearch(e.target.value); setClientDrop(true); setForm({...form, client_id:""}); }} onFocus={() => setClientDrop(true)} className="h-10 w-full rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
+                <div className="relative" ref={clientRef}>
+                  <input placeholder="Müşteri adı yazın..." value={clientSearch} onChange={e => { setClientSearch(e.target.value); setClientDrop(true); setForm({...form, client_id:""}); }} onFocus={() => setClientDrop(true)} className="h-10 w-full rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
                   {clientDrop && filteredClients.length > 0 && (
                     <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-navy-200 bg-white shadow-xl">
                       {filteredClients.map(c => <button key={c.id} onClick={() => { setForm({...form, client_id:c.id}); setClientSearch(c.full_name); setClientDrop(false); }} className="w-full px-4 py-2.5 text-left text-sm hover:bg-primary-50 hover:text-primary-600"><span className="font-medium">{c.full_name}</span>{c.passport_no && <span className="ml-2 text-xs text-navy-400">{c.passport_no}</span>}</button>)}
@@ -175,21 +207,23 @@ export default function VisaFilesPage() {
                   )}
                 </div>
                 {userRole === "agency_admin" && staff.length > 1 && (
-                  <select value={form.assigned_user_id} onChange={e => setForm({...form, assigned_user_id:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-3 text-sm focus:border-primary-400 focus:outline-none">
-                    <option value="">Kendime ata</option>
-                    {staff.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
-                  </select>
+                  <select value={form.assigned_user_id} onChange={e => setForm({...form, assigned_user_id:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-3 text-sm"><option value="">Kendime ata</option>{staff.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}</select>
                 )}
               </div>
             </div>
 
+            {/* 2. Başvuru - ülke aranabilir */}
             <div>
               <p className="mb-3 text-sm font-semibold text-navy-800">2. Başvuru</p>
               <div className="grid gap-4 md:grid-cols-3">
-                <select value={form.country} onChange={e => setForm({...form, country:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-3 text-sm focus:border-primary-400 focus:outline-none">
-                  <option value="">Ülke seçin</option>
-                  {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div className="relative" ref={countryRef}>
+                  <input placeholder="Ülke yazın veya seçin..." value={countrySearch} onChange={e => { setCountrySearch(e.target.value); setForm({...form, country: e.target.value}); setCountryDrop(true); }} onFocus={() => setCountryDrop(true)} className="h-10 w-full rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
+                  {countryDrop && filteredCountries.length > 0 && (
+                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-navy-200 bg-white shadow-xl">
+                      {filteredCountries.map(c => <button key={c} onClick={() => { setForm({...form, country:c}); setCountrySearch(c); setCountryDrop(false); }} className="w-full px-4 py-2.5 text-left text-sm hover:bg-primary-50 hover:text-primary-600">{c}</button>)}
+                    </div>
+                  )}
+                </div>
                 <input placeholder="Vize türü (Turistik, İş...)" value={form.visa_type} onChange={e => setForm({...form, visa_type:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none" />
                 <div className="grid grid-cols-2 gap-2">
                   {["randevulu","randevusuz"].map(t => <button key={t} type="button" onClick={() => setForm({...form, islem_tipi:t})} className={`rounded-xl border-2 px-3 py-2 text-xs font-semibold ${form.islem_tipi === t ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>{t === "randevulu" ? "Randevulu" : "Randevusuz"}</button>)}
@@ -197,24 +231,44 @@ export default function VisaFilesPage() {
               </div>
             </div>
 
+            {/* 3. Evrak */}
             <div>
-              <p className="mb-3 text-sm font-semibold text-navy-800">3. Ücret</p>
+              <p className="mb-3 text-sm font-semibold text-navy-800">3. Evrak Durumu</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {["gelmedi","geldi"].map(d => <button key={d} type="button" onClick={() => setForm({...form, evrak_durumu:d, evrak_eksik_mi:false})} className={`rounded-xl border-2 px-3 py-2.5 text-xs font-semibold ${form.evrak_durumu === d ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>{d === "gelmedi" ? "Evrak Gelmedi" : "Evrak Geldi"}</button>)}
+                </div>
+                {form.evrak_durumu === "geldi" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[{v:false,l:"Tam"},{v:true,l:"Eksik Var"}].map(o => <button key={String(o.v)} type="button" onClick={() => setForm({...form, evrak_eksik_mi:o.v})} className={`rounded-xl border-2 px-3 py-2.5 text-xs font-semibold ${form.evrak_eksik_mi === o.v ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>{o.l}</button>)}
+                  </div>
+                )}
+              </div>
+              {form.evrak_eksik_mi && (
+                <textarea placeholder="Eksik evrak notu yazın..." value={form.evrak_not} onChange={e => setForm({...form, evrak_not:e.target.value})} rows={2} className="mt-3 w-full rounded-xl border border-navy-200 px-4 py-2 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
+              )}
+            </div>
+
+            {/* 4. Ücret */}
+            <div>
+              <p className="mb-3 text-sm font-semibold text-navy-800">4. Ücret &amp; Ödeme</p>
               <div className="grid gap-4 md:grid-cols-3">
                 <input type="number" placeholder="Ücret" value={form.ucret} onChange={e => setForm({...form, ucret:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none" />
                 <select value={form.ucret_currency} onChange={e => setForm({...form, ucret_currency:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-3 text-sm"><option>TL</option><option>EUR</option><option>USD</option></select>
                 <div className="grid grid-cols-3 gap-2">
-                  {[{v:"pesin",l:"Peşin"},{v:"cari",l:"Cari"},{v:"firma_cari",l:"Firma Cari"}].map(o => <button key={o.v} type="button" onClick={() => setForm({...form, odeme_plani:o.v})} className={`rounded-xl border-2 px-2 py-2 text-xs font-semibold ${form.odeme_plani === o.v ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>{o.l}</button>)}
+                  {[{v:"pesin",l:"Peşin"},{v:"cari",l:"Cari"},{v:"firma_cari",l:"Firma"}].map(o => <button key={o.v} type="button" onClick={() => setForm({...form, odeme_plani:o.v})} className={`rounded-xl border-2 px-2 py-2 text-xs font-semibold ${form.odeme_plani === o.v ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>{o.l}</button>)}
                 </div>
               </div>
             </div>
 
+            {/* 5. Randevu */}
             {form.islem_tipi === "randevulu" && (
-              <div><p className="mb-3 text-sm font-semibold text-navy-800">4. Randevu</p><input type="datetime-local" value={form.randevu_tarihi} onChange={e => setForm({...form, randevu_tarihi:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none" /></div>
+              <div><p className="mb-3 text-sm font-semibold text-navy-800">5. Randevu</p><input type="datetime-local" value={form.randevu_tarihi} onChange={e => setForm({...form, randevu_tarihi:e.target.value})} className="h-10 rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none" /></div>
             )}
 
             <div className="flex justify-end gap-3 border-t border-navy-100 pt-4">
-              <button onClick={() => setShowForm(false)} className="rounded-xl border border-navy-200 px-6 py-2.5 text-sm font-medium">İptal</button>
-              <button onClick={handleAdd} disabled={saving} className="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-8 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-500/20 disabled:opacity-50">{saving ? "Oluşturuluyor..." : "Dosya Oluştur"}</button>
+              <button onClick={() => { setShowForm(false); setEditingFile(null); }} className="rounded-xl border border-navy-200 px-6 py-2.5 text-sm font-medium">İptal</button>
+              <button onClick={handleSave} disabled={saving} className="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-8 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-500/20 disabled:opacity-50">{saving ? "Kaydediliyor..." : editingFile ? "Güncelle" : "Dosya Oluştur"}</button>
             </div>
           </div>
         </div>
@@ -225,7 +279,7 @@ export default function VisaFilesPage() {
         {STEPS.map(s => <button key={s} onClick={() => setStepFilter(s)} className={`rounded-full px-4 py-2 text-xs font-semibold transition-all ${stepFilter === s ? "bg-navy-800 text-white" : "bg-white text-navy-500 border border-navy-200"}`}>{STEP_LABELS[s]}</button>)}
       </div>
 
-      {/* Search + Table */}
+      {/* Table */}
       <div className="overflow-hidden rounded-2xl border border-navy-200/60 bg-white shadow-sm">
         <div className="border-b border-navy-50 bg-navy-50/50 px-6 py-3">
           <input placeholder="Müşteri veya ülke ara..." className="h-9 w-full rounded-lg border-0 bg-white px-4 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20" value={search} onChange={e => setSearch(e.target.value)} />
@@ -247,9 +301,10 @@ export default function VisaFilesPage() {
               <td className="px-4 py-4 text-sm text-navy-600">{f.ucret ? `${f.ucret} ${f.ucret_currency}` : "—"}</td>
               <td className="px-4 py-4"><span className={`inline-flex rounded-lg px-2.5 py-0.5 text-[11px] font-semibold ${badgeColor(l)}`}>{l}</span></td>
               <td className="px-4 py-4"><div className="flex items-center gap-1">{[f.dosya_hazir,f.basvuru_yapildi,f.islemden_cikti].map((d,i) => <div key={i} className="flex items-center gap-0.5"><div className={`h-4 w-4 rounded-full border-2 ${d ? "border-green-500 bg-green-500" : "border-navy-200"}`} />{i<2 && <div className={`h-0.5 w-3 ${d ? "bg-green-300" : "bg-navy-200"}`} />}</div>)}</div></td>
-              <td className="px-6 py-4 text-right">
+              <td className="px-6 py-4 text-right space-x-2">
+                <button onClick={() => openEdit(f)} className="text-[11px] text-navy-400 hover:text-primary-500">Düzenle</button>
                 {!f.visa_result && !f.islemden_cikti && <button onClick={() => advance(f)} className="rounded-lg bg-primary-500 px-3 py-1 text-[11px] font-semibold text-white">İlerlet</button>}
-                {f.islemden_cikti && !f.visa_result && <button onClick={() => openResult(f)} className="rounded-lg bg-green-500 px-3 py-1 text-[11px] font-semibold text-white">Sonuç Gir</button>}
+                {f.islemden_cikti && !f.visa_result && <button onClick={() => openResult(f)} className="rounded-lg bg-green-500 px-3 py-1 text-[11px] font-semibold text-white">Sonuç</button>}
               </td>
             </tr>); })}
         </tbody></table>}
@@ -270,7 +325,7 @@ export default function VisaFilesPage() {
                 <div><label className="text-sm font-medium text-navy-700">Müşteri Telefonu</label><input value={resultForm.musteri_telefon} onChange={e => setResultForm({...resultForm, musteri_telefon:e.target.value})} className="mt-1 h-10 w-full rounded-xl border border-navy-200 px-4 text-sm" /></div>
               </div>
             )}
-            <div className="mt-4 rounded-xl bg-green-50 p-3 text-xs text-green-700">WhatsApp Otomatik Mesaj modülü ile müşterilerinize bildirim gönderin. Aktif etmek için: <strong>0545 603 65 47</strong></div>
+            <div className="mt-4 rounded-xl bg-green-50 p-3 text-xs text-green-700">WhatsApp modülü ile müşterilerinize bildirim gönderin. Aktif etmek için: <strong>0545 603 65 47</strong></div>
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setResultModal(false)} className="rounded-xl border border-navy-200 px-5 py-2.5 text-sm">İptal</button>
               <button onClick={submitResult} className="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md">Kaydet</button>

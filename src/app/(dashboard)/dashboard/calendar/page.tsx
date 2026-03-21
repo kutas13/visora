@@ -98,6 +98,7 @@ export default function CalendarPage() {
   });
 
   const upcoming = appointments.filter((a) => a.date >= todayStr).slice(0, 10);
+  const [selectedDay, setSelectedDay] = useState<{ date: string; appts: Appointment[] } | null>(null);
 
   return (
     <div className="space-y-6">
@@ -149,7 +150,8 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[80px] rounded-xl border p-1.5 transition-all ${
+                    onClick={() => dayAppts.length > 0 && setSelectedDay({ date: dateStr, appts: dayAppts })}
+                    className={`min-h-[80px] rounded-xl border p-1.5 transition-all ${dayAppts.length > 0 ? "cursor-pointer" : ""} ${
                       isToday
                         ? "ring-2 ring-primary-500 border-primary-300 bg-primary-50/50"
                         : "border-navy-100 hover:border-navy-200 hover:bg-navy-50/30"
@@ -216,6 +218,41 @@ export default function CalendarPage() {
           </div>
         )}
       </div>
+      {/* Day Detail Modal */}
+      {selectedDay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setSelectedDay(null)} />
+          <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="border-b border-navy-100 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-navy-900">
+                {new Date(selectedDay.date).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" })}
+              </h3>
+              <span className="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">{selectedDay.appts.length} randevu</span>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto divide-y divide-navy-50 p-2">
+              {selectedDay.appts.map((a) => (
+                <div key={a.id} className="flex items-start gap-4 rounded-xl p-4 hover:bg-navy-50/50 transition-colors">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-accent-50 text-sm font-bold text-primary-600">
+                    {(a.clients?.full_name || "?")[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-navy-900">{a.clients?.full_name || "—"}</p>
+                    <div className="mt-1 space-y-0.5 text-xs text-navy-500">
+                      {a.time && <p>🕐 Saat: <span className="font-medium text-navy-700">{a.time.slice(0, 5)}</span></p>}
+                      {a.location && <p>📍 Konum: <span className="font-medium text-navy-700">{a.location}</span></p>}
+                      {a.applications?.country && <p>🌍 Ülke: <span className="font-medium text-navy-700">{a.applications.country} {a.applications.visa_type ? `- ${a.applications.visa_type}` : ""}</span></p>}
+                      {a.clients?.phone && <p>📞 Tel: <span className="font-medium text-navy-700">{a.clients.phone}</span></p>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-navy-100 px-6 py-3">
+              <button onClick={() => setSelectedDay(null)} className="w-full rounded-xl border border-navy-200 py-2.5 text-sm font-medium text-navy-700 hover:bg-navy-50">Kapat</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
