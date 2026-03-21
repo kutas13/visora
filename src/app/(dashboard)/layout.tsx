@@ -13,6 +13,7 @@ const allItems = [
   { href: "/dashboard/whatsapp", label: "WhatsApp", roles: ["agency_admin"] },
   { href: "/dashboard/payments", label: "Ödemeler", roles: ["agency_admin", "staff"] },
   { href: "/dashboard/companies", label: "Firmalar", roles: ["agency_admin"] },
+  { href: "/dashboard/kasa", label: "Kasa", roles: ["agency_admin"] },
   { href: "/dashboard/reports", label: "Raporlarım", roles: ["agency_admin", "staff"] },
   { href: "/dashboard/staff", label: "Personel", roles: ["agency_admin"] },
   { href: "/dashboard/settings", label: "Ayarlar", roles: ["agency_admin"] },
