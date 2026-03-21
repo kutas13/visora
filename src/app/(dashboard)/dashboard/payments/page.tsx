@@ -18,15 +18,6 @@ const PLAN_COLORS: Record<string,string> = { pesin:"bg-green-100 text-green-700"
 function sym(c: string | null) { return c === "USD" ? "$" : c === "EUR" ? "€" : "₺"; }
 function fmt(v: number, c: string | null) { return `${sym(c)}${v.toLocaleString("tr-TR")}`; }
 
-function sumByCurrency(items: AppPayment[]) {
-  const map: Record<string, number> = {};
-  items.forEach(a => {
-    const cur = a.ucret_currency || "TL";
-    map[cur] = (map[cur] || 0) + Number(a.ucret || 0);
-  });
-  return Object.entries(map).map(([cur, total]) => ({ cur, total }));
-}
-
 export default function PaymentsPage() {
   const supabase = createClient();
   const [agencyId, setAgencyId] = useState<string | null>(null);
@@ -35,6 +26,13 @@ export default function PaymentsPage() {
   const [apps, setApps] = useState<AppPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+
+  const [tahsilatModal, setTahsilatModal] = useState(false);
+  const [tahsilatFile, setTahsilatFile] = useState<AppPayment | null>(null);
+  const [tahsilatForm, setTahsilatForm] = useState({ amount: "", currency: "TL", yontem: "nakit" as string });
+  const [tahsilatSaving, setTahsilatSaving] = useState(false);
+  const [kurlar, setKurlar] = useState<{ USD: number; EUR: number } | null>(null);
+  const [kurLoading, setKurLoading] = useState(false);
 
   useEffect(() => { setAgencyId(localStorage.getItem("agency_id")); setUserRole(localStorage.getItem("user_role")); setUserId(localStorage.getItem("user_id")); }, []);
 
@@ -49,11 +47,42 @@ export default function PaymentsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const filtered = filter === "all" ? apps : apps.filter(a => a.odeme_plani === filter);
+  const fetchKurlar = async () => {
+    setKurLoading(true);
+    try {
+      const res = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+      const data = await res.json();
+      const usdTry = data.rates?.TRY || 38.5;
+      const eurTry = usdTry / (data.rates?.EUR || 0.92);
+      setKurlar({ USD: Math.round(usdTry * 100) / 100, EUR: Math.round(eurTry * 100) / 100 });
+    } catch {
+      setKurlar({ USD: 38.50, EUR: 41.80 });
+    }
+    setKurLoading(false);
+  };
 
-  const pesinItems = apps.filter(a => a.odeme_plani === "pesin");
-  const cariItems = apps.filter(a => a.odeme_plani === "cari");
-  const firmaItems = apps.filter(a => a.odeme_plani === "firma_cari");
+  const openTahsilat = (a: AppPayment) => {
+    setTahsilatFile(a);
+    setTahsilatForm({ amount: String(a.ucret || ""), currency: a.ucret_currency || "TL", yontem: "nakit" });
+    setTahsilatModal(true);
+    if (!kurlar) fetchKurlar();
+  };
+
+  const submitTahsilat = async () => {
+    if (!tahsilatFile || !agencyId) return;
+    setTahsilatSaving(true);
+    await supabase.from("payments").insert({
+      agency_id: agencyId,
+      amount: Number(tahsilatForm.amount),
+      payment_type: `tahsilat_${tahsilatForm.currency.toLowerCase()}`,
+      status: "paid",
+    });
+    await supabase.from("applications").update({ odeme_durumu: "odendi" }).eq("id", tahsilatFile.id);
+    setTahsilatSaving(false); setTahsilatModal(false); setTahsilatFile(null);
+    fetchData();
+  };
+
+  const filtered = filter === "all" ? apps : apps.filter(a => a.odeme_plani === filter);
 
   const toggleOdeme = async (id: string, current: string | null) => {
     await supabase.from("applications").update({ odeme_durumu: current === "odendi" ? "odenmedi" : "odendi" }).eq("id", id);
@@ -69,14 +98,14 @@ export default function PaymentsPage() {
         <div><h1 className="text-xl font-bold text-navy-900">Ödemeler</h1><p className="text-xs text-navy-400">{apps.length} dosya</p></div>
       </div>
 
-      {/* Summary by currency */}
+      {/* Currency summary cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {(["TL", "EUR", "USD"] as const).map(cur => {
           const curApps = apps.filter(a => (a.ucret_currency || "TL") === cur);
           const total = curApps.reduce((s, a) => s + Number(a.ucret || 0), 0);
           const odenen = curApps.filter(a => a.odeme_durumu === "odendi").reduce((s, a) => s + Number(a.ucret || 0), 0);
           const bekleyen = total - odenen;
-          const curSym = cur === "USD" ? "$" : cur === "EUR" ? "€" : "₺";
+          const curSym = sym(cur);
           const colors = cur === "TL" ? "from-green-500 to-green-600" : cur === "EUR" ? "from-blue-500 to-blue-600" : "from-amber-500 to-amber-600";
           return (
             <div key={cur} className="overflow-hidden rounded-2xl border border-navy-200/60 bg-white shadow-sm">
@@ -85,24 +114,25 @@ export default function PaymentsPage() {
                 <span className="text-2xl font-black text-white/90">{curSym}</span>
               </div>
               <div className="p-5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-navy-500">Toplam</span>
-                  <span className="text-lg font-bold text-navy-900">{curSym}{total.toLocaleString("tr-TR")}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-green-600">Ödenen</span>
-                  <span className="text-sm font-semibold text-green-600">{curSym}{odenen.toLocaleString("tr-TR")}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-red-500">Bekleyen</span>
-                  <span className="text-sm font-semibold text-red-500">{curSym}{bekleyen.toLocaleString("tr-TR")}</span>
-                </div>
+                <div className="flex items-center justify-between"><span className="text-xs text-navy-500">Toplam</span><span className="text-lg font-bold text-navy-900">{curSym}{total.toLocaleString("tr-TR")}</span></div>
+                <div className="flex items-center justify-between"><span className="text-xs text-green-600">Ödenen</span><span className="text-sm font-semibold text-green-600">{curSym}{odenen.toLocaleString("tr-TR")}</span></div>
+                <div className="flex items-center justify-between"><span className="text-xs text-red-500">Bekleyen</span><span className="text-sm font-semibold text-red-500">{curSym}{bekleyen.toLocaleString("tr-TR")}</span></div>
                 <div className="mt-1 text-[10px] text-navy-400 text-right">{curApps.length} dosya</div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* TCMB Kurları */}
+      {kurlar && (
+        <div className="flex items-center gap-4 rounded-2xl bg-navy-800 px-5 py-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-navy-400">Güncel Kur</span>
+          <span className="text-sm font-bold text-green-400">$ {kurlar.USD} ₺</span>
+          <span className="text-sm font-bold text-blue-400">€ {kurlar.EUR} ₺</span>
+          <button onClick={fetchKurlar} disabled={kurLoading} className="ml-auto text-[10px] text-navy-400 hover:text-white">{kurLoading ? "Güncelleniyor..." : "Güncelle"}</button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
@@ -120,9 +150,8 @@ export default function PaymentsPage() {
           <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-navy-400">Ülke</th>
           <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-navy-400">Tutar</th>
           <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-navy-400">Plan</th>
-          <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-navy-400">Cari</th>
           <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-wider text-navy-400">Durum</th>
-          <th className="px-6 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-navy-400">Tarih</th>
+          <th className="px-6 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-navy-400">İşlem</th>
         </tr></thead><tbody className="divide-y divide-navy-50">
           {filtered.map(a => (
             <tr key={a.id} className="hover:bg-primary-50/20 transition-colors">
@@ -130,13 +159,99 @@ export default function PaymentsPage() {
               <td className="px-4 py-4 text-sm text-navy-600">{a.country}</td>
               <td className="px-4 py-4"><span className="text-lg font-bold text-navy-900">{fmt(Number(a.ucret), a.ucret_currency)}</span></td>
               <td className="px-4 py-4"><span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${PLAN_COLORS[a.odeme_plani||""]||"bg-navy-100 text-navy-600"}`}>{PLAN_LABELS[a.odeme_plani||""]||"—"}</span></td>
-              <td className="px-4 py-4 text-xs text-navy-500">{a.cari_sahibi||"—"}</td>
-              <td className="px-4 py-4"><button onClick={() => toggleOdeme(a.id, a.odeme_durumu)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold cursor-pointer transition-all hover:shadow-md ${a.odeme_durumu === "odendi" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}><span className={`h-1.5 w-1.5 rounded-full ${a.odeme_durumu === "odendi" ? "bg-green-500" : "bg-amber-500"}`} />{a.odeme_durumu === "odendi" ? "Ödendi" : "Bekliyor"}</button></td>
-              <td className="px-6 py-4 text-right text-sm text-navy-400">{new Date(a.created_at).toLocaleDateString("tr-TR")}</td>
+              <td className="px-4 py-4">
+                <button onClick={() => toggleOdeme(a.id, a.odeme_durumu)} className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all hover:shadow-md ${a.odeme_durumu === "odendi" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${a.odeme_durumu === "odendi" ? "bg-green-500" : "bg-amber-500"}`} />
+                  {a.odeme_durumu === "odendi" ? "Ödendi" : "Bekliyor"}
+                </button>
+              </td>
+              <td className="px-6 py-4 text-right">
+                {a.odeme_durumu !== "odendi" && (
+                  <button onClick={() => openTahsilat(a)} className="rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-md shadow-primary-500/20 hover:shadow-lg">Tahsilat Yap</button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody></table>}
       </div>
+
+      {/* Tahsilat Modal */}
+      {tahsilatModal && tahsilatFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center"><div className="fixed inset-0 bg-black/40" onClick={() => setTahsilatModal(false)} />
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="rounded-t-2xl bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-4">
+              <h3 className="font-semibold text-white">Tahsilat Yap</h3>
+              <p className="text-xs text-white/70">{tahsilatFile.clients?.full_name} - {tahsilatFile.country}</p>
+            </div>
+            <div className="space-y-4 p-6">
+              {/* Dosya bilgisi */}
+              <div className="rounded-xl bg-navy-50 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-navy-600">Dosya Ücreti</span>
+                  <span className="text-xl font-bold text-navy-900">{fmt(Number(tahsilatFile.ucret), tahsilatFile.ucret_currency)}</span>
+                </div>
+                {tahsilatFile.ucret_currency !== "TL" && kurlar && (
+                  <div className="mt-2 flex items-center justify-between border-t border-navy-200 pt-2">
+                    <span className="text-xs text-navy-400">TL karşılığı (güncel kur)</span>
+                    <span className="text-sm font-semibold text-navy-700">
+                      ₺{Math.round(Number(tahsilatFile.ucret) * (tahsilatFile.ucret_currency === "USD" ? kurlar.USD : kurlar.EUR)).toLocaleString("tr-TR")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Tahsilat tutarı */}
+              <div>
+                <label className="text-sm font-medium text-navy-700">Tahsilat Tutarı</label>
+                <div className="mt-1 flex gap-2">
+                  <input type="number" value={tahsilatForm.amount} onChange={e => setTahsilatForm({...tahsilatForm, amount:e.target.value})} className="h-10 flex-1 rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
+                  <div className="grid grid-cols-3 gap-1">
+                    {["TL","EUR","USD"].map(c => (
+                      <button key={c} type="button" onClick={() => setTahsilatForm({...tahsilatForm, currency:c})} className={`rounded-lg border-2 px-2 py-1.5 text-xs font-bold ${tahsilatForm.currency === c ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>
+                        {c === "TL" ? "₺" : c === "EUR" ? "€" : "$"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Döviz bilgisi */}
+              {tahsilatForm.currency !== (tahsilatFile.ucret_currency || "TL") && kurlar && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
+                  Dosya: {sym(tahsilatFile.ucret_currency)}{Number(tahsilatFile.ucret).toLocaleString("tr-TR")} {tahsilatFile.ucret_currency} → Tahsilat: {sym(tahsilatForm.currency)}{Number(tahsilatForm.amount).toLocaleString("tr-TR")} {tahsilatForm.currency}
+                  <br />Kur: $1 = ₺{kurlar.USD} | €1 = ₺{kurlar.EUR}
+                </div>
+              )}
+
+              {/* Ödeme yöntemi */}
+              <div>
+                <label className="text-sm font-medium text-navy-700">Ödeme Yöntemi</label>
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  {[{v:"nakit",l:"Nakit"},{v:"hesaba",l:"Hesaba"},{v:"havale",l:"Havale"}].map(y => (
+                    <button key={y.v} type="button" onClick={() => setTahsilatForm({...tahsilatForm, yontem:y.v})} className={`rounded-xl border-2 px-3 py-2.5 text-xs font-semibold ${tahsilatForm.yontem === y.v ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>{y.l}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Güncel kur */}
+              {kurlar && (
+                <div className="flex items-center gap-3 rounded-xl bg-navy-800 px-4 py-2.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-navy-400">TCMB Kur</span>
+                  <span className="text-xs font-bold text-green-400">$1 = ₺{kurlar.USD}</span>
+                  <span className="text-xs font-bold text-blue-400">€1 = ₺{kurlar.EUR}</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 border-t border-navy-100 pt-4">
+                <button onClick={() => setTahsilatModal(false)} className="rounded-xl border border-navy-200 px-5 py-2.5 text-sm font-medium text-navy-700">İptal</button>
+                <button onClick={submitTahsilat} disabled={tahsilatSaving} className="rounded-xl bg-gradient-to-r from-green-500 to-green-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-500/20 disabled:opacity-50">
+                  {tahsilatSaving ? "Kaydediliyor..." : "Tahsilat Kaydet"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
