@@ -260,7 +260,7 @@ export default function KasaPage() {
     if (card) {
       await supabase.from("bank_cards").update({ balance: card.balance + amt }).eq("id", card.id);
     }
-    await supabase.from("kasa_transactions").insert({ agency_id: agencyId, kasa_type: transferForm.kasa, amount: amt, description: `Hesaba aktarım - ${card?.bank_name || ""} *${card?.last_four || ""}`, transaction_type: "gider" });
+    await supabase.from("kasa_transactions").insert({ agency_id: agencyId, kasa: transferForm.kasa, type: "gider", amount: amt, description: `Hesaba aktarım - ${card?.bank_name || ""} *${card?.last_four || ""}` });
     setTransferSaving(false); setTransferModal(false);
     setTransferForm({ amount: "", kasa: "TL", cardId: "" });
     fetchTransactions(); fetchCards();
