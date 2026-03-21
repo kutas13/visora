@@ -38,12 +38,14 @@ export default function ClientsPage() {
   const openEdit = (c: Client) => { setEditing(c); setForm({ full_name: c.full_name, phone: c.phone || "", email: c.email || "", passport_no: c.passport_no || "", notes: c.notes || "" }); setModal(true); };
 
   const save = async () => {
-    if (!form.full_name.trim()) return;
+    if (!form.full_name.trim() || !agencyId) { alert("Ad soyad zorunludur."); return; }
     setSaving(true);
     if (editing) {
-      await supabase.from("clients").update({ full_name: form.full_name, phone: form.phone || null, email: form.email || null, passport_no: form.passport_no || null, notes: form.notes || null }).eq("id", editing.id);
+      const { error } = await supabase.from("clients").update({ full_name: form.full_name, phone: form.phone || null, email: form.email || null, passport_no: form.passport_no || null, notes: form.notes || null }).eq("id", editing.id);
+      if (error) { alert("Hata: " + error.message); setSaving(false); return; }
     } else {
-      await supabase.from("clients").insert({ agency_id: agencyId, full_name: form.full_name, phone: form.phone || null, email: form.email || null, passport_no: form.passport_no || null, notes: form.notes || null });
+      const { error } = await supabase.from("clients").insert({ agency_id: agencyId, full_name: form.full_name, phone: form.phone || null, email: form.email || null, passport_no: form.passport_no || null, notes: form.notes || null });
+      if (error) { alert("Hata: " + error.message); setSaving(false); return; }
     }
     setSaving(false); setModal(false); fetch();
   };
