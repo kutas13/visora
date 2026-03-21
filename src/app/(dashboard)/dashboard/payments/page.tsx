@@ -29,10 +29,11 @@ export default function PaymentsPage() {
 
   const [tahsilatModal, setTahsilatModal] = useState(false);
   const [tahsilatFile, setTahsilatFile] = useState<AppPayment | null>(null);
-  const [tahsilatForm, setTahsilatForm] = useState({ amount: "", currency: "TL", yontem: "nakit" as string });
+  const [tahsilatForm, setTahsilatForm] = useState({ amount: "", currency: "TL", yontem: "nakit" as string, selectedCard: "" });
   const [tahsilatSaving, setTahsilatSaving] = useState(false);
   const [kurlar, setKurlar] = useState<{ USD: number; EUR: number } | null>(null);
   const [kurLoading, setKurLoading] = useState(false);
+  const [bankCards, setBankCards] = useState<{ id: string; bank_name: string; last_four: string; balance: number }[]>([]);
 
   useEffect(() => { setAgencyId(localStorage.getItem("agency_id")); setUserRole(localStorage.getItem("user_role")); setUserId(localStorage.getItem("user_id")); }, []);
 
@@ -61,9 +62,17 @@ export default function PaymentsPage() {
     setKurLoading(false);
   };
 
+  const fetchBankCards = useCallback(async () => {
+    if (!agencyId) return;
+    const { data } = await supabase.from("bank_cards").select("id, bank_name, last_four, balance").eq("agency_id", agencyId);
+    setBankCards(data || []);
+  }, [agencyId, supabase]);
+
+  useEffect(() => { fetchBankCards(); }, [fetchBankCards]);
+
   const openTahsilat = (a: AppPayment) => {
     setTahsilatFile(a);
-    setTahsilatForm({ amount: String(a.ucret || ""), currency: a.ucret_currency || "TL", yontem: "nakit" });
+    setTahsilatForm({ amount: String(a.ucret || ""), currency: a.ucret_currency || "TL", yontem: "nakit", selectedCard: "" });
     setTahsilatModal(true);
     if (!kurlar) fetchKurlar();
   };
@@ -71,15 +80,26 @@ export default function PaymentsPage() {
   const submitTahsilat = async () => {
     if (!tahsilatFile || !agencyId) return;
     setTahsilatSaving(true);
-    await supabase.from("payments").insert({
-      agency_id: agencyId,
-      amount: Number(tahsilatForm.amount),
-      payment_type: `tahsilat_${tahsilatForm.currency.toLowerCase()}`,
-      status: "paid",
-    });
+
+    const amount = Number(tahsilatForm.amount);
+    const payType = tahsilatForm.yontem === "hesaba" ? `hesaba_${tahsilatForm.selectedCard.slice(0,8)}` : `nakit_${tahsilatForm.currency.toLowerCase()}`;
+
+    await supabase.from("payments").insert({ agency_id: agencyId, amount, payment_type: payType, status: "paid" });
     await supabase.from("applications").update({ odeme_durumu: "odendi" }).eq("id", tahsilatFile.id);
+
+    if (tahsilatForm.yontem === "hesaba" && tahsilatForm.selectedCard) {
+      const card = bankCards.find(c => c.id === tahsilatForm.selectedCard);
+      if (card) {
+        await supabase.from("bank_cards").update({ balance: card.balance + amount }).eq("id", card.id);
+      }
+    }
+
+    if (tahsilatForm.yontem === "nakit") {
+      await supabase.from("kasa_transactions").insert({ agency_id: agencyId, kasa_type: tahsilatForm.currency, amount, description: `Tahsilat - ${tahsilatFile.clients?.full_name || ""}`, transaction_type: "gelir" });
+    }
+
     setTahsilatSaving(false); setTahsilatModal(false); setTahsilatFile(null);
-    fetchData();
+    fetchData(); fetchBankCards();
   };
 
   const filtered = filter === "all" ? apps : apps.filter(a => a.odeme_plani === filter);
@@ -226,17 +246,42 @@ export default function PaymentsPage() {
               {/* Ödeme yöntemi */}
               <div>
                 <label className="text-sm font-medium text-navy-700">Ödeme Yöntemi</label>
-                <div className="mt-1 grid grid-cols-3 gap-2">
-                  {[{v:"nakit",l:"Nakit"},{v:"hesaba",l:"Hesaba"},{v:"havale",l:"Havale"}].map(y => (
-                    <button key={y.v} type="button" onClick={() => setTahsilatForm({...tahsilatForm, yontem:y.v})} className={`rounded-xl border-2 px-3 py-2.5 text-xs font-semibold ${tahsilatForm.yontem === y.v ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>{y.l}</button>
-                  ))}
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setTahsilatForm({...tahsilatForm, yontem:"nakit", selectedCard:""})} className={`rounded-xl border-2 px-3 py-3 text-sm font-semibold ${tahsilatForm.yontem === "nakit" ? "border-green-500 bg-green-50 text-green-700" : "border-navy-200 text-navy-500"}`}>💵 Nakit</button>
+                  <button type="button" onClick={() => setTahsilatForm({...tahsilatForm, yontem:"hesaba"})} className={`rounded-xl border-2 px-3 py-3 text-sm font-semibold ${tahsilatForm.yontem === "hesaba" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-navy-200 text-navy-500"}`}>🏦 Hesaba</button>
                 </div>
               </div>
+
+              {/* Hesap seçimi */}
+              {tahsilatForm.yontem === "hesaba" && (
+                <div>
+                  <label className="text-sm font-medium text-navy-700">Hangi Hesaba?</label>
+                  {bankCards.length === 0 ? (
+                    <p className="mt-2 text-xs text-navy-400">Henüz banka hesabı eklenmemiş. Kasa sayfasından hesap ekleyin.</p>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {bankCards.map(card => (
+                        <button key={card.id} type="button" onClick={() => setTahsilatForm({...tahsilatForm, selectedCard: card.id})}
+                          className={`w-full flex items-center justify-between rounded-xl border-2 p-3 text-left transition-all ${tahsilatForm.selectedCard === card.id ? "border-primary-500 bg-primary-50" : "border-navy-200 hover:border-navy-300"}`}>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-navy-800 text-[10px] font-bold text-white">{card.bank_name.slice(0,2)}</div>
+                            <div>
+                              <p className="text-sm font-semibold text-navy-900">{card.bank_name}</p>
+                              <p className="text-[11px] text-navy-400">**** {card.last_four}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-bold text-navy-700">₺{card.balance.toLocaleString("tr-TR")}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Güncel kur */}
               {kurlar && (
                 <div className="flex items-center gap-3 rounded-xl bg-navy-800 px-4 py-2.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-navy-400">TCMB Kur</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-navy-400">Kur</span>
                   <span className="text-xs font-bold text-green-400">$1 = ₺{kurlar.USD}</span>
                   <span className="text-xs font-bold text-blue-400">€1 = ₺{kurlar.EUR}</span>
                 </div>

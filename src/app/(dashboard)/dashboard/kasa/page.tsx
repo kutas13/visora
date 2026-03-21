@@ -97,6 +97,9 @@ export default function KasaPage() {
   // bank cards
   const [cards, setCards] = useState<BankCard[]>([]);
   const [cardModal, setCardModal] = useState(false);
+  const [transferModal, setTransferModal] = useState(false);
+  const [transferForm, setTransferForm] = useState({ amount: "", kasa: "TL" as KasaCurrency, cardId: "" });
+  const [transferSaving, setTransferSaving] = useState(false);
   const [cardForm, setCardForm] = useState({
     bank_name: TURKISH_BANKS[0],
     last_four: "",
@@ -247,6 +250,22 @@ export default function KasaPage() {
     fetchCards();
   };
 
+  /* ──── submit nakit → hesap transfer ──── */
+
+  const submitTransfer = async () => {
+    if (!agencyId || !transferForm.cardId || !transferForm.amount) return;
+    setTransferSaving(true);
+    const amt = parseFloat(transferForm.amount);
+    const card = cards.find(c => c.id === transferForm.cardId);
+    if (card) {
+      await supabase.from("bank_cards").update({ balance: card.balance + amt }).eq("id", card.id);
+    }
+    await supabase.from("kasa_transactions").insert({ agency_id: agencyId, kasa_type: transferForm.kasa, amount: amt, description: `Hesaba aktarım - ${card?.bank_name || ""} *${card?.last_four || ""}`, transaction_type: "gider" });
+    setTransferSaving(false); setTransferModal(false);
+    setTransferForm({ amount: "", kasa: "TL", cardId: "" });
+    fetchTransactions(); fetchCards();
+  };
+
   /* ════════════════════════════════════════════════════════════
      RENDER
      ════════════════════════════════════════════════════════════ */
@@ -264,10 +283,14 @@ export default function KasaPage() {
             <p className="text-xs text-navy-400">Gelir, gider ve döviz işlemleri</p>
           </div>
         </div>
-        <button onClick={() => { setTxForm({ description: "", amount: "", kasa: "TL", type: "gelir" }); setTxModal(true); }} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-500/20 transition-all hover:shadow-xl">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          İşlem Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setTransferModal(true)} className="flex items-center gap-2 rounded-xl border border-navy-200 bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 transition-all hover:border-primary-300 hover:bg-primary-50 hover:text-primary-600">
+            💵→🏦 Hesaba Aktar
+          </button>
+          <button onClick={() => { setTxForm({ description: "", amount: "", kasa: "TL", type: "gelir" }); setTxModal(true); }} className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary-500/20 transition-all hover:shadow-xl">
+            + İşlem Ekle
+          </button>
+        </div>
       </div>
 
       {/* ──── Kasa Balances ──── */}
@@ -562,6 +585,55 @@ export default function KasaPage() {
                 <button onClick={submitCard} disabled={cardSaving || cardForm.last_four.length !== 4} className="rounded-xl bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-navy-500/20 transition-all disabled:opacity-50 disabled:shadow-none">
                   {cardSaving ? "Kaydediliyor..." : "Kart Ekle"}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──── Transfer Modal (Nakit → Hesaba) ──── */}
+      {transferModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center"><div className="fixed inset-0 bg-black/40" onClick={() => setTransferModal(false)} />
+          <div className="relative z-10 w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="rounded-t-2xl bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-4">
+              <h3 className="font-semibold text-white">💵 Nakit → 🏦 Hesaba Aktar</h3>
+            </div>
+            <div className="space-y-4 p-6">
+              <div>
+                <label className="text-sm font-medium text-navy-700">Tutar</label>
+                <div className="mt-1 flex gap-2">
+                  <input type="number" value={transferForm.amount} onChange={e => setTransferForm({...transferForm, amount:e.target.value})} placeholder="0" className="h-10 flex-1 rounded-xl border border-navy-200 px-4 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20" />
+                  <div className="grid grid-cols-3 gap-1">
+                    {(["TL","EUR","USD"] as KasaCurrency[]).map(c => (
+                      <button key={c} type="button" onClick={() => setTransferForm({...transferForm, kasa:c})} className={`rounded-lg border-2 px-2 py-1.5 text-xs font-bold ${transferForm.kasa === c ? "border-primary-500 bg-primary-50 text-primary-600" : "border-navy-200 text-navy-500"}`}>
+                        {c === "TL" ? "₺" : c === "EUR" ? "€" : "$"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-navy-700">Hangi Hesaba?</label>
+                {cards.length === 0 ? (
+                  <p className="mt-2 text-xs text-navy-400">Banka hesabı ekleyin.</p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {cards.map(card => (
+                      <button key={card.id} type="button" onClick={() => setTransferForm({...transferForm, cardId:card.id})}
+                        className={`w-full flex items-center justify-between rounded-xl border-2 p-3 text-left transition-all ${transferForm.cardId === card.id ? "border-primary-500 bg-primary-50" : "border-navy-200 hover:border-navy-300"}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-navy-800 text-[10px] font-bold text-white">{card.bank_name.slice(0,2)}</div>
+                          <div><p className="text-sm font-semibold text-navy-900">{card.bank_name}</p><p className="text-[11px] text-navy-400">**** {card.last_four}</p></div>
+                        </div>
+                        <span className="text-sm font-bold text-navy-700">₺{card.balance.toLocaleString("tr-TR")}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 border-t border-navy-100 pt-4">
+                <button onClick={() => setTransferModal(false)} className="rounded-xl border border-navy-200 px-5 py-2.5 text-sm font-medium">İptal</button>
+                <button onClick={submitTransfer} disabled={transferSaving || !transferForm.cardId} className="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50">{transferSaving ? "Aktarılıyor..." : "Aktar"}</button>
               </div>
             </div>
           </div>

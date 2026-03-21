@@ -159,6 +159,14 @@ export default function VisaFilesPage() {
     await supabase.from("applications").update(u).eq("id", f.id); fetchData();
   };
 
+  const [deleteTarget, setDeleteTarget] = useState<VisaFile | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await supabase.from("applications").delete().eq("id", deleteTarget.id);
+    setDeleteTarget(null); fetchData();
+  };
+
   const openResult = (f: VisaFile) => {
     setResultFileId(f.id); setResultType("vize_onay");
     setResultForm({ sonuc_tarihi: new Date().toISOString().split("T")[0], visa_expiry_date: "", musteri_telefon: f.clients?.phone || f.musteri_telefon || "" });
@@ -368,6 +376,7 @@ export default function VisaFilesPage() {
               </td>
               <td className="px-6 py-4 text-right space-x-1">
                 <button onClick={() => openEdit(f)} className="text-[11px] text-navy-400 hover:text-primary-500">Düzenle</button>
+                <button onClick={() => setDeleteTarget(f)} className="text-[11px] text-navy-400 hover:text-red-500">Sil</button>
                 {!f.visa_result && !f.islemden_cikti && <button onClick={() => advance(f)} className="rounded-lg bg-primary-500 px-2.5 py-1 text-[11px] font-semibold text-white">İlerlet</button>}
                 {f.islemden_cikti && !f.visa_result && <button onClick={() => openResult(f)} className="rounded-lg bg-green-500 px-2.5 py-1 text-[11px] font-semibold text-white">Sonuç</button>}
               </td>
@@ -395,6 +404,21 @@ export default function VisaFilesPage() {
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setResultModal(false)} className="rounded-xl border border-navy-200 px-5 py-2.5 text-sm">İptal</button>
               <button onClick={submitResult} className="rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md">Kaydet</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center"><div className="fixed inset-0 bg-black/40" onClick={() => setDeleteTarget(null)} />
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100"><svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></div>
+            <p className="text-sm text-navy-700"><strong>{deleteTarget.clients?.full_name}</strong> - {deleteTarget.country} dosyası silinecek.</p>
+            <p className="mt-1 text-xs text-navy-400">Bu işlem geri alınamaz.</p>
+            <div className="mt-5 flex justify-center gap-2">
+              <button onClick={() => setDeleteTarget(null)} className="rounded-xl border border-navy-200 px-5 py-2.5 text-sm font-medium">İptal</button>
+              <button onClick={confirmDelete} className="rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-red-600">Sil</button>
             </div>
           </div>
         </div>
