@@ -128,7 +128,7 @@ export default function PaymentsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-4 text-sm text-navy-600">{a.country}</td>
-                  <td className="px-4 py-4"><span className="text-lg font-bold text-navy-900">{a.ucret} {a.ucret_currency}</span></td>
+                  <td className="px-4 py-4"><span className="text-lg font-bold text-navy-900">{a.ucret_currency === "USD" ? "$" : a.ucret_currency === "EUR" ? "€" : "₺"}{Number(a.ucret).toLocaleString("tr-TR")}</span></td>
                   <td className="px-4 py-4">
                     <span className={`inline-flex rounded-lg px-2.5 py-1 text-[11px] font-semibold ${PLAN_COLORS[a.odeme_plani || ""] || "bg-navy-100 text-navy-600"}`}>
                       {PLAN_LABELS[a.odeme_plani || ""] || a.odeme_plani || "—"}
