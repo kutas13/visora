@@ -1,0 +1,16 @@
+{
+  "name": "fox-turizm-whatsapp-service",
+  "version": "1.0.0",
+  "description": "Fox Turizm WhatsApp Bildirim Servisi (Baileys)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "@whiskeysockets/baileys": "^6.7.16",
+    "dotenv": "^17.2.4",
+    "pino": "^9.6.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

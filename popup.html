@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vize Form Doldur</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z" fill="#4F46E5"/>
+        </svg>
+        <h1>Vize Form Doldur</h1>
+      </div>
+      <button id="addProfile" class="btn-add">+ Yeni Profil</button>
+    </div>
+
+    <!-- Profile Selector -->
+    <div class="profile-section">
+      <label for="profileSelect">Aktif Profil:</label>
+      <select id="profileSelect" class="profile-select">
+        <option value="">Profil Seçin</option>
+      </select>
+      <button id="deleteProfile" class="btn-delete" title="Profili Sil">🗑️</button>
+    </div>
+
+    <!-- Profile Form -->
+    <div id="profileForm" class="form-section">
+      <div class="form-group">
+        <label for="profileName">Profil Adı:</label>
+        <input type="text" id="profileName" placeholder="Örn: Ali Veli Profili">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="firstName">Ad:</label>
+          <input type="text" id="firstName" placeholder="Adınız">
+        </div>
+        <div class="form-group">
+          <label for="lastName">Soyad:</label>
+          <input type="text" id="lastName" placeholder="Soyadınız">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="tcNo">TC Kimlik No:</label>
+        <input type="text" id="tcNo" placeholder="12345678901" maxlength="11">
+      </div>
+
+      <div class="form-group">
+        <label for="passportNo">Pasaport No:</label>
+        <input type="text" id="passportNo" placeholder="Pasaport numaranız">
+      </div>
+
+      <div class="form-group">
+        <label>Cinsiyet:</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="gender" value="male">
+            <span class="radio-custom"></span>
+            Erkek
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="gender" value="female">
+            <span class="radio-custom"></span>
+            Kadın
+          </label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button id="saveProfile" class="btn-save">💾 Profili Kaydet</button>
+        <button id="fillForm" class="btn-fill">🚀 Formu Doldur</button>
+      </div>
+    </div>
+
+    <!-- Status Messages -->
+    <div id="statusMessage" class="status-message hidden"></div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>🇹🇷 Türk vatandaşları için özel tasarlandı</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
