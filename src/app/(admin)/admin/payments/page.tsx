@@ -43,6 +43,7 @@ function StaffAvatar({ name, size = 28 }: { name: string; size?: number }) {
 function fmtDate(d: string) { return new Date(d).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "2-digit" }); }
 function sym(c: string) { return ({ TL: "₺", EUR: "€", USD: "$" } as Record<string, string>)[c] || c; }
 function fmtCur(n: number, c: string) { return `${n.toLocaleString("tr-TR")} ${sym(c)}`; }
+function getFileTotal(file: VisaFile) { return (Number(file.ucret) || 0) + (Number(file.davetiye_ucreti) || 0); }
 
 export default function AdminPaymentsPage() {
   const [activeTab, setActiveTab] = useState<"odenmemis" | "tahsilatlar">("odenmemis");
@@ -70,7 +71,7 @@ export default function AdminPaymentsPage() {
       const firmaCariAsPayments: PaymentWithDetails[] = (firmaCariRes.data || []).map((file: any) => ({
         id: `firma_${file.id}`,
         file_id: file.id,
-        tutar: file.ucret || 0,
+        tutar: getFileTotal(file),
         currency: file.ucret_currency || "TL",
         yontem: "firma_cari" as any,
         durum: "odendi" as any,
@@ -180,7 +181,7 @@ export default function AdminPaymentsPage() {
                       </div>
                     </td>
                     <td className="py-2.5 px-4 text-navy-600">{file.hedef_ulke}</td>
-                    <td className="py-2.5 px-4 text-right font-semibold text-navy-900">{fmtCur(file.ucret || 0, file.ucret_currency || "TL")}</td>
+                    <td className="py-2.5 px-4 text-right font-semibold text-navy-900">{fmtCur(getFileTotal(file), file.ucret_currency || "TL")}</td>
                     <td className="py-2.5 px-4">
                       <div className="flex items-center gap-2">
                         <StaffAvatar name={file.profiles?.name || "?"} />

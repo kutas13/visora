@@ -22,6 +22,12 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function getFileTotal(file: VisaFile) {
+  const base = Number(file.ucret) || 0;
+  const davetiye = Number(file.davetiye_ucreti) || 0;
+  return base + davetiye;
+}
+
 type CurrencyTotals = { borc: number; tahsilat: number; kalan: number };
 
 export default function CariHesapPage() {
@@ -72,7 +78,7 @@ export default function CariHesapPage() {
     const firmaCariAsPayments = (firmaCariFiles || []).map(file => ({
       id: `firma_${file.id}`,
       file_id: file.id,
-      tutar: file.ucret || 0,
+      tutar: getFileTotal(file),
       currency: file.ucret_currency || "TL",
       yontem: "firma_cari" as any,
       durum: "odendi" as any,
@@ -92,7 +98,7 @@ export default function CariHesapPage() {
     (files || []).forEach((f) => {
       const c = f.ucret_currency || "TL";
       if (!calc[c]) calc[c] = { borc: 0, tahsilat: 0, kalan: 0 };
-      calc[c].borc += Number(f.ucret) || 0;
+      calc[c].borc += getFileTotal(f);
     });
 
     allPayments.forEach((p) => {
@@ -263,7 +269,7 @@ export default function CariHesapPage() {
                       </td>
                       <td className="px-5 py-4 text-navy-600 font-medium">{f.hedef_ulke}</td>
                       <td className="px-5 py-4 text-right font-bold text-navy-900 tabular-nums">
-                        {fmt(Number(f.ucret) || 0, f.ucret_currency || "TL")}
+                        {fmt(getFileTotal(f), f.ucret_currency || "TL")}
                       </td>
                       <td className="px-5 py-4 text-center">
                         {f.odeme_durumu === "odendi" ? (
@@ -322,7 +328,7 @@ export default function CariHesapPage() {
                       </td>
                       <td className="px-5 py-4 text-navy-600 font-medium">{f.hedef_ulke}</td>
                       <td className="px-5 py-4 text-right font-bold text-red-600 tabular-nums">
-                        {fmt(Number(f.ucret) || 0, f.ucret_currency || "TL")}
+                        {fmt(getFileTotal(f), f.ucret_currency || "TL")}
                       </td>
                       <td className="px-5 py-4 text-right text-navy-500 text-sm">{formatDate(f.created_at)}</td>
                     </tr>

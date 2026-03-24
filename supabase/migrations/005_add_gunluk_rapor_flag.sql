@@ -1,0 +1,2 @@
+ALTER TABLE public.visa_files
+ADD COLUMN IF NOT EXISTS gunluk_rapor_gonderildi BOOLEAN NOT NULL DEFAULT FALSE;

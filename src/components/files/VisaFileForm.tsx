@@ -15,6 +15,37 @@ interface VisaFileFormProps {
   onCancel: () => void;
 }
 
+const SCHENGEN_COUNTRIES = new Set([
+  "ALMANYA", "FRANSA", "ITALYA", "ISPANYA", "HOLLANDA", "BELCIKA",
+  "AVUSTURYA", "PORTEKIZ", "ISVICRE", "POLONYA", "CEKYA", "MACARISTAN",
+  "DANIMARKA", "ISVEC", "NORVEC", "FINLANDIYA", "ESTONYA", "LETONYA",
+  "LITVANYA", "SLOVENYA", "SLOVAKYA", "HIRVATISTAN", "MALTA", "LUKSEMBURG",
+  "IZLANDA", "LIECHTENSTEIN", "YUNANISTAN", "ROMANYA", "BULGARISTAN",
+]);
+
+function normalizeCountryName(value: string) {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/İ/g, "I")
+    .replace(/İ/g, "I")
+    .replace(/ı/g, "I")
+    .replace(/Ğ/g, "G")
+    .replace(/Ü/g, "U")
+    .replace(/Ş/g, "S")
+    .replace(/Ö/g, "O")
+    .replace(/Ç/g, "C");
+}
+
+function isUsdDefaultCountry(country: string) {
+  const c = normalizeCountryName(country);
+  return c === "CIN" || c === "ABD" || c === "INGILTERE";
+}
+
+function isSchengenCountry(country: string) {
+  return SCHENGEN_COUNTRIES.has(normalizeCountryName(country));
+}
+
 export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileFormProps) {
   const isEdit = !!file;
   
@@ -37,6 +68,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   // Ödeme bilgileri
   const [ucret, setUcret] = useState(file?.ucret?.toString() || "");
   const [ucretCurrency, setUcretCurrency] = useState<ParaBirimi>(file?.ucret_currency || "TL");
+  const [showDavetiyeUcreti, setShowDavetiyeUcreti] = useState((Number(file?.davetiye_ucreti) || 0) > 0);
+  const [davetiyeUcreti, setDavetiyeUcreti] = useState(file?.davetiye_ucreti ? String(file.davetiye_ucreti) : "");
+  const [davetiyeUcretiCurrency, setDavetiyeUcretiCurrency] = useState<ParaBirimi>(file?.davetiye_ucreti_currency || "USD");
   const [odemePlani, setOdemePlani] = useState<UIPaymentPlan>(
     file?.cari_tipi === "firma_cari" ? "firma_cari" : (file?.odeme_plani || "cari")
   );
@@ -86,6 +120,33 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const activeCountry = (ulkeManuelMi ? manuelUlke : hedefUlke).trim();
+  const isChinaSelected = normalizeCountryName(activeCountry) === "CIN";
+
+  useEffect(() => {
+    if (!activeCountry) return;
+    if (isUsdDefaultCountry(activeCountry)) {
+      setUcretCurrency("USD");
+    } else if (isSchengenCountry(activeCountry)) {
+      setUcretCurrency("EUR");
+    }
+  }, [activeCountry]);
+
+  useEffect(() => {
+    if (!isChinaSelected) {
+      setShowDavetiyeUcreti(false);
+      setDavetiyeUcreti("");
+      setDavetiyeUcretiCurrency("USD");
+      return;
+    }
+    if (!showDavetiyeUcreti && isEdit && (Number(file?.davetiye_ucreti) || 0) > 0) {
+      setShowDavetiyeUcreti(true);
+    }
+    if (!davetiyeUcretiCurrency) {
+      setDavetiyeUcretiCurrency("USD");
+    }
+  }, [isChinaSelected, isEdit, file?.davetiye_ucreti, showDavetiyeUcreti, davetiyeUcretiCurrency]);
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -181,6 +242,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     if (islemTipi === "randevulu" && !randevuTarihi) { setError("Randevulu işlem için randevu tarihi zorunludur"); return; }
     if (odemePlani === "firma_cari" && !selectedCompany) { setError("Firma seçimi zorunludur"); return; }
     if (!ucret || parseFloat(ucret) <= 0) { setError("Ücret zorunludur"); return; }
+    if (showDavetiyeUcreti && (!davetiyeUcreti || parseFloat(davetiyeUcreti) <= 0)) { setError("Davetiye ücreti girin"); return; }
     if (odemePlani === "pesin" && hesapSahibi !== null && !hesapSahibi) { setError("Hesap sahibi seçimi zorunludur"); return; }
     if (onOdemeVar && (!onOdemeTutar || parseFloat(onOdemeTutar) <= 0)) { setError("Ön ödeme tutarı zorunludur"); return; }
 
@@ -203,8 +265,28 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       const userName = userProfile?.name || "Kullanıcı";
       const finalUlke = ulkeManuelMi ? manuelUlke : hedefUlke;
       const ucretNum = parseFloat(ucret);
+      const davetiyeNum = showDavetiyeUcreti ? parseFloat(davetiyeUcreti || "0") : 0;
       const onOdemeNum = onOdemeVar ? parseFloat(onOdemeTutar) : null;
-      const kalanTutar = onOdemeVar && onOdemeNum ? ucretNum - onOdemeNum : null;
+      const getRate = (currency: ParaBirimi) => {
+        if (currency === "TL") return 1;
+        return Number(exchangeRates[currency]) || 0;
+      };
+      const convertAmount = (amount: number, from: ParaBirimi, to: ParaBirimi) => {
+        if (from === to) return amount;
+        const fromRate = getRate(from);
+        const toRate = getRate(to);
+        if (!fromRate || !toRate) return amount;
+        const tlValue = amount * fromRate;
+        return tlValue / toRate;
+      };
+      const davetiyeInMainCurrency = showDavetiyeUcreti
+        ? convertAmount(davetiyeNum, davetiyeUcretiCurrency, ucretCurrency)
+        : 0;
+      const totalDosyaAmount = Math.round((ucretNum + davetiyeInMainCurrency) * 100) / 100;
+      const onOdemeInMainCurrency = onOdemeVar && onOdemeNum
+        ? convertAmount(onOdemeNum, onOdemeCurrency, ucretCurrency)
+        : 0;
+      const kalanTutar = onOdemeVar ? Math.round((totalDosyaAmount - onOdemeInMainCurrency) * 100) / 100 : null;
 
       let eksikKayitTarihi = file?.eksik_kayit_tarihi || null;
       if (evrakEksikMi === true && !eksikKayitTarihi) {
@@ -227,6 +309,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         assigned_user_id: file?.assigned_user_id || user.id,
         ucret: ucretNum,
         ucret_currency: ucretCurrency,
+        davetiye_ucreti: showDavetiyeUcreti ? davetiyeNum : null,
+        davetiye_ucreti_currency: showDavetiyeUcreti ? davetiyeUcretiCurrency : null,
         odeme_plani: odemePlani === "firma_cari" ? "cari" as OdemePlani : odemePlani as OdemePlani,
         odeme_durumu: (odemePlani === "pesin" ? "odendi" : "odenmedi") as "odendi" | "odenmedi",
         // Yeni ödeme detayları
@@ -263,7 +347,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                 senderName: userName,
                 musteriAd: musteriAd.trim(),
                 hedefUlke: finalUlke,
-                tutar: ucretNum,
+                tutar: totalDosyaAmount,
                 currency: ucretCurrency,
                 yontem: "cari",
                 companyInfo: selectedCompany,
@@ -280,7 +364,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
           try {
             await supabase.from("payments").insert({
               file_id: file.id,
-              tutar: ucretNum,
+              tutar: totalDosyaAmount,
               yontem: hesapSahibi ? "hesaba" : "nakit",
               durum: "odendi",
               currency: ucretCurrency,
@@ -295,11 +379,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                 senderName: userName,
                 musteriAd: musteriAd.trim(),
                 hedefUlke: finalUlke,
-                tutar: ucretNum,
+                tutar: totalDosyaAmount,
                 currency: ucretCurrency,
                 yontem: hesapSahibi ? "hesaba" : "nakit",
                 hesapSahibi: hesapSahibi,
                 emailType: "pesin_satis",
+                ucretDetay: {
+                  vizeTutar: ucretNum,
+                  vizeCurrency: ucretCurrency,
+                  davetiyeTutar: showDavetiyeUcreti ? davetiyeNum : null,
+                  davetiyeCurrency: showDavetiyeUcreti ? davetiyeUcretiCurrency : null,
+                },
               }),
             });
           } catch (emailErr) {
@@ -328,7 +418,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
           // Activity log
           await supabase.from("activity_logs").insert({
             type: "file_created",
-            message: `${musteriAd} için ${odemePlani === "pesin" ? "peşin" : "cari"} dosya oluşturdu (${ucretNum} ${ucretCurrency})`,
+            message: `${musteriAd} için ${odemePlani === "pesin" ? "peşin" : "cari"} dosya oluşturdu (${totalDosyaAmount} ${ucretCurrency})`,
             file_id: newFile.id,
             actor_id: user.id,
           });
@@ -337,7 +427,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
           if (odemePlani === "pesin") {
             await supabase.from("payments").insert({
               file_id: newFile.id,
-              tutar: ucretNum,
+              tutar: totalDosyaAmount,
               yontem: hesapSahibi ? "hesaba" : "nakit",
               durum: "odendi",
               currency: ucretCurrency,
@@ -348,7 +438,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
             const validPesinEntries = pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
             const breakdownText = validPesinEntries.length > 0
               ? validPesinEntries.map(e => `${parseFloat(e.amount).toLocaleString("tr-TR")} ${e.currency}`).join(" + ")
-              : `${ucretNum} ${ucretCurrency}`;
+              : `${totalDosyaAmount} ${ucretCurrency}`;
 
             await supabase.from("activity_logs").insert({
               type: "payment_added",
@@ -373,7 +463,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   senderName: userName,
                   musteriAd: musteriAd.trim(),
                   hedefUlke: finalUlke,
-                  tutar: ucretNum,
+                  tutar: totalDosyaAmount,
                   currency: ucretCurrency,
                   yontem: hesapSahibi ? "hesaba" : "nakit",
                   hesapSahibi: hesapSahibi,
@@ -383,9 +473,15 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   dekontBase64,
                   dekontName,
                   dosyaCurrency: ucretCurrency,
-                  dosyaTutar: ucretNum,
+                  dosyaTutar: totalDosyaAmount,
                   tlKarsiligi: validPesinEntries.length === 1 && validPesinEntries[0].currency === "TL" && ucretCurrency !== "TL" ? validPesinEntries[0].amount : null,
                   paymentBreakdown: validPesinEntries.length > 1 ? validPesinEntries.map(e => ({ tutar: parseFloat(e.amount), currency: e.currency })) : null,
+                  ucretDetay: {
+                    vizeTutar: ucretNum,
+                    vizeCurrency: ucretCurrency,
+                    davetiyeTutar: showDavetiyeUcreti ? davetiyeNum : null,
+                    davetiyeCurrency: showDavetiyeUcreti ? davetiyeUcretiCurrency : null,
+                  },
                 }),
               });
               if (!emailRes.ok) {
@@ -436,7 +532,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   senderName: userName,
                   musteriAd: musteriAd.trim(),
                   hedefUlke: finalUlke,
-                  tutar: ucretNum,
+                  tutar: totalDosyaAmount,
                   currency: ucretCurrency,
                   yontem: "cari",
                   companyInfo: selectedCompany,
@@ -589,6 +685,56 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
           </div>
           <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => setUcretCurrency(e.target.value as ParaBirimi)} />
         </div>
+
+        {isChinaSelected && (
+          <div className="space-y-3">
+            {!showDavetiyeUcreti ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDavetiyeUcreti(true);
+                  if (!davetiyeUcretiCurrency) setDavetiyeUcretiCurrency("USD");
+                }}
+                className="px-3 py-2 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+              >
+                + Davetiye Ücreti Ekle
+              </button>
+            ) : (
+              <div className="p-3 border border-amber-200 bg-amber-50 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Davetiye Ücreti</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDavetiyeUcreti(false);
+                      setDavetiyeUcreti("");
+                      setDavetiyeUcretiCurrency("USD");
+                    }}
+                    className="text-xs text-red-500 hover:text-red-600"
+                  >
+                    Kaldır
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={davetiyeUcreti}
+                      onChange={(e) => setDavetiyeUcreti(e.target.value)}
+                      required={showDavetiyeUcreti}
+                    />
+                  </div>
+                  <Select
+                    options={PARA_BIRIMLERI}
+                    value={davetiyeUcretiCurrency}
+                    onChange={(e) => setDavetiyeUcretiCurrency(e.target.value as ParaBirimi)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Peşin ödeme detayları */}
         {odemePlani === "pesin" && (

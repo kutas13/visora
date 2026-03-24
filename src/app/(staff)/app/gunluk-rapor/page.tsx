@@ -195,6 +195,7 @@ export default function GunlukRaporPage() {
       .select("*, companies(firma_adi)")
       .eq("assigned_user_id", user.id)
       .eq("arsiv_mi", false)
+      .eq("gunluk_rapor_gonderildi", false)
       .order("created_at", { ascending: false });
 
     if (files) setUserFiles(files as VisaFileWithCompany[]);
@@ -232,29 +233,52 @@ export default function GunlukRaporPage() {
     setSearchResults(filtered.slice(0, 10));
   }, [searchTerm, userFiles, rows]);
 
-  const getTlAmount = useCallback((file: VisaFileWithCompany) => {
-    const amount = Number(file.ucret) || 0;
-    if (file.ucret_currency === "EUR") return Math.round(amount * eurRate * 100) / 100;
-    if (file.ucret_currency === "USD") return Math.round(amount * usdRate * 100) / 100;
+  const getTlAmount = useCallback((amount: number, currency: string | null | undefined) => {
+    if (currency === "EUR") return Math.round(amount * eurRate * 100) / 100;
+    if (currency === "USD") return Math.round(amount * usdRate * 100) / 100;
     return amount;
   }, [eurRate, usdRate]);
 
   const addCustomer = useCallback((file: VisaFileWithCompany) => {
     const schengen = isSchengen(file.hedef_ulke || "");
     const biletTut = schengen ? Math.round(90 * eurRate * 100) / 100 : 0;
-    const satisTL = getTlAmount(file);
+    const vizeUcret = Number(file.ucret) || 0;
+    const satisTL = getTlAmount(vizeUcret, file.ucret_currency);
     const cariLabel = getCariLabel(file);
     const currencyLabel = file.ucret_currency === "EUR" ? "EURO" : file.ucret_currency === "USD" ? "DOLAR" : "TL";
 
     const vizRow: ReportRow = {
       id: nextRowId(), fileId: file.id, type: "VIZ",
       musteriAd: file.musteri_ad || "", hedefUlke: file.hedef_ulke || "",
-      ucret: Number(file.ucret) || 0, ucretCurrency: currencyLabel,
+      ucret: vizeUcret, ucretCurrency: currencyLabel,
       tarih: toDateStr(new Date()), biletTut,
       servis: Math.round((satisTL - biletTut) * 100) / 100,
       toplam: satisTL, kartNo: "NAKIT", cariAdi: cariLabel,
     };
-    setRows(prev => [...prev, vizRow]);
+    const davetiyeUcret = Number(file.davetiye_ucreti) || 0;
+    if (davetiyeUcret > 0) {
+      const davCurrency = file.davetiye_ucreti_currency || file.ucret_currency;
+      const davCurrencyLabel = davCurrency === "EUR" ? "EURO" : davCurrency === "USD" ? "DOLAR" : "TL";
+      const davToplam = getTlAmount(davetiyeUcret, davCurrency);
+      const davRow: ReportRow = {
+        id: nextRowId(),
+        fileId: file.id,
+        type: "DAV",
+        musteriAd: file.musteri_ad || "",
+        hedefUlke: file.hedef_ulke || "",
+        ucret: davetiyeUcret,
+        ucretCurrency: davCurrencyLabel,
+        tarih: toDateStr(new Date()),
+        biletTut: 0,
+        servis: davToplam,
+        toplam: davToplam,
+        kartNo: "NAKIT",
+        cariAdi: cariLabel,
+      };
+      setRows(prev => [...prev, vizRow, davRow]);
+    } else {
+      setRows(prev => [...prev, vizRow]);
+    }
     setSearchTerm("");
     setShowSearch(false);
   }, [eurRate, getTlAmount]);
@@ -308,6 +332,10 @@ export default function GunlukRaporPage() {
           newRow.toplam = Number(value) || 0;
           newRow.servis = 0;
         }
+        if (field === "biletTut" && r.type === "DAV") {
+          const bilet = Number(value) || 0;
+          newRow.servis = Math.round((newRow.toplam - bilet) * 100) / 100;
+        }
         return newRow;
       });
       return recalcServis(updated);
@@ -352,7 +380,9 @@ export default function GunlukRaporPage() {
   const buildExcelRows = useCallback((): ExcelRow[] => {
     return numberedRows.map(r => {
       const acenta = r.isEmpty ? (r.hedefUlke?.split("|")[0] || "") : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase());
-      const yolcuAdi = r.type === "VIZ" ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})` : (r.musteriAd || "");
+      const yolcuAdi = r.type === "VIZ" || r.type === "DAV"
+        ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
+        : (r.musteriAd || "");
       return {
         biletNo: r.biletNo, hyKodu: r.type, id: "I",
         acenta: toAscii(acenta),
@@ -453,6 +483,16 @@ export default function GunlukRaporPage() {
         rows: payload,
         isRevize: !!isRevize,
       });
+      // Raporlanan dosya, yeni dosya açılana kadar tekrar listede çıkmasın.
+      const reportFileIds = Array.from(new Set(rows.map(r => r.fileId).filter(Boolean)));
+      if (reportFileIds.length > 0) {
+        const supabase = createClient();
+        await supabase
+          .from("visa_files")
+          .update({ gunluk_rapor_gonderildi: true })
+          .in("id", reportFileIds);
+        setUserFiles(prev => prev.filter(f => !reportFileIds.includes(f.id)));
+      }
       fetchPastReports().then(setPastReports);
       clearDraft();
       setStatusMsg({ type: "success", text: isRevize ? "Revize rapor gönderildi!" : "Mail muhasebeye gönderildi!" });

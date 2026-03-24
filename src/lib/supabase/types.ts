@@ -69,6 +69,9 @@ export interface VisaFile {
   arsiv_mi: boolean;
   ucret: number;
   ucret_currency: ParaBirimi;
+  davetiye_ucreti: number | null;
+  davetiye_ucreti_currency: ParaBirimi | null;
+  gunluk_rapor_gonderildi: boolean;
   odeme_plani: OdemePlani;
   odeme_durumu: OdemeDurumu;
   // Yeni ödeme detayları
@@ -201,6 +204,9 @@ export interface Database {
           arsiv_mi?: boolean;
           ucret?: number;
           ucret_currency?: ParaBirimi;
+          davetiye_ucreti?: number | null;
+          davetiye_ucreti_currency?: ParaBirimi | null;
+          gunluk_rapor_gonderildi?: boolean;
           odeme_plani?: OdemePlani;
           odeme_durumu?: OdemeDurumu;
           hesap_sahibi?: HesapSahibi | null;
@@ -240,6 +246,9 @@ export interface Database {
           arsiv_mi?: boolean;
           ucret?: number;
           ucret_currency?: ParaBirimi;
+          davetiye_ucreti?: number | null;
+          davetiye_ucreti_currency?: ParaBirimi | null;
+          gunluk_rapor_gonderildi?: boolean;
           odeme_plani?: OdemePlani;
           odeme_durumu?: OdemeDurumu;
           cari_sahibi?: string | null;

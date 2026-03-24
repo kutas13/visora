@@ -23,6 +23,13 @@ function formatCurrency(amount: number, currency: string) {
   return `${amount?.toLocaleString("tr-TR")} ${getCurrencySymbol(currency)}`;
 }
 
+function getTotalDosyaAmount(file: VisaFile) {
+  if (typeof file.kalan_tutar === "number") return file.kalan_tutar;
+  const base = Number(file.ucret) || 0;
+  const davetiye = Number(file.davetiye_ucreti) || 0;
+  return base + davetiye;
+}
+
 export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState<"odenmemis" | "tahsilatlar">("odenmemis");
   const [unpaidFiles, setUnpaidFiles] = useState<VisaFile[]>([]);
@@ -83,7 +90,7 @@ export default function PaymentsPage() {
     const firmaCariAsPayments = (firmaCariFiles || []).map(file => ({
       id: `firma_${file.id}`,
       file_id: file.id,
-      tutar: file.ucret || 0,
+      tutar: (Number(file.ucret) || 0) + (Number(file.davetiye_ucreti) || 0),
       currency: file.ucret_currency || "TL",
       yontem: "firma_cari" as any,
       durum: "odendi" as any,
@@ -133,7 +140,7 @@ export default function PaymentsPage() {
 
   const handleTahsilatYap = (file: VisaFile) => {
     setSelectedFile(file);
-    const tahsilatTutari = file.kalan_tutar || file.ucret;
+    const tahsilatTutari = getTotalDosyaAmount(file);
     setPaymentEntries([{ amount: tahsilatTutari?.toString() || "", currency: file.ucret_currency || "TL" }]);
     setYontem("nakit");
     setNotlar("");
@@ -244,8 +251,14 @@ export default function PaymentsPage() {
             notlar: notlar.trim() || null,
             paymentBreakdown,
             dosyaCurrency: selectedFile.ucret_currency,
-            dosyaTutar: selectedFile.kalan_tutar || selectedFile.ucret,
+            dosyaTutar: getTotalDosyaAmount(selectedFile),
             tlKarsiligi,
+            ucretDetay: {
+              vizeTutar: Number(selectedFile.ucret) || 0,
+              vizeCurrency: selectedFile.ucret_currency,
+              davetiyeTutar: selectedFile.davetiye_ucreti || null,
+              davetiyeCurrency: selectedFile.davetiye_ucreti_currency || null,
+            },
             onOdemeGecmisi: selectedFile.on_odeme_tutar ? {
               tutar: selectedFile.on_odeme_tutar,
               currency: selectedFile.on_odeme_currency,
@@ -338,7 +351,7 @@ export default function PaymentsPage() {
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="text-right">
-                      <p className="font-bold text-navy-900">{formatCurrency(file.kalan_tutar || file.ucret || 0, file.ucret_currency || "TL")}</p>
+                      <p className="font-bold text-navy-900">{formatCurrency(getTotalDosyaAmount(file), file.ucret_currency || "TL")}</p>
                       {file.on_odeme_tutar && (
                         <p className="text-[10px] text-blue-600">ön ödeme: {file.on_odeme_tutar} {file.on_odeme_currency}</p>
                       )}
@@ -405,7 +418,7 @@ export default function PaymentsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-navy-400">Beklenen</p>
-                  <p className="font-bold text-primary-600">{formatCurrency(selectedFile.kalan_tutar || selectedFile.ucret || 0, selectedFile.ucret_currency || "TL")}</p>
+                  <p className="font-bold text-primary-600">{formatCurrency(getTotalDosyaAmount(selectedFile), selectedFile.ucret_currency || "TL")}</p>
                 </div>
               </div>
             </div>
@@ -478,7 +491,7 @@ export default function PaymentsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const tlAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toFixed(0);
+                        const tlAmount = (getTotalDosyaAmount(selectedFile) * exchangeRates[selectedFile.ucret_currency]).toFixed(0);
                         setPaymentEntries([{ amount: tlAmount, currency: "TL" }]);
                       }}
                       className="group relative overflow-hidden rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 text-left transition-all hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-100 active:scale-[0.98]"
@@ -488,7 +501,7 @@ export default function PaymentsPage() {
                         <span className="text-xs font-bold text-emerald-800">TL Al</span>
                       </div>
                       <p className="text-sm font-black text-emerald-700">
-                        {((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates[selectedFile.ucret_currency]).toLocaleString("tr-TR", {maximumFractionDigits: 0})} ₺
+                        {(getTotalDosyaAmount(selectedFile) * exchangeRates[selectedFile.ucret_currency]).toLocaleString("tr-TR", {maximumFractionDigits: 0})} ₺
                       </p>
                       <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-200/40 rounded-bl-2xl" />
                     </button>
@@ -497,7 +510,7 @@ export default function PaymentsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setPaymentEntries([{ amount: (selectedFile.kalan_tutar || selectedFile.ucret || 0).toString(), currency: selectedFile.ucret_currency }]);
+                        setPaymentEntries([{ amount: getTotalDosyaAmount(selectedFile).toString(), currency: selectedFile.ucret_currency }]);
                       }}
                       className="group relative overflow-hidden rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 text-left transition-all hover:border-blue-400 hover:shadow-md hover:shadow-blue-100 active:scale-[0.98]"
                     >
@@ -506,7 +519,7 @@ export default function PaymentsPage() {
                         <span className="text-xs font-bold text-blue-800">{selectedFile.ucret_currency} Al</span>
                       </div>
                       <p className="text-sm font-black text-blue-700">
-                        {(selectedFile.kalan_tutar || selectedFile.ucret || 0).toLocaleString("tr-TR")} {getCurrencySymbol(selectedFile.ucret_currency)}
+                        {getTotalDosyaAmount(selectedFile).toLocaleString("tr-TR")} {getCurrencySymbol(selectedFile.ucret_currency)}
                       </p>
                       <div className="absolute top-0 right-0 w-8 h-8 bg-blue-200/40 rounded-bl-2xl" />
                     </button>
@@ -516,7 +529,7 @@ export default function PaymentsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const eurAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.USD / exchangeRates.EUR).toFixed(0);
+                          const eurAmount = (getTotalDosyaAmount(selectedFile) * exchangeRates.USD / exchangeRates.EUR).toFixed(0);
                           setPaymentEntries([{ amount: eurAmount, currency: "EUR" }]);
                         }}
                         className="group relative overflow-hidden rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100 p-3 text-left transition-all hover:border-violet-400 hover:shadow-md hover:shadow-violet-100 active:scale-[0.98]"
@@ -526,7 +539,7 @@ export default function PaymentsPage() {
                           <span className="text-xs font-bold text-violet-800">EUR Al</span>
                         </div>
                         <p className="text-sm font-black text-violet-700">
-                          {((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR", {maximumFractionDigits: 0})} €
+                          {(getTotalDosyaAmount(selectedFile) * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR", {maximumFractionDigits: 0})} €
                         </p>
                         <div className="absolute top-0 right-0 w-8 h-8 bg-violet-200/40 rounded-bl-2xl" />
                       </button>
@@ -537,7 +550,7 @@ export default function PaymentsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const usdAmount = ((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.EUR / exchangeRates.USD).toFixed(0);
+                          const usdAmount = (getTotalDosyaAmount(selectedFile) * exchangeRates.EUR / exchangeRates.USD).toFixed(0);
                           setPaymentEntries([{ amount: usdAmount, currency: "USD" }]);
                         }}
                         className="group relative overflow-hidden rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-3 text-left transition-all hover:border-amber-400 hover:shadow-md hover:shadow-amber-100 active:scale-[0.98]"
@@ -547,7 +560,7 @@ export default function PaymentsPage() {
                           <span className="text-xs font-bold text-amber-800">USD Al</span>
                         </div>
                         <p className="text-sm font-black text-amber-700">
-                          {((selectedFile.kalan_tutar || selectedFile.ucret || 0) * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR", {maximumFractionDigits: 0})} $
+                          {(getTotalDosyaAmount(selectedFile) * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR", {maximumFractionDigits: 0})} $
                         </p>
                         <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200/40 rounded-bl-2xl" />
                       </button>
@@ -615,7 +628,11 @@ export default function PaymentsPage() {
                 <p className="text-xs text-blue-700">
                   {new Date(selectedFile.created_at).toLocaleDateString("tr-TR")} · {selectedFile.on_odeme_tutar} {selectedFile.on_odeme_currency} alınmıştır
                 </p>
-                <p className="text-[10px] text-blue-600 mt-1">Toplam: {selectedFile.ucret} {selectedFile.ucret_currency} · Kalan: {selectedFile.kalan_tutar} {selectedFile.ucret_currency}</p>
+                <p className="text-[10px] text-blue-600 mt-1">
+                  Toplam: {(Number(selectedFile.ucret) + (Number(selectedFile.davetiye_ucreti) || 0)).toLocaleString("tr-TR")} {selectedFile.ucret_currency}
+                  {" · "}
+                  Kalan: {getTotalDosyaAmount(selectedFile).toLocaleString("tr-TR")} {selectedFile.ucret_currency}
+                </p>
               </div>
             )}
 
