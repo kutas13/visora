@@ -823,7 +823,7 @@ export default function GunlukRaporPage() {
               <table className="w-full text-xs whitespace-nowrap border border-gray-200 rounded-lg overflow-hidden">
                 <thead>
                   <tr className="bg-indigo-50">
-                    {["#","H.Y. Kodu","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış Şekli","Kart No","Cari Adı","Not"].map((h,i) => (
+                    {["#","H.Y. Kodu","I-D","Acenta","Yolcu Adı","Tarih","Bilet Tut.","Servis","Toplam","P1","P2","P3","Satış Şekli","Kart No","Cari Adı","Not",""].map((h,i) => (
                       <th key={i} className="py-2.5 px-2 text-left font-semibold text-indigo-800 border-b border-indigo-100">{h}</th>
                     ))}
                   </tr>
@@ -847,6 +847,11 @@ export default function GunlukRaporPage() {
                       <td className="py-1.5 px-2"><input value={r.kartNo} onChange={e => updatePreviewRow(idx, "kartNo", e.target.value)} className="w-[80px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.cariAdi} onChange={e => updatePreviewRow(idx, "cariAdi", e.target.value)} className="w-[100px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.not} onChange={e => updatePreviewRow(idx, "not", e.target.value)} className="w-[100px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" placeholder="Not..." /></td>
+                      <td className="py-1.5 px-2 text-center">
+                        <button onClick={() => setPreviewRows(prev => { const updated = prev.filter((_, i) => i !== idx); return updated.map((row, i) => ({ ...row, biletNo: i + 1 })); })} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors" title="Satırı Sil">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -855,7 +860,20 @@ export default function GunlukRaporPage() {
 
             {/* Modal Footer */}
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50 rounded-b-2xl">
-              <p className="text-sm text-gray-500">{previewRows.length} satır &middot; Tüm alanlar düzenlenebilir</p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-500">{previewRows.length} satır</p>
+                <button
+                  onClick={() => setPreviewRows(prev => [...prev, {
+                    biletNo: prev.length + 1, hyKodu: "", id: "I", acenta: "", yolcuAdi: "",
+                    tarih: "", biletTut: 0, servis: 0, toplam: 0,
+                    parkur1: "", parkur2: "", parkur3: "", satisSecli: "",
+                    kartNo: "", cariAdi: "", uyelikNo: "", not: "",
+                  }])}
+                  className="px-3 py-1.5 text-xs font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  + Boş Satır Ekle
+                </button>
+              </div>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={() => setPreviewOpen(false)}>İptal</Button>
                 <Button variant="outline" size="sm" onClick={() => handleDownload(previewRows)} disabled={downloading}>
