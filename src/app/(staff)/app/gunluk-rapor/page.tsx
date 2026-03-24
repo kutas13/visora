@@ -802,11 +802,20 @@ export default function GunlukRaporPage() {
             </div>
 
             {/* Mail Bilgileri */}
-            <div className="px-6 py-3 bg-orange-50 border-b border-orange-200 flex flex-wrap gap-6 text-sm">
+            <div className="px-6 py-3 bg-orange-50 border-b border-orange-200 flex flex-wrap items-center gap-4 text-sm">
               <div><span className="text-orange-600 font-medium">Kime:</span> <span className="font-semibold text-orange-900">Muhasebe@foxturizm.com, info@foxturizm.com</span></div>
               <div><span className="text-orange-600 font-medium">CC:</span> <span className="font-semibold text-orange-900">{userEmail}</span></div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-orange-600 font-medium">Rapor Tarihi:</span>
+                <input
+                  type="date"
+                  value={raporTarih}
+                  onChange={(e) => setRaporTarih(e.target.value)}
+                  className="px-2 py-1 border border-orange-300 rounded-md text-xs font-semibold text-orange-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
               <div><span className="text-orange-600 font-medium">Konu:</span> <span className="font-semibold text-orange-900">{(() => { const p = raporTarih.split("-"); return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : raporTarih; })()} GÜNLÜK RAPORUM</span></div>
-              <div><span className="text-orange-600 font-medium">Ek:</span> <span className="font-semibold text-orange-900">{raporTarih.replace(/-/g, ".")}.xlsx</span></div>
+              <div><span className="text-orange-600 font-medium">Ek:</span> <span className="font-semibold text-orange-900">{(() => { const p = raporTarih.split("-"); return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : raporTarih; })()}.xlsx</span></div>
             </div>
 
             {/* Editable Table */}
