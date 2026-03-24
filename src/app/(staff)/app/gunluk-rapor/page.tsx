@@ -16,10 +16,6 @@ interface ReportRow {
   hedefUlke: string;
   ucret: number;
   ucretCurrency: string;
-  vizeUcret?: number;
-  vizeUcretCurrency?: string;
-  davetiyeUcret?: number;
-  davetiyeUcretCurrency?: string;
   tarih: string;
   biletTut: number;
   servis: number;
@@ -284,16 +280,10 @@ export default function GunlukRaporPage() {
     const currencyLabel = file.ucret_currency === "EUR" ? "EURO" : file.ucret_currency === "USD" ? "DOLAR" : "TL";
     const davetiyeUcret = Number(file.davetiye_ucreti) || 0;
     const davCurrency = file.davetiye_ucreti_currency || file.ucret_currency;
-    const totalMain = getMainCurrencyTotal(file);
-
     const vizRow: ReportRow = {
       id: nextRowId(), fileId: file.id, type: "VIZ",
       musteriAd: file.musteri_ad || "", hedefUlke: file.hedef_ulke || "",
-      ucret: totalMain, ucretCurrency: currencyLabel,
-      vizeUcret,
-      vizeUcretCurrency: file.ucret_currency || "TL",
-      davetiyeUcret: davetiyeUcret || undefined,
-      davetiyeUcretCurrency: davetiyeUcret ? (davCurrency || "TL") : undefined,
+      ucret: vizeUcret, ucretCurrency: currencyLabel,
       tarih: toDateStr(new Date()), biletTut,
       servis: Math.round((satisTL - biletTut) * 100) / 100,
       toplam: satisTL, kartNo: "NAKIT", cariAdi: cariLabel,
@@ -422,16 +412,7 @@ export default function GunlukRaporPage() {
     return numberedRows.map(r => {
       const acenta = r.isEmpty ? (r.hedefUlke?.split("|")[0] || "") : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase());
       let yolcuAdi = r.musteriAd || "";
-      if (r.type === "VIZ") {
-        if (r.davetiyeUcret && r.vizeUcret) {
-          const totalLabel = `${r.ucret} ${r.ucretCurrency}`;
-          const vizeLabel = `${r.vizeUcret} ${r.vizeUcretCurrency || r.ucretCurrency}`;
-          const davLabel = `${r.davetiyeUcret} ${r.davetiyeUcretCurrency || r.ucretCurrency}`;
-          yolcuAdi = `${r.musteriAd} (${vizeLabel} + ${davLabel} = ${totalLabel})`;
-        } else {
-          yolcuAdi = `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`;
-        }
-      } else if (r.type === "DAV") {
+      if (r.type === "VIZ" || r.type === "DAV") {
         yolcuAdi = `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`;
       }
       return {
@@ -819,7 +800,7 @@ export default function GunlukRaporPage() {
                             <input type="date" value={r.tarih} onChange={(e) => updateRow(r.id, "tarih", e.target.value)} className="w-[120px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                           </td>
                           <td className="py-2 px-2 text-right">
-                            <input type="number" value={r.biletTut || ""} onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
+                            <input type="text" inputMode="decimal" value={r.biletTut || ""} onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
                           </td>
                           <td className="py-2 px-2 text-right">
                             {r.isEmpty ? (
@@ -928,7 +909,7 @@ export default function GunlukRaporPage() {
                       <td className="py-1.5 px-2"><input value={r.acenta} onChange={e => updatePreviewRow(idx, "acenta", e.target.value)} className="w-[90px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.yolcuAdi} onChange={e => updatePreviewRow(idx, "yolcuAdi", e.target.value)} className="w-[220px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input type="date" value={r.tarih} onChange={e => updatePreviewRow(idx, "tarih", e.target.value)} className="w-[120px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
-                      <td className="py-1.5 px-2"><input type="number" value={r.biletTut || ""} onChange={e => updatePreviewRow(idx, "biletTut", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input type="text" inputMode="decimal" value={r.biletTut || ""} onChange={e => updatePreviewRow(idx, "biletTut", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input type="number" value={r.servis || ""} onChange={e => updatePreviewRow(idx, "servis", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input type="number" value={r.toplam || ""} onChange={e => updatePreviewRow(idx, "toplam", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.parkur1} onChange={e => updatePreviewRow(idx, "parkur1", e.target.value)} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
