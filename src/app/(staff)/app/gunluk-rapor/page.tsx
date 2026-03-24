@@ -16,6 +16,10 @@ interface ReportRow {
   hedefUlke: string;
   ucret: number;
   ucretCurrency: string;
+  vizeUcret?: number;
+  vizeUcretCurrency?: string;
+  davetiyeUcret?: number;
+  davetiyeUcretCurrency?: string;
   tarih: string;
   biletTut: number;
   servis: number;
@@ -119,6 +123,24 @@ function normalize(s: string) {
     .replace(/ş/g, "s").replace(/Ş/g, "s")
     .replace(/ö/g, "o").replace(/Ö/g, "o")
     .replace(/ç/g, "c").replace(/Ç/g, "c");
+}
+
+function getRateByCurrency(currency: string | null | undefined, eurRate: number, usdRate: number) {
+  if (currency === "EUR") return eurRate || 0;
+  if (currency === "USD") return usdRate || 0;
+  return 1;
+}
+
+function convertCurrency(amount: number, from: string | null | undefined, to: string | null | undefined, eurRate: number, usdRate: number) {
+  if (!amount) return 0;
+  const fromCurrency = from || "TL";
+  const toCurrency = to || "TL";
+  if (fromCurrency === toCurrency) return amount;
+  const fromRate = getRateByCurrency(fromCurrency, eurRate, usdRate);
+  const toRate = getRateByCurrency(toCurrency, eurRate, usdRate);
+  if (!fromRate || !toRate) return amount;
+  const tlValue = amount * fromRate;
+  return tlValue / toRate;
 }
 
 let rowIdCounter = 0;
@@ -239,6 +261,20 @@ export default function GunlukRaporPage() {
     return amount;
   }, [eurRate, usdRate]);
 
+  const getMainCurrencyTotal = useCallback((file: VisaFileWithCompany) => {
+    const vize = Number(file.ucret) || 0;
+    const davetiye = Number(file.davetiye_ucreti) || 0;
+    if (!davetiye) return vize;
+    const davetiyeInMain = convertCurrency(
+      davetiye,
+      file.davetiye_ucreti_currency || file.ucret_currency,
+      file.ucret_currency,
+      eurRate,
+      usdRate
+    );
+    return Math.round((vize + davetiyeInMain) * 100) / 100;
+  }, [eurRate, usdRate]);
+
   const addCustomer = useCallback((file: VisaFileWithCompany) => {
     const schengen = isSchengen(file.hedef_ulke || "");
     const biletTut = schengen ? Math.round(90 * eurRate * 100) / 100 : 0;
@@ -246,18 +282,23 @@ export default function GunlukRaporPage() {
     const satisTL = getTlAmount(vizeUcret, file.ucret_currency);
     const cariLabel = getCariLabel(file);
     const currencyLabel = file.ucret_currency === "EUR" ? "EURO" : file.ucret_currency === "USD" ? "DOLAR" : "TL";
+    const davetiyeUcret = Number(file.davetiye_ucreti) || 0;
+    const davCurrency = file.davetiye_ucreti_currency || file.ucret_currency;
+    const totalMain = getMainCurrencyTotal(file);
 
     const vizRow: ReportRow = {
       id: nextRowId(), fileId: file.id, type: "VIZ",
       musteriAd: file.musteri_ad || "", hedefUlke: file.hedef_ulke || "",
-      ucret: vizeUcret, ucretCurrency: currencyLabel,
+      ucret: totalMain, ucretCurrency: currencyLabel,
+      vizeUcret,
+      vizeUcretCurrency: file.ucret_currency || "TL",
+      davetiyeUcret: davetiyeUcret || undefined,
+      davetiyeUcretCurrency: davetiyeUcret ? (davCurrency || "TL") : undefined,
       tarih: toDateStr(new Date()), biletTut,
       servis: Math.round((satisTL - biletTut) * 100) / 100,
       toplam: satisTL, kartNo: "NAKIT", cariAdi: cariLabel,
     };
-    const davetiyeUcret = Number(file.davetiye_ucreti) || 0;
     if (davetiyeUcret > 0) {
-      const davCurrency = file.davetiye_ucreti_currency || file.ucret_currency;
       const davCurrencyLabel = davCurrency === "EUR" ? "EURO" : davCurrency === "USD" ? "DOLAR" : "TL";
       const davToplam = getTlAmount(davetiyeUcret, davCurrency);
       const davRow: ReportRow = {
@@ -281,7 +322,7 @@ export default function GunlukRaporPage() {
     }
     setSearchTerm("");
     setShowSearch(false);
-  }, [eurRate, getTlAmount]);
+  }, [eurRate, getTlAmount, getMainCurrencyTotal]);
 
   const addSubRow = useCallback((fileId: string, type: RecordType) => {
     const parentRows = rows.filter(r => r.fileId === fileId);
@@ -380,9 +421,19 @@ export default function GunlukRaporPage() {
   const buildExcelRows = useCallback((): ExcelRow[] => {
     return numberedRows.map(r => {
       const acenta = r.isEmpty ? (r.hedefUlke?.split("|")[0] || "") : (ACENTA_MAP[r.type] || r.hedefUlke.toUpperCase());
-      const yolcuAdi = r.type === "VIZ" || r.type === "DAV"
-        ? `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
-        : (r.musteriAd || "");
+      let yolcuAdi = r.musteriAd || "";
+      if (r.type === "VIZ") {
+        if (r.davetiyeUcret && r.vizeUcret) {
+          const totalLabel = `${r.ucret} ${r.ucretCurrency}`;
+          const vizeLabel = `${r.vizeUcret} ${r.vizeUcretCurrency || r.ucretCurrency}`;
+          const davLabel = `${r.davetiyeUcret} ${r.davetiyeUcretCurrency || r.ucretCurrency}`;
+          yolcuAdi = `${r.musteriAd} (${vizeLabel} + ${davLabel} = ${totalLabel})`;
+        } else {
+          yolcuAdi = `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`;
+        }
+      } else if (r.type === "DAV") {
+        yolcuAdi = `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`;
+      }
       return {
         biletNo: r.biletNo, hyKodu: r.type, id: "I",
         acenta: toAscii(acenta),
@@ -672,7 +723,7 @@ export default function GunlukRaporPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-semibold text-gray-800">
-                            {Number(f.ucret).toLocaleString("tr-TR")} {f.ucret_currency === "EUR" ? "€" : f.ucret_currency === "USD" ? "$" : "₺"}
+                            {getMainCurrencyTotal(f).toLocaleString("tr-TR")} {f.ucret_currency === "EUR" ? "€" : f.ucret_currency === "USD" ? "$" : "₺"}
                           </p>
                           <p className="text-xs text-gray-400">{f.odeme_plani === "pesin" ? "Peşin" : f.cari_tipi === "firma_cari" ? "Firma Cari" : "Cari"}</p>
                         </div>
