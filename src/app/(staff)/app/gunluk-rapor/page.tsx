@@ -790,7 +790,7 @@ export default function GunlukRaporPage() {
                             )}
                           </td>
                           <td className="py-2 px-2 text-gray-900 font-medium">
-                            {r.type === "VIZ" && !r.isEmpty ? (
+                            {(r.type === "VIZ" || r.type === "DAV") && !r.isEmpty ? (
                               `${r.musteriAd} (${r.ucret} ${r.ucretCurrency})`
                             ) : (
                               <input type="text" value={r.musteriAd} onChange={(e) => updateRow(r.id, "musteriAd", e.target.value)} className="w-[200px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="Yolcu adı..." />
