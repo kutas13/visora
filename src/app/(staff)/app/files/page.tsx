@@ -311,7 +311,10 @@ export default function FilesPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex flex-col gap-1.5">
-                            <span className="font-bold text-navy-900 text-sm">{file.ucret?.toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</span>
+                            <span className="font-bold text-navy-900 text-sm">{((file.ucret || 0) + (file.davetiye_ucreti || 0)).toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</span>
+                            {(file.davetiye_ucreti || 0) > 0 && (
+                              <span className="text-xs text-navy-400">{file.ucret?.toLocaleString('tr-TR')} + {file.davetiye_ucreti?.toLocaleString('tr-TR')} dav.</span>
+                            )}
                             <div className="flex gap-1.5 flex-wrap">
                               <Badge variant={file.cari_tipi === "firma_cari" ? "purple" : file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
                                 {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
@@ -381,7 +384,10 @@ export default function FilesPage() {
                       </div>
                       <div className="bg-navy-50 rounded-lg p-2">
                         <span className="text-navy-500 text-xs">Ücret</span>
-                        <p className="font-bold">{file.ucret?.toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</p>
+                        <p className="font-bold">{((file.ucret || 0) + (file.davetiye_ucreti || 0)).toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</p>
+                        {(file.davetiye_ucreti || 0) > 0 && (
+                          <p className="text-xs text-navy-400">{file.ucret?.toLocaleString('tr-TR')} + {file.davetiye_ucreti?.toLocaleString('tr-TR')} dav.</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-1.5 mb-3 flex-wrap">

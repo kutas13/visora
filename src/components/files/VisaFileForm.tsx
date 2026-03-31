@@ -90,6 +90,16 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   
+  // Vize tipleri
+  const VIZE_TIPI_OPTIONS = ["3/1", "6/2", "MULTI", "S", "Z", "TBD"] as const;
+  const [vizeTipleri, setVizeTipleri] = useState<string[]>(file?.vize_tipleri || []);
+
+  const toggleVizeTipi = (tip: string) => {
+    setVizeTipleri((prev) =>
+      prev.includes(tip) ? prev.filter((t) => t !== tip) : [...prev, tip]
+    );
+  };
+
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 0, EUR: 0, TL: 1 });
@@ -138,6 +148,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       setShowDavetiyeUcreti(false);
       setDavetiyeUcreti("");
       setDavetiyeUcretiCurrency("USD");
+      setVizeTipleri([]);
       return;
     }
     if (!showDavetiyeUcreti && isEdit && (Number(file?.davetiye_ucreti) || 0) > 0) {
@@ -322,6 +333,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         on_odeme_tutar: onOdemeVar ? onOdemeNum : null,
         on_odeme_currency: onOdemeVar ? onOdemeCurrency : null,
         kalan_tutar: kalanTutar,
+        vize_tipleri: vizeTipleri,
       };
 
       if (isEdit && file) {
@@ -659,6 +671,42 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
           </div>
         )}
       </fieldset>
+
+      {/* Vize Tipi Seçimi - Sadece Çin dosyalarında */}
+      {normalizeCountryName(ulkeManuelMi ? manuelUlke : hedefUlke) === "CIN" && (
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Vize Tipi</legend>
+        <div className="flex flex-wrap gap-2">
+          {VIZE_TIPI_OPTIONS.map((tip) => {
+            const isSelected = vizeTipleri.includes(tip);
+            const isTBD = tip === "TBD";
+            return (
+              <label
+                key={tip}
+                className={`px-3.5 py-2 border rounded-lg cursor-pointer transition-all text-sm font-medium select-none ${
+                  isSelected
+                    ? isTBD
+                      ? "border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-500"
+                      : "border-primary-500 bg-primary-50 text-primary-700 ring-1 ring-primary-500"
+                    : "border-navy-200 text-navy-600 hover:border-navy-300"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleVizeTipi(tip)}
+                  className="sr-only"
+                />
+                {tip}
+              </label>
+            );
+          })}
+        </div>
+        {vizeTipleri.includes("TBD") && vizeTipleri.length > 1 && (
+          <p className="text-xs text-orange-600">TBD + {vizeTipleri.filter(t => t !== "TBD").join(", ")}</p>
+        )}
+      </fieldset>
+      )}
 
       {/* Ücret ve Ödeme */}
       <fieldset className="space-y-4">

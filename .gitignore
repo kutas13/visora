@@ -41,3 +41,5 @@ next-env.d.ts
 whatsapp-service/auth_info/
 whatsapp-service/node_modules/
 whatsapp-service/sent_today.json
+
+.vercel

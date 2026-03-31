@@ -84,6 +84,8 @@ export interface VisaFile {
   on_odeme_currency: ParaBirimi | null;
   kalan_tutar: number | null;
   musteri_telefon: string | null;
+  vize_tipleri: string[];
+  tahmini_cikis_tarihi: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -218,6 +220,8 @@ export interface Database {
           on_odeme_currency?: ParaBirimi | null;
           kalan_tutar?: number | null;
           musteri_telefon?: string | null;
+          vize_tipleri?: string[];
+          tahmini_cikis_tarihi?: string | null;
           created_at?: string;
           updated_at?: string;
         };

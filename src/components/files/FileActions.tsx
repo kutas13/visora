@@ -19,8 +19,12 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   
   // Confirm modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<"dosya_hazir" | "isleme_girdi" | "arsivle" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"dosya_hazir" | "arsivle" | null>(null);
   
+  // İşleme girdi modal
+  const [showIslemeGirdiModal, setShowIslemeGirdiModal] = useState(false);
+  const [tahminiCikisTarihi, setTahminiCikisTarihi] = useState("");
+
   // Sonuç modal
   const [showSonucModal, setShowSonucModal] = useState(false);
   const [sonuc, setSonuc] = useState<VizeSonucu | "">("");
@@ -51,7 +55,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   const canStep3 = step1Done && step2Done && !step3Done && !isCompleted && !isArchived;
   const canArchive = isCompleted && !isArchived;
 
-  const openConfirmModal = (action: "dosya_hazir" | "isleme_girdi" | "arsivle") => {
+  const openConfirmModal = (action: "dosya_hazir" | "arsivle") => {
     if (isLoading || actionInProgress) return;
     setConfirmAction(action);
     setShowConfirmModal(true);
@@ -85,15 +89,12 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
             : `${file.musteri_ad} dosyasını hazır olarak işaretledi`;
           notifTitle = isChina ? "Onay Geldi" : "Dosya Hazır";
           break;
-        case "isleme_girdi":
-          updateData = { basvuru_yapildi: true, basvuru_yapildi_at: timestamp };
-          logMessage = `${file.musteri_ad} dosyası işleme girdi`;
-          notifTitle = "İşleme Girdi";
-          break;
         case "arsivle":
           updateData = { arsiv_mi: true };
           logMessage = `${file.musteri_ad} dosyasını arşivledi`;
           notifTitle = "Dosya Arşivlendi";
+          break;
+        default:
           break;
       }
 
@@ -117,6 +118,59 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       setIsLoading(false);
       setActionInProgress(null);
       setConfirmAction(null);
+    }
+  };
+
+  const openIslemeGirdiModal = () => {
+    if (isLoading || actionInProgress) return;
+    setTahminiCikisTarihi("");
+    setShowIslemeGirdiModal(true);
+  };
+
+  const handleIslemeGirdiKaydet = async () => {
+    if (isLoading || actionInProgress) return;
+    setShowIslemeGirdiModal(false);
+    setIsLoading(true);
+    setActionInProgress("isleme_girdi");
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Oturum bulunamadı");
+
+      const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
+      const userName = profile?.name || "Kullanıcı";
+
+      const timestamp = new Date().toISOString();
+      const updateData: Partial<VisaFile> = {
+        basvuru_yapildi: true,
+        basvuru_yapildi_at: timestamp,
+        tahmini_cikis_tarihi: tahminiCikisTarihi || null,
+      };
+
+      const cikisText = tahminiCikisTarihi
+        ? ` (tahmini çıkış: ${new Date(tahminiCikisTarihi).toLocaleDateString("tr-TR")})`
+        : "";
+      const logMessage = `${file.musteri_ad} dosyası işleme girdi${cikisText}`;
+
+      const { error } = await supabase.from("visa_files").update(updateData).eq("id", file.id);
+      if (error) throw error;
+
+      await supabase.from("activity_logs").insert({
+        type: "isleme_girdi",
+        message: logMessage,
+        file_id: file.id,
+        actor_id: user.id,
+      });
+
+      await notifyFileStatusChanged(file.id, file.musteri_ad, "İşleme Girdi", logMessage, user.id, userName);
+      onUpdate();
+    } catch (err) {
+      console.error(err);
+      alert("Bir hata oluştu. Lütfen tekrar deneyin.");
+    } finally {
+      setIsLoading(false);
+      setActionInProgress(null);
     }
   };
 
@@ -276,8 +330,6 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         return isChina
           ? `"${file.musteri_ad}" dosyasını ONAY GELDİ olarak işaretlemek istediğinize emin misiniz? Bu işlem geri alınamaz.`
           : `"${file.musteri_ad}" dosyasını HAZIR olarak işaretlemek istediğinize emin misiniz? Bu işlem geri alınamaz.`;
-      case "isleme_girdi":
-        return `"${file.musteri_ad}" dosyasını İŞLEME GİRDİ olarak işaretlemek istediğinize emin misiniz?`;
       case "arsivle":
         return `"${file.musteri_ad}" dosyasını arşivlemek istediğinize emin misiniz?`;
       default:
@@ -340,7 +392,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         <Button
           size="sm"
           variant={canStep2 ? "primary" : "ghost"}
-          onClick={() => canStep2 && openConfirmModal("isleme_girdi")}
+          onClick={() => canStep2 && openIslemeGirdiModal()}
           disabled={!canStep2 || isLoading || actionInProgress !== null}
           title={!canStep2 ? (step2Done ? "✓ Dosya zaten işlemde" : "") : "Dosyayı işleme al"}
           className={canStep2 ? "" : "opacity-50 cursor-not-allowed"}
@@ -382,6 +434,34 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
             </Button>
             <Button onClick={handleConfirmedAction} disabled={isLoading} className="flex-1">
               {isLoading ? "İşleniyor..." : "Evet, Onayla"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* İşleme Girdi Modal */}
+      <Modal isOpen={showIslemeGirdiModal} onClose={() => setShowIslemeGirdiModal(false)} title="İşleme Girdi" size="sm">
+        <div className="space-y-4">
+          <div className="bg-navy-50 rounded-xl p-4 border border-navy-200">
+            <p className="text-sm text-navy-500 mb-1">Dosya</p>
+            <p className="font-semibold text-navy-900">{file.musteri_ad}</p>
+            <p className="text-sm text-navy-600">{file.hedef_ulke}</p>
+          </div>
+
+          <Input
+            label="Tahmini Çıkış Tarihi"
+            type="date"
+            value={tahminiCikisTarihi}
+            onChange={(e) => setTahminiCikisTarihi(e.target.value)}
+          />
+          <p className="text-xs text-navy-500 -mt-2">Boş bırakabilirsiniz, sonradan da güncellenebilir.</p>
+
+          <div className="flex gap-3 pt-4 border-t border-navy-200">
+            <Button type="button" variant="outline" onClick={() => setShowIslemeGirdiModal(false)} className="flex-1" disabled={isLoading}>
+              İptal
+            </Button>
+            <Button type="button" onClick={handleIslemeGirdiKaydet} className="flex-1" disabled={isLoading || actionInProgress !== null}>
+              {isLoading ? "Kaydediliyor..." : "İşleme Al"}
             </Button>
           </div>
         </div>

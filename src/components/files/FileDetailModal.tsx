@@ -109,13 +109,21 @@ export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailM
               <div>
                 <h3 className="text-xl font-bold text-navy-900">{file.musteri_ad}</h3>
                 <p className="text-navy-500">{file.pasaport_no}</p>
-                <div className="flex items-center gap-3 mt-2">
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
                   <Badge variant="info">{file.hedef_ulke}</Badge>
                   <Badge variant={file.islem_tipi === "randevulu" ? "purple" : "default"}>
                     {file.islem_tipi === "randevulu" ? "Randevulu" : "Randevusuz"}
                   </Badge>
                   {getStatusBadge(file)}
                 </div>
+                {file.vize_tipleri && file.vize_tipleri.length > 0 && (
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-xs text-navy-500">Vize Tipi:</span>
+                    {file.vize_tipleri.map((tip: string) => (
+                      <Badge key={tip} variant={tip === "TBD" ? "warning" : "info"} size="sm">{tip}</Badge>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-sm text-navy-500">Atanan Personel</p>
@@ -127,6 +135,13 @@ export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailM
               <div className="mt-4 pt-4 border-t border-navy-200">
                 <p className="text-sm text-navy-500">Randevu Tarihi</p>
                 <p className="font-medium text-navy-900">{formatDateTime(file.randevu_tarihi)}</p>
+              </div>
+            )}
+
+            {file.tahmini_cikis_tarihi && (
+              <div className="mt-2">
+                <p className="text-sm text-navy-500">Tahmini Çıkış Tarihi</p>
+                <p className="font-medium text-navy-900">{new Date(file.tahmini_cikis_tarihi).toLocaleDateString("tr-TR")}</p>
               </div>
             )}
 

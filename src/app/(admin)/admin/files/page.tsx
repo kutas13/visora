@@ -191,7 +191,10 @@ export default function AdminFilesPage() {
                     </td>
                     <td className="py-3 px-4 text-navy-600">{file.hedef_ulke}</td>
                     <td className="py-3 px-4">
-                      <p className="font-semibold text-navy-900">{file.ucret?.toLocaleString("tr-TR")} {sym(file.ucret_currency)}</p>
+                      <p className="font-semibold text-navy-900">{((file.ucret || 0) + (file.davetiye_ucreti || 0)).toLocaleString("tr-TR")} {sym(file.ucret_currency)}</p>
+                      {(file.davetiye_ucreti || 0) > 0 && (
+                        <p className="text-xs text-navy-400">{file.ucret?.toLocaleString("tr-TR")} + {file.davetiye_ucreti?.toLocaleString("tr-TR")} dav.</p>
+                      )}
                       <div className="flex gap-1.5 mt-1 flex-wrap">
                         <Badge variant={file.cari_tipi === "firma_cari" ? "purple" : file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
                           {file.cari_tipi === "firma_cari" ? "Firma Cari" : file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
