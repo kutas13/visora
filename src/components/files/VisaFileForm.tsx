@@ -91,13 +91,16 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   const [newCompanyName, setNewCompanyName] = useState("");
   
   // Vize tipleri
-  const VIZE_TIPI_OPTIONS = ["3/1", "6/2", "MULTI", "S", "Z", "TBD"] as const;
+  const VIZE_TIPI_OPTIONS = ["3/1", "6/2", "MULTI", "S", "Z", "X", "TBD"] as const;
   const [vizeTipleri, setVizeTipleri] = useState<string[]>(file?.vize_tipleri || []);
 
   const toggleVizeTipi = (tip: string) => {
-    setVizeTipleri((prev) =>
-      prev.includes(tip) ? prev.filter((t) => t !== tip) : [...prev, tip]
-    );
+    setVizeTipleri((prev) => {
+      if (prev.includes(tip)) return prev.filter((t) => t !== tip);
+      if (tip === "TBD") return [...prev, tip];
+      const withoutExclusive = prev.filter((t) => t === "TBD");
+      return [...withoutExclusive, tip];
+    });
   };
 
   const [dekontFile, setDekontFile] = useState<File | null>(null);

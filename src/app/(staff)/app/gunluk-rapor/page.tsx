@@ -82,6 +82,15 @@ const ACENTA_MAP: Record<RecordType, string | null> = {
   DAV: "DAVETIYE",
 };
 
+const CIN_BILET_MAP: Record<string, number> = {
+  "3/1": 3635,
+  "6/2": 4250,
+  "MULTI": 6530,
+  "S": 3635,
+  "Z": 3635,
+  "X": 3635,
+};
+
 function toAscii(s: string): string {
   return s
     .replace(/İ/g, "I").replace(/ı/g, "i")
@@ -273,7 +282,11 @@ export default function GunlukRaporPage() {
 
   const addCustomer = useCallback((file: VisaFileWithCompany) => {
     const schengen = isSchengen(file.hedef_ulke || "");
-    const biletTut = schengen ? Math.round(90 * eurRate * 100) / 100 : 0;
+    const isChina = normalize(file.hedef_ulke || "") === "cin";
+    const chinaBilet = isChina && file.vize_tipleri?.length
+      ? (file.vize_tipleri.find(t => t !== "TBD" && CIN_BILET_MAP[t]) ? CIN_BILET_MAP[file.vize_tipleri.find(t => t !== "TBD" && CIN_BILET_MAP[t])!] : 0)
+      : 0;
+    const biletTut = chinaBilet || (schengen ? Math.round(90 * eurRate * 100) / 100 : 0);
     const vizeUcret = Number(file.ucret) || 0;
     const satisTL = getTlAmount(vizeUcret, file.ucret_currency);
     const cariLabel = getCariLabel(file);
@@ -800,7 +813,7 @@ export default function GunlukRaporPage() {
                             <input type="date" value={r.tarih} onChange={(e) => updateRow(r.id, "tarih", e.target.value)} className="w-[120px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500" />
                           </td>
                           <td className="py-2 px-2 text-right">
-                            <input type="text" inputMode="decimal" value={r.biletTut || ""} onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
+                            <input type="text" inputMode="decimal" value={r.biletTut || ""} onChange={(e) => updateRow(r.id, "biletTut", Number(e.target.value.replace(",", ".")) || 0)} className="w-[80px] px-1.5 py-1 border border-gray-200 rounded text-xs text-right focus:outline-none focus:ring-1 focus:ring-indigo-500" placeholder="0" />
                           </td>
                           <td className="py-2 px-2 text-right">
                             {r.isEmpty ? (
@@ -909,7 +922,7 @@ export default function GunlukRaporPage() {
                       <td className="py-1.5 px-2"><input value={r.acenta} onChange={e => updatePreviewRow(idx, "acenta", e.target.value)} className="w-[90px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.yolcuAdi} onChange={e => updatePreviewRow(idx, "yolcuAdi", e.target.value)} className="w-[220px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input type="date" value={r.tarih} onChange={e => updatePreviewRow(idx, "tarih", e.target.value)} className="w-[120px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
-                      <td className="py-1.5 px-2"><input type="text" inputMode="decimal" value={r.biletTut || ""} onChange={e => updatePreviewRow(idx, "biletTut", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
+                      <td className="py-1.5 px-2"><input type="text" inputMode="decimal" value={r.biletTut || ""} onChange={e => updatePreviewRow(idx, "biletTut", Number(e.target.value.replace(",", ".")) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input type="number" value={r.servis || ""} onChange={e => updatePreviewRow(idx, "servis", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input type="number" value={r.toplam || ""} onChange={e => updatePreviewRow(idx, "toplam", Number(e.target.value) || 0)} className="w-[70px] px-1 py-0.5 border border-gray-200 rounded text-xs text-right focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>
                       <td className="py-1.5 px-2"><input value={r.parkur1} onChange={e => updatePreviewRow(idx, "parkur1", e.target.value)} className="w-[40px] px-1 py-0.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none" /></td>

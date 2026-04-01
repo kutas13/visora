@@ -30,6 +30,16 @@ function getTotalDosyaAmount(file: VisaFile) {
   return base + davetiye;
 }
 
+function norm(s: string) {
+  return s.toLowerCase()
+    .replace(/İ/gi, "i").replace(/I/g, "i").replace(/ı/g, "i")
+    .replace(/ğ/g, "g").replace(/Ğ/g, "g")
+    .replace(/ü/g, "u").replace(/Ü/g, "u")
+    .replace(/ş/g, "s").replace(/Ş/g, "s")
+    .replace(/ö/g, "o").replace(/Ö/g, "o")
+    .replace(/ç/g, "c").replace(/Ç/g, "c");
+}
+
 export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState<"odenmemis" | "tahsilatlar">("odenmemis");
   const [unpaidFiles, setUnpaidFiles] = useState<VisaFile[]>([]);
@@ -47,6 +57,7 @@ export default function PaymentsPage() {
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
 
   const [filterCurrency, setFilterCurrency] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [stats, setStats] = useState<Record<string, number>>({ TL: 0, EUR: 0, USD: 0 });
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
@@ -291,9 +302,15 @@ export default function PaymentsPage() {
     }
   };
 
-  const filteredPayments = filterCurrency === "all" 
-    ? payments 
-    : payments.filter(p => (p.currency || "TL") === filterCurrency);
+  const searchQ = norm(searchTerm.trim());
+
+  const filteredUnpaidFiles = searchQ
+    ? unpaidFiles.filter(f => norm(f.musteri_ad || "").includes(searchQ))
+    : unpaidFiles;
+
+  const filteredPayments = payments
+    .filter(p => filterCurrency === "all" || (p.currency || "TL") === filterCurrency)
+    .filter(p => !searchQ || norm(p.visa_files?.musteri_ad || "").includes(searchQ));
 
   const currencyOptions = [{ value: "all", label: "Tümü" }, ...PARA_BIRIMLERI.map(p => ({ value: p.value, label: p.label }))];
 
@@ -318,6 +335,25 @@ export default function PaymentsPage() {
         ))}
       </div>
 
+      {/* Arama */}
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Müşteri adı ile ara..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+        />
+        {searchTerm && (
+          <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        )}
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5 w-fit">
         <button onClick={() => setActiveTab("odenmemis")} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === "odenmemis" ? "bg-white text-navy-900 shadow-sm" : "text-navy-500"}`}>
@@ -334,13 +370,13 @@ export default function PaymentsPage() {
         </div>
       ) : activeTab === "odenmemis" ? (
         <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
-          {unpaidFiles.length === 0 ? (
+          {filteredUnpaidFiles.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm text-navy-400">Tüm ödemeler tahsil edilmiş</p>
+              <p className="text-sm text-navy-400">{searchQ ? "Aramayla eşleşen ödenmemiş dosya bulunamadı" : "Tüm ödemeler tahsil edilmiş"}</p>
             </div>
           ) : (
             <div className="divide-y divide-navy-100">
-              {unpaidFiles.map((file) => (
+              {filteredUnpaidFiles.map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-4 hover:bg-navy-50/50 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />

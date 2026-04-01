@@ -317,82 +317,97 @@ export default function LoginPage() {
               </div>
             )}
 
-            {queryResult && queryResult.length > 0 && (
-              <div className="space-y-4">
-                {queryResult.map((file) => {
-                  const status = getStatusInfo(file);
-                  return (
-                    <div key={file.id} className="bg-gradient-to-r from-navy-50 to-navy-100 rounded-xl p-4 border border-navy-200">
-                      {/* Header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-bold text-navy-900 text-lg">{file.musteri_ad}</h3>
-                          <p className="text-sm text-navy-500">{file.pasaport_no}</p>
-                          {(file as any).profiles?.name && (
-                            <p className="text-xs text-primary-600 bg-primary-50 inline-block px-2 py-1 rounded-full mt-1">
-                              👤 {(file as any).profiles.name}
-                            </p>
-                          )}
-                        </div>
-                        <Badge variant={status.variant}>{status.text}</Badge>
-                      </div>
+            {queryResult && queryResult.length > 0 && (() => {
+              const aktifFiles = queryResult.filter(f => !f.sonuc);
+              const sonuclananFiles = queryResult.filter(f => !!f.sonuc);
 
-                      {/* Info Grid */}
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div className="bg-white rounded-lg p-2">
-                          <p className="text-navy-400 text-xs">Hedef Ülke</p>
-                          <p className="font-medium text-navy-800">{file.hedef_ulke}</p>
-                        </div>
-                        <div className="bg-white rounded-lg p-2">
-                          <p className="text-navy-400 text-xs">İşlem Tipi</p>
-                          <p className="font-medium text-navy-800">
-                            {file.islem_tipi === "randevulu" ? "Randevulu" : "Randevusuz"}
+              const renderFile = (file: VisaFile) => {
+                const status = getStatusInfo(file);
+                return (
+                  <div key={file.id} className={`rounded-xl p-4 border ${file.sonuc ? "bg-gradient-to-r from-emerald-50 to-emerald-100 border-emerald-200" : "bg-gradient-to-r from-navy-50 to-navy-100 border-navy-200"}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-bold text-navy-900 text-lg">{file.musteri_ad}</h3>
+                        <p className="text-sm text-navy-500">{file.pasaport_no}</p>
+                        {(file as any).profiles?.name && (
+                          <p className="text-xs text-primary-600 bg-primary-50 inline-block px-2 py-1 rounded-full mt-1">
+                            {(file as any).profiles.name}
                           </p>
-                        </div>
-                        <div className="bg-white rounded-lg p-2">
-                          <p className="text-navy-400 text-xs">Ödeme Planı</p>
-                          <p className="font-medium text-navy-800">
-                            {file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
-                          </p>
-                        </div>
-                        <div className="bg-white rounded-lg p-2">
-                          <p className="text-navy-400 text-xs">Ödeme Durumu</p>
-                          <Badge variant={file.odeme_durumu === "odendi" ? "success" : "warning"} size="sm">
-                            {file.odeme_durumu === "odendi" ? "Ödendi" : "Ödenmedi"}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* Evrak Durumu */}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Badge variant={file.evrak_durumu === "geldi" ? "success" : "warning"} size="sm">
-                          Evrak: {file.evrak_durumu === "geldi" ? "Geldi" : "Gelmedi"}
-                        </Badge>
-                        {file.evrak_eksik_mi && (
-                          <Badge variant="error" size="sm">Eksik Evrak Var</Badge>
                         )}
                       </div>
-
-                      {/* Randevu Bilgisi */}
-                      {file.islem_tipi === "randevulu" && file.randevu_tarihi && (
-                        <div className="mt-3 bg-blue-50 rounded-lg p-2 border border-blue-100">
-                          <p className="text-xs text-blue-600">Randevu Tarihi</p>
-                          <p className="font-medium text-blue-800">{formatDate(file.randevu_tarihi)}</p>
-                        </div>
-                      )}
-
-                      {/* Vize Bitiş Tarihi */}
-                      {file.sonuc === "vize_onay" && file.vize_bitis_tarihi && (
-                        <div className="mt-3 bg-green-50 rounded-lg p-2 border border-green-100">
-                          <p className="text-xs text-green-600">Vize Bitiş Tarihi</p>
-                          <p className="font-medium text-green-800">{formatDate(file.vize_bitis_tarihi)}</p>
-                        </div>
+                      <Badge variant={status.variant}>{status.text}</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white rounded-lg p-2">
+                        <p className="text-navy-400 text-xs">Hedef Ülke</p>
+                        <p className="font-medium text-navy-800">{file.hedef_ulke}</p>
+                      </div>
+                      <div className="bg-white rounded-lg p-2">
+                        <p className="text-navy-400 text-xs">İşlem Tipi</p>
+                        <p className="font-medium text-navy-800">
+                          {file.islem_tipi === "randevulu" ? "Randevulu" : "Randevusuz"}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-2">
+                        <p className="text-navy-400 text-xs">Ödeme Planı</p>
+                        <p className="font-medium text-navy-800">
+                          {file.odeme_plani === "pesin" ? "Peşin" : "Cari"}
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-2">
+                        <p className="text-navy-400 text-xs">Ödeme Durumu</p>
+                        <Badge variant={file.odeme_durumu === "odendi" ? "success" : "warning"} size="sm">
+                          {file.odeme_durumu === "odendi" ? "Ödendi" : "Ödenmedi"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge variant={file.evrak_durumu === "geldi" ? "success" : "warning"} size="sm">
+                        Evrak: {file.evrak_durumu === "geldi" ? "Geldi" : "Gelmedi"}
+                      </Badge>
+                      {file.evrak_eksik_mi && (
+                        <Badge variant="error" size="sm">Eksik Evrak Var</Badge>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    {file.islem_tipi === "randevulu" && file.randevu_tarihi && (
+                      <div className="mt-3 bg-blue-50 rounded-lg p-2 border border-blue-100">
+                        <p className="text-xs text-blue-600">Randevu Tarihi</p>
+                        <p className="font-medium text-blue-800">{formatDate(file.randevu_tarihi)}</p>
+                      </div>
+                    )}
+                    {file.sonuc === "vize_onay" && file.vize_bitis_tarihi && (
+                      <div className="mt-3 bg-green-50 rounded-lg p-2 border border-green-100">
+                        <p className="text-xs text-green-600">Vize Bitiş Tarihi</p>
+                        <p className="font-medium text-green-800">{formatDate(file.vize_bitis_tarihi)}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+
+              return (
+                <div className="space-y-4">
+                  {aktifFiles.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        Aktif Dosyalar ({aktifFiles.length})
+                      </p>
+                      {aktifFiles.map(renderFile)}
+                    </div>
+                  )}
+                  {sonuclananFiles.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        Sonuçlanan Dosyalar ({sonuclananFiles.length})
+                      </p>
+                      {sonuclananFiles.map(renderFile)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {!queryError && !queryResult && (
               <div className="bg-navy-50 rounded-xl p-6 text-center border border-navy-200">

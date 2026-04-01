@@ -209,7 +209,38 @@ export default function FilesPage() {
         </div>
       </Card>
 
-      {/* Adım Filtreleri */}
+      {/* Aktif / Sonuçlanan Toggle */}
+      <div className="flex gap-1 bg-navy-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setStepFilter("all")}
+          className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+            stepFilter !== "sonuclanan"
+              ? "bg-white text-navy-900 shadow-sm"
+              : "text-navy-500 hover:text-navy-700"
+          }`}
+        >
+          Aktif Dosyalar
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter !== "sonuclanan" ? "bg-navy-100 text-navy-600" : "bg-navy-200/60 text-navy-400"}`}>
+            {files.filter(f => !f.sonuc).length}
+          </span>
+        </button>
+        <button
+          onClick={() => setStepFilter("sonuclanan")}
+          className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+            stepFilter === "sonuclanan"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "text-navy-500 hover:text-navy-700"
+          }`}
+        >
+          Sonuçlanan
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter === "sonuclanan" ? "bg-white/20" : "bg-navy-200/60 text-navy-400"}`}>
+            {files.filter(f => !!f.sonuc).length}
+          </span>
+        </button>
+      </div>
+
+      {/* Alt Adım Filtreleri - Sadece Aktif görünümde */}
+      {stepFilter !== "sonuclanan" && (
       <div className="flex items-center gap-2 flex-wrap">
         {[
           { key: "all", label: "Hepsi", color: "navy" },
@@ -217,22 +248,20 @@ export default function FilesPage() {
           { key: "evrak_eksik", label: "Evrak Eksik", color: "orange" },
           { key: "dosya_hazir", label: "Dosya Hazır", color: "blue" },
           { key: "islemde", label: "İşleme Girdi", color: "indigo" },
-          { key: "sonuclanan", label: "Sonuçlanan", color: "emerald" },
         ].map((step) => {
           const activeFiles = files.filter(f => !f.sonuc);
           const count = step.key === "all" ? activeFiles.length
             : step.key === "yeni" ? activeFiles.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi).length
             : step.key === "evrak_eksik" ? activeFiles.filter(f => f.evrak_eksik_mi && !f.dosya_hazir).length
             : step.key === "dosya_hazir" ? activeFiles.filter(f => f.dosya_hazir && !f.basvuru_yapildi).length
-            : step.key === "islemde" ? activeFiles.filter(f => f.basvuru_yapildi && !f.islemden_cikti).length
-            : files.filter(f => !!f.sonuc).length;
+            : activeFiles.filter(f => f.basvuru_yapildi && !f.islemden_cikti).length;
           return (
             <button
               key={step.key}
               onClick={() => setStepFilter(step.key)}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 stepFilter === step.key
-                  ? step.key === "sonuclanan" ? "bg-emerald-600 text-white shadow-md" : "bg-navy-900 text-white shadow-md"
+                  ? "bg-navy-900 text-white shadow-md"
                   : "bg-white text-navy-600 border border-navy-200 hover:border-navy-400"
               }`}
             >
@@ -242,6 +271,7 @@ export default function FilesPage() {
           );
         })}
       </div>
+      )}
 
       {/* Dosya Listesi */}
       <Card className="overflow-hidden shadow-lg">
