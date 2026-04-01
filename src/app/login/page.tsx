@@ -361,6 +361,31 @@ export default function LoginPage() {
                         </Badge>
                       </div>
                     </div>
+                    {file.vize_tipleri && file.vize_tipleri.length > 0 && (
+                      <div className="mt-3 bg-indigo-50 rounded-lg p-2 border border-indigo-100">
+                        <p className="text-xs text-indigo-600">Vize Tipi</p>
+                        <p className="font-medium text-indigo-800">
+                          {file.vize_tipleri.map(t => {
+                            const labels: Record<string, string> = {
+                              "3/1": "3 Ay / 1 Giriş",
+                              "6/2": "6 Ay / 2 Giriş",
+                              "MULTI": "Çoklu Giriş",
+                              "S": "S Vizesi",
+                              "Z": "Z Vizesi",
+                              "X": "X Vizesi",
+                              "TBD": "Belirlenecek",
+                            };
+                            return labels[t] || t;
+                          }).join(", ")}
+                        </p>
+                      </div>
+                    )}
+                    {file.tahmini_cikis_tarihi && (
+                      <div className="mt-3 bg-purple-50 rounded-lg p-2 border border-purple-100">
+                        <p className="text-xs text-purple-600">Tahmini Çıkış Tarihi</p>
+                        <p className="font-medium text-purple-800">{formatDate(file.tahmini_cikis_tarihi)}</p>
+                      </div>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Badge variant={file.evrak_durumu === "geldi" ? "success" : "warning"} size="sm">
                         Evrak: {file.evrak_durumu === "geldi" ? "Geldi" : "Gelmedi"}
