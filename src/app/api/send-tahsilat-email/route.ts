@@ -62,21 +62,25 @@ export async function POST(request: NextRequest) {
       const bulkSubject = `TOPLU TAHSİLAT \u2022 ${customers.length} müşteri \u2022 ${totalAmt}${totalCs}`;
 
       const customerLines = customers.map(c => {
-        const cAmt = Number(c.tutar).toLocaleString("tr-TR");
-        return `${c.musteriAd} ${c.hedefUlke} vize ücreti ${cAmt} ${cText(c.currency)} ${yontem === "nakit" ? "nakit olarak alınmıştır" : "hesaba ödenmiştir"} carimden çıkartabiliriz`;
+        const dosyaAmt = c.dosyaTutar ? Number(c.dosyaTutar).toLocaleString("tr-TR") : Number(c.tutar).toLocaleString("tr-TR");
+        const dosyaCurr = c.dosyaCurrency || c.currency;
+        return `${c.musteriAd} ${c.hedefUlke} vize ücreti ${dosyaAmt} ${cText(dosyaCurr)} ${yontem === "nakit" ? "nakit olarak alınmıştır" : "hesaba ödenmiştir"} carimden çıkartabiliriz`;
       });
       const bulkPlain = customerLines.join("\n\n") + (notlar ? `\n\nPersonel Notu: ${notlar}` : "");
 
       const customerCards = customers.map(c => {
-        const cAmt = Number(c.tutar).toLocaleString("tr-TR");
-        const cCs = cSym(c.currency);
+        const dosyaAmt = c.dosyaTutar ? Number(c.dosyaTutar).toLocaleString("tr-TR") : Number(c.tutar).toLocaleString("tr-TR");
+        const dosyaCurr = c.dosyaCurrency || c.currency;
+        const dosyaCs = cSym(dosyaCurr);
         return `<div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.06);margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
               <p style="margin:0;font-size:14px;color:#f1f5f9;font-weight:600;">${c.musteriAd}</p>
               <p style="margin:4px 0 0;font-size:12px;color:#64748b;">${c.hedefUlke}</p>
             </div>
-            <p style="margin:0;font-size:18px;font-weight:800;color:#10b981;">${cAmt}${cCs}</p>
+            <div style="text-align:right;">
+              <p style="margin:0;font-size:18px;font-weight:800;color:#10b981;">${dosyaAmt}${dosyaCs}</p>
+            </div>
           </div>
         </div>`;
       }).join("");
