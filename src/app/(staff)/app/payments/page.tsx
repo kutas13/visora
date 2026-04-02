@@ -90,30 +90,16 @@ export default function PaymentsPage() {
     setUserName(profileName);
     setUserEmail(profile?.email || user.email || "");
 
-    // Carime atanmış dosyalar (cari_sahibi = profil adım)
-    const { data: unpaidByCari } = await supabase
-      .from("visa_files")
-      .select("*")
-      .eq("odeme_plani", "cari")
-      .eq("odeme_durumu", "odenmedi")
-      .neq("cari_tipi", "firma_cari")
-      .eq("cari_sahibi", profileName)
-      .order("created_at", { ascending: false });
-
-    // Eski dosyalar (cari_sahibi henüz atanmamış, assigned_user_id ile eşleştir)
-    const { data: unpaidLegacy } = await supabase
+    const { data: unpaid } = await supabase
       .from("visa_files")
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
       .neq("cari_tipi", "firma_cari")
-      .is("cari_sahibi", null)
       .order("created_at", { ascending: false });
 
-    const unpaidMap = new Map<string, VisaFile>();
-    [...(unpaidByCari || []), ...(unpaidLegacy || [])].forEach(f => unpaidMap.set(f.id, f));
-    setUnpaidFiles(Array.from(unpaidMap.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    setUnpaidFiles(unpaid || []);
 
     const { data: paymentData } = await supabase
       .from("payments")
