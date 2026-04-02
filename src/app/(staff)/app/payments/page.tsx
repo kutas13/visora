@@ -924,7 +924,7 @@ export default function PaymentsPage() {
                   <Input label={index === 0 ? "Tutar" : undefined} type="number" placeholder="0" value={entry.amount} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, amount: e.target.value } : en))} />
                 </div>
                 <div className="w-24">
-                  <select value={entry.currency} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value } : en))} className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <select value={entry.currency} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value as ParaBirimi } : en))} className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
                     <option value="TL">TL</option>
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
