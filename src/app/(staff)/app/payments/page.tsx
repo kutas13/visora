@@ -90,17 +90,30 @@ export default function PaymentsPage() {
     setUserName(profileName);
     setUserEmail(profile?.email || user.email || "");
 
-    const { data: unpaid } = await supabase
+    // Carime atanmış dosyalar (cari_sahibi = profil adım)
+    const { data: unpaidByCari } = await supabase
+      .from("visa_files")
+      .select("*")
+      .eq("odeme_plani", "cari")
+      .eq("odeme_durumu", "odenmedi")
+      .neq("cari_tipi", "firma_cari")
+      .eq("cari_sahibi", profileName)
+      .order("created_at", { ascending: false });
+
+    // Eski dosyalar (cari_sahibi henüz atanmamış, assigned_user_id ile eşleştir)
+    const { data: unpaidLegacy } = await supabase
       .from("visa_files")
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
       .neq("cari_tipi", "firma_cari")
-      .or(`cari_sahibi.eq.${profileName},cari_sahibi.is.null`)
+      .is("cari_sahibi", null)
       .order("created_at", { ascending: false });
 
-    setUnpaidFiles(unpaid || []);
+    const unpaidMap = new Map<string, VisaFile>();
+    [...(unpaidByCari || []), ...(unpaidLegacy || [])].forEach(f => unpaidMap.set(f.id, f));
+    setUnpaidFiles(Array.from(unpaidMap.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
 
     const { data: paymentData } = await supabase
       .from("payments")
@@ -118,7 +131,6 @@ export default function PaymentsPage() {
       .order("created_at", { ascending: false })
       .limit(25);
 
-    // Firma cari dosyaları payment formatına dönüştür
     const firmaCariAsPayments = (firmaCariFiles || []).map(file => ({
       id: `firma_${file.id}`,
       file_id: file.id,
@@ -137,7 +149,34 @@ export default function PaymentsPage() {
       }
     }));
 
-    const allPayments = [...(paymentData || []), ...firmaCariAsPayments];
+    // Peşin satış dosyaları da tahsilat olarak ekle
+    const { data: pesinFiles } = await supabase
+      .from("visa_files")
+      .select("*")
+      .eq("assigned_user_id", user.id)
+      .eq("odeme_plani", "pesin")
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    const pesinAsPayments = (pesinFiles || []).map(file => ({
+      id: `pesin_${file.id}`,
+      file_id: file.id,
+      tutar: (Number(file.ucret) || 0) + (Number(file.davetiye_ucreti) || 0),
+      currency: file.ucret_currency || "TL",
+      yontem: (file.hesap_sahibi ? "hesaba" : "nakit") as any,
+      durum: "odendi" as any,
+      payment_type: "pesin_satis" as any,
+      created_by: user.id,
+      created_at: file.created_at,
+      visa_files: {
+        musteri_ad: file.musteri_ad,
+        hedef_ulke: file.hedef_ulke,
+        ucret: file.ucret,
+        ucret_currency: file.ucret_currency
+      }
+    }));
+
+    const allPayments = [...(paymentData || []), ...firmaCariAsPayments, ...pesinAsPayments];
     setPayments(allPayments);
 
     if (allPayments) {
@@ -933,6 +972,84 @@ export default function PaymentsPage() {
               </div>
             ))}
           </div>
+
+          {/* Oto Kur - Toplu */}
+          {selectedFiles.length > 0 && selectedFiles.some(f => (f.ucret_currency || "TL") !== "TL") && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Oto Kur</p>
+                <button type="button" onClick={loadExchangeRates} className="flex items-center gap-1 text-[10px] font-medium text-navy-400 hover:text-primary-600 transition-colors" disabled={ratesLoading}>
+                  <svg className={`w-3 h-3 ${ratesLoading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  {ratesLoading ? "Güncelleniyor..." : "Kur Güncelle"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => {
+                  const totalTL = selectedFiles.reduce((sum, f) => {
+                    const amount = getTotalDosyaAmount(f);
+                    const curr = f.ucret_currency || "TL";
+                    return sum + (curr === "TL" ? amount : amount * (exchangeRates[curr] || 1));
+                  }, 0);
+                  setBulkPaymentEntries([{ amount: Math.round(totalTL).toString(), currency: "TL" }]);
+                }} className="group relative overflow-hidden rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 text-left transition-all hover:border-emerald-400 hover:shadow-md hover:shadow-emerald-100 active:scale-[0.98]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500 text-white text-xs font-bold shadow-sm">₺</span>
+                    <span className="text-xs font-bold text-emerald-800">TL Al</span>
+                  </div>
+                  <p className="text-sm font-black text-emerald-700">
+                    {selectedFiles.reduce((sum, f) => {
+                      const amount = getTotalDosyaAmount(f);
+                      const curr = f.ucret_currency || "TL";
+                      return sum + (curr === "TL" ? amount : amount * (exchangeRates[curr] || 1));
+                    }, 0).toLocaleString("tr-TR", {maximumFractionDigits: 0})} ₺
+                  </p>
+                  <div className="absolute top-0 right-0 w-8 h-8 bg-emerald-200/40 rounded-bl-2xl" />
+                </button>
+
+                {selectedFiles.some(f => f.ucret_currency === "EUR") && (
+                  <button type="button" onClick={() => {
+                    const totalEUR = selectedFiles.reduce((sum, f) => f.ucret_currency === "EUR" ? sum + getTotalDosyaAmount(f) : sum, 0);
+                    setBulkPaymentEntries([{ amount: totalEUR.toString(), currency: "EUR" }]);
+                  }} className="group relative overflow-hidden rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-3 text-left transition-all hover:border-blue-400 hover:shadow-md hover:shadow-blue-100 active:scale-[0.98]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500 text-white text-xs font-bold shadow-sm">€</span>
+                      <span className="text-xs font-bold text-blue-800">EUR Al</span>
+                    </div>
+                    <p className="text-sm font-black text-blue-700">
+                      {selectedFiles.filter(f => f.ucret_currency === "EUR").reduce((sum, f) => sum + getTotalDosyaAmount(f), 0).toLocaleString("tr-TR")} €
+                    </p>
+                    <div className="absolute top-0 right-0 w-8 h-8 bg-blue-200/40 rounded-bl-2xl" />
+                  </button>
+                )}
+
+                {selectedFiles.some(f => f.ucret_currency === "USD") && (
+                  <button type="button" onClick={() => {
+                    const totalUSD = selectedFiles.reduce((sum, f) => f.ucret_currency === "USD" ? sum + getTotalDosyaAmount(f) : sum, 0);
+                    setBulkPaymentEntries([{ amount: totalUSD.toString(), currency: "USD" }]);
+                  }} className="group relative overflow-hidden rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-3 text-left transition-all hover:border-amber-400 hover:shadow-md hover:shadow-amber-100 active:scale-[0.98]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-500 text-white text-xs font-bold shadow-sm">$</span>
+                      <span className="text-xs font-bold text-amber-800">USD Al</span>
+                    </div>
+                    <p className="text-sm font-black text-amber-700">
+                      {selectedFiles.filter(f => f.ucret_currency === "USD").reduce((sum, f) => sum + getTotalDosyaAmount(f), 0).toLocaleString("tr-TR")} $
+                    </p>
+                    <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200/40 rounded-bl-2xl" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TL karşılığı gösterimi - Toplu */}
+          {bulkValidEntries.length === 1 && bulkValidEntries[0].amount && bulkValidEntries[0].currency !== "TL" && exchangeRates[bulkValidEntries[0].currency] && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
+              <p className="text-xs text-emerald-600">
+                {parseFloat(bulkValidEntries[0].amount).toLocaleString("tr-TR")} {bulkValidEntries[0].currency} = <strong>{(parseFloat(bulkValidEntries[0].amount) * exchangeRates[bulkValidEntries[0].currency]).toLocaleString("tr-TR")} TL</strong>
+              </p>
+              <p className="text-[10px] text-emerald-500">Kur: 1 {bulkValidEntries[0].currency} = {exchangeRates[bulkValidEntries[0].currency]} TL</p>
+            </div>
+          )}
 
           <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={bulkYontem} onChange={(e) => setBulkYontem(e.target.value)} />
 
