@@ -46,10 +46,110 @@ export async function POST(request: NextRequest) {
       port: 465,
       secure: true,
       auth: { user: senderEmail, pass: smtpPass },
-      connectionTimeout: 8000, // 8 saniye bağlantı timeout (Vercel 10s limiti)
+      connectionTimeout: 8000,
       greetingTimeout: 5000,
       socketTimeout: 10000,
     });
+
+    // Toplu tahsilat desteği
+    const customers = body.customers as Array<{ musteriAd: string; hedefUlke: string; tutar: number; currency: string; dosyaCurrency?: string; dosyaTutar?: number; ucretDetay?: any }> | undefined;
+    if (customers && customers.length > 0) {
+      const totalAmt = Number(tutar).toLocaleString("tr-TR");
+      const totalCs = cSym(currency);
+      const tarih = new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" });
+      const methodLabel = yontem === "nakit" ? "Nakit" : `Hesaba${hesapSahibi && hesapSahibi !== "DAVUT_TURGUT" ? ` (${hesapSahibi === "SIRRI_TURGUT" ? "Sırrı Turgut hesabı" : ""})` : ""}`;
+
+      const bulkSubject = `TOPLU TAHSİLAT \u2022 ${customers.length} müşteri \u2022 ${totalAmt}${totalCs}`;
+
+      const customerLines = customers.map(c => {
+        const cAmt = Number(c.tutar).toLocaleString("tr-TR");
+        return `${c.musteriAd} ${c.hedefUlke} vize ücreti ${cAmt} ${cText(c.currency)} ${yontem === "nakit" ? "nakit olarak alınmıştır" : "hesaba ödenmiştir"} carimden çıkartabiliriz`;
+      });
+      const bulkPlain = customerLines.join("\n\n") + (notlar ? `\n\nPersonel Notu: ${notlar}` : "");
+
+      const customerCards = customers.map(c => {
+        const cAmt = Number(c.tutar).toLocaleString("tr-TR");
+        const cCs = cSym(c.currency);
+        return `<div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.06);margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <p style="margin:0;font-size:14px;color:#f1f5f9;font-weight:600;">${c.musteriAd}</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#64748b;">${c.hedefUlke}</p>
+            </div>
+            <p style="margin:0;font-size:18px;font-weight:800;color:#10b981;">${cAmt}${cCs}</p>
+          </div>
+        </div>`;
+      }).join("");
+
+      const notlarHtml = notlar ? `<div style="padding:0 32px 24px;">
+        <div style="background:rgba(251,191,36,0.1);border-radius:12px;padding:16px;border:1px solid rgba(251,191,36,0.2);">
+          <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#d97706;font-weight:700;">Personel Notu</p>
+          <p style="margin:0;font-size:13px;color:#fbbf24;font-style:italic;">"${notlar}"</p>
+        </div>
+      </div>` : "";
+
+      const bulkHtml = `<!DOCTYPE html>
+<html lang="tr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#080d19;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+<div style="max-width:500px;margin:0 auto;padding:40px 16px;">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="display:inline-block;background:linear-gradient(135deg,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Fox Turizm</div>
+  </div>
+  <div style="background:linear-gradient(145deg,#111827,#1e293b);border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);box-shadow:0 32px 64px rgba(0,0,0,0.5);">
+    <div style="height:3px;background:linear-gradient(90deg,#f97316,#ef4444,#f97316);"></div>
+    <div style="text-align:center;padding:36px 32px 8px;">
+      <div style="display:inline-block;width:64px;height:64px;line-height:64px;border-radius:20px;background:linear-gradient(135deg,#f97316,#ef4444);font-size:28px;text-align:center;box-shadow:0 12px 32px rgba(249,115,22,0.3);">&#x1F4B0;</div>
+      <div style="margin-top:16px;">
+        <span style="display:inline-block;background:rgba(249,115,22,0.12);color:#ea580c;font-size:10px;font-weight:800;padding:5px 16px;border-radius:20px;letter-spacing:3px;">TOPLU TAHSİLAT</span>
+      </div>
+    </div>
+    <div style="text-align:center;padding:20px 32px 28px;">
+      <p style="margin:0 0 6px;font-size:12px;color:#64748b;font-weight:500;letter-spacing:2px;text-transform:uppercase;">Toplam Tutar</p>
+      <p style="margin:0;font-size:48px;font-weight:900;color:#ffffff;letter-spacing:-2px;line-height:1;">${totalAmt}<span style="font-size:32px;font-weight:700;color:#f97316;margin-left:4px;">${totalCs}</span></p>
+      <p style="margin:8px 0 0;font-size:14px;color:#94a3b8;">${customers.length} m\u00fc\u015fteri \u2022 ${methodLabel}</p>
+    </div>
+    <div style="margin:0 32px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent);"></div>
+    <div style="padding:24px 32px;">
+      <p style="margin:0 0 12px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">M\u00fc\u015fteriler</p>
+      ${customerCards}
+    </div>
+    ${notlarHtml}
+    <div style="padding:4px 32px 32px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);"><span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">\u0130\u015flemi Yapan</span></td>
+          <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;"><span style="font-size:14px;color:#f1f5f9;font-weight:600;">${senderName}</span><br><span style="font-size:11px;color:#64748b;">${senderEmail}</span></td>
+        </tr>
+        <tr>
+          <td style="padding:14px 0;"><span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Tarih</span></td>
+          <td style="padding:14px 0;text-align:right;"><span style="font-size:14px;color:#e2e8f0;font-weight:500;">${tarih}</span></td>
+        </tr>
+      </table>
+    </div>
+    <div style="height:2px;background:linear-gradient(90deg,#f97316,#ef4444,#f97316);opacity:0.3;"></div>
+  </div>
+  <div style="text-align:center;padding:24px 0 8px;">
+    <p style="margin:0 0 6px;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Fox Turizm Vize Y\u00f6netim Sistemi</span> taraf\u0131ndan otomatik g\u00f6nderilmi\u015ftir.</p>
+  </div>
+</div></body></html>`;
+
+      const toMuhasebe = body.testTo || "Muhasebe@foxturizm.com";
+      const bulkAttachments: any[] = [];
+      if (dekontBase64 && dekontName) {
+        const matches = dekontBase64.match(/^data:(.+);base64,(.+)$/);
+        if (matches) bulkAttachments.push({ filename: dekontName, content: matches[2], encoding: "base64", contentType: matches[1] });
+      }
+      await transporter.sendMail({
+        from: { name: senderName, address: senderEmail },
+        to: [toMuhasebe, senderEmail],
+        subject: bulkSubject,
+        text: bulkPlain,
+        html: bulkHtml,
+        encoding: "utf-8" as const,
+        attachments: bulkAttachments.length > 0 ? bulkAttachments : undefined,
+      });
+      return NextResponse.json({ success: true });
+    }
 
     const amt = Number(tutar).toLocaleString("tr-TR");
     const ct = cText(currency);

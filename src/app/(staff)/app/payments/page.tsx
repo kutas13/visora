@@ -64,11 +64,31 @@ export default function PaymentsPage() {
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 49.50, EUR: 53.00, TL: 1 });
   const [ratesLoading, setRatesLoading] = useState(false);
 
+  // Toplu ödeme state
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showBulkConfirmModal, setShowBulkConfirmModal] = useState(false);
+  const [bulkYontem, setBulkYontem] = useState("nakit");
+  const [bulkHesapSahibi, setBulkHesapSahibi] = useState<HesapSahibi>("DAVUT_TURGUT");
+  const [bulkNotlar, setBulkNotlar] = useState("");
+  const [bulkPaymentEntries, setBulkPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
+  const [bulkDekontFile, setBulkDekontFile] = useState<File | null>(null);
+  const [bulkDekontPreview, setBulkDekontPreview] = useState<string | null>(null);
+
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+
   const loadData = async () => {
     setLoading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    const { data: profile } = await supabase.from("profiles").select("name, email").eq("id", user.id).single();
+    const profileName = profile?.name || "";
+    setUserName(profileName);
+    setUserEmail(profile?.email || user.email || "");
 
     const { data: unpaid } = await supabase
       .from("visa_files")
@@ -76,6 +96,7 @@ export default function PaymentsPage() {
       .eq("assigned_user_id", user.id)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
+      .eq("cari_sahibi", profileName)
       .neq("cari_tipi", "firma_cari")
       .order("created_at", { ascending: false });
 
@@ -316,6 +337,128 @@ export default function PaymentsPage() {
 
   const validEntries = paymentEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
 
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId); else next.add(fileId);
+      return next;
+    });
+  };
+
+  const selectedFiles = unpaidFiles.filter(f => selectedFileIds.has(f.id));
+  const bulkValidEntries = bulkPaymentEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
+
+  const openBulkModal = () => {
+    if (selectedFiles.length === 0) return;
+    setBulkPaymentEntries([{ amount: "", currency: "TL" }]);
+    setBulkYontem("nakit");
+    setBulkNotlar("");
+    setBulkDekontFile(null);
+    setBulkDekontPreview(null);
+    setShowBulkModal(true);
+  };
+
+  const handleBulkConfirm = () => {
+    if (!bulkValidEntries.length) { alert("Lütfen en az bir geçerli tutar girin"); return; }
+    setShowBulkModal(false);
+    setShowBulkConfirmModal(true);
+  };
+
+  const handleBulkPaymentSave = async () => {
+    if (isSubmitting || !bulkValidEntries.length || selectedFiles.length === 0) return;
+    setIsSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Oturum bulunamadı");
+
+      const primaryEntry = bulkValidEntries[0];
+      const primaryAmount = parseFloat(primaryEntry.amount);
+      const perFileAmount = Math.round((primaryAmount / selectedFiles.length) * 100) / 100;
+
+      for (const file of selectedFiles) {
+        await supabase.from("payments").insert({
+          file_id: file.id,
+          tutar: perFileAmount,
+          yontem: bulkYontem as "nakit" | "hesaba",
+          durum: "odendi",
+          currency: primaryEntry.currency,
+          payment_type: "tahsilat",
+          created_by: user.id,
+        });
+        await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);
+        await supabase.from("activity_logs").insert({
+          type: "payment_added",
+          message: `${file.musteri_ad} için toplu tahsilat alındı: ${formatCurrency(perFileAmount, primaryEntry.currency)}`,
+          file_id: file.id,
+          actor_id: user.id,
+        });
+      }
+
+      // Tek birleşik email gönder
+      try {
+        let dekontBase64: string | null = null;
+        let dekontName: string | null = null;
+        if (bulkDekontFile && bulkYontem === "hesaba") {
+          dekontBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(bulkDekontFile);
+          });
+          dekontName = bulkDekontFile.name;
+        }
+
+        const customers = selectedFiles.map(file => ({
+          musteriAd: file.musteri_ad,
+          hedefUlke: file.hedef_ulke,
+          tutar: perFileAmount,
+          currency: primaryEntry.currency,
+          dosyaCurrency: file.ucret_currency,
+          dosyaTutar: getTotalDosyaAmount(file),
+          ucretDetay: {
+            vizeTutar: Number(file.ucret) || 0,
+            vizeCurrency: file.ucret_currency,
+            davetiyeTutar: file.davetiye_ucreti || null,
+            davetiyeCurrency: file.davetiye_ucreti_currency || null,
+          },
+        }));
+
+        await fetch("/api/send-tahsilat-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            senderEmail: userEmail,
+            senderName: userName,
+            musteriAd: selectedFiles.map(f => f.musteri_ad).join(", "),
+            hedefUlke: selectedFiles[0].hedef_ulke,
+            tutar: primaryAmount,
+            currency: primaryEntry.currency,
+            yontem: bulkYontem,
+            hesapSahibi: bulkYontem === "hesaba" ? bulkHesapSahibi : null,
+            notlar: bulkNotlar.trim() || null,
+            emailType: "tahsilat",
+            dekontBase64,
+            dekontName,
+            customers,
+          }),
+        });
+      } catch (emailErr) {
+        console.error("Toplu tahsilat email gönderilemedi:", emailErr);
+      }
+
+      setShowBulkConfirmModal(false);
+      setBulkMode(false);
+      setSelectedFileIds(new Set());
+      loadData();
+    } catch (err) {
+      console.error(err);
+      alert("Toplu tahsilat kaydedilirken hata oluştu.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -369,38 +512,78 @@ export default function PaymentsPage() {
           <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
       ) : activeTab === "odenmemis" ? (
-        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
-          {filteredUnpaidFiles.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-sm text-navy-400">{searchQ ? "Aramayla eşleşen ödenmemiş dosya bulunamadı" : "Tüm ödemeler tahsil edilmiş"}</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-navy-100">
-              {filteredUnpaidFiles.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-4 hover:bg-navy-50/50 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />
-                    <div className="min-w-0">
-                      <p className="font-semibold text-navy-900 text-sm truncate">{file.musteri_ad}</p>
-                      <p className="text-xs text-navy-400">{file.hedef_ulke} · {file.pasaport_no}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="font-bold text-navy-900">{formatCurrency(getTotalDosyaAmount(file), file.ucret_currency || "TL")}</p>
-                      {file.on_odeme_tutar && (
-                        <p className="text-[10px] text-blue-600">ön ödeme: {file.on_odeme_tutar} {file.on_odeme_currency}</p>
-                      )}
-                    </div>
-                    <button onClick={() => handleTahsilatYap(file)} className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded-lg transition-colors">
-                      Tahsilat
-                    </button>
-                  </div>
+        <>
+          {/* Toplu Ödeme Kontrolleri */}
+          {unpaidFiles.length > 1 && (
+            <div className="flex items-center gap-2">
+              {!bulkMode ? (
+                <button onClick={() => setBulkMode(true)} className="px-4 py-2 text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                  Toplu Ödeme
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+                    {selectedFileIds.size} dosya seçildi
+                  </span>
+                  <button
+                    onClick={openBulkModal}
+                    disabled={selectedFileIds.size === 0}
+                    className="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Seçilenleri Öde
+                  </button>
+                  <button onClick={() => { setBulkMode(false); setSelectedFileIds(new Set()); }} className="px-3 py-2 text-xs font-medium text-navy-500 hover:text-navy-700 transition-colors">
+                    İptal
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           )}
-        </div>
+
+          <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
+            {filteredUnpaidFiles.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-sm text-navy-400">{searchQ ? "Aramayla eşleşen ödenmemiş dosya bulunamadı" : "Tüm ödemeler tahsil edilmiş"}</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-navy-100">
+                {filteredUnpaidFiles.map((file) => (
+                  <div key={file.id} className={`flex items-center justify-between p-4 hover:bg-navy-50/50 transition-colors ${bulkMode && selectedFileIds.has(file.id) ? "bg-amber-50/60" : ""}`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {bulkMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedFileIds.has(file.id)}
+                          onChange={() => toggleFileSelection(file.id)}
+                          className="w-4.5 h-4.5 rounded border-navy-300 text-amber-600 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                        />
+                      )}
+                      <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-navy-900 text-sm truncate">{file.musteri_ad}</p>
+                        <p className="text-xs text-navy-400">{file.hedef_ulke} · {file.pasaport_no}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="font-bold text-navy-900">{formatCurrency(getTotalDosyaAmount(file), file.ucret_currency || "TL")}</p>
+                        {file.on_odeme_tutar && (
+                          <p className="text-[10px] text-blue-600">ön ödeme: {file.on_odeme_tutar} {file.on_odeme_currency}</p>
+                        )}
+                      </div>
+                      {!bulkMode && (
+                        <button onClick={() => handleTahsilatYap(file)} className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded-lg transition-colors">
+                          Tahsilat
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       ) : (
         <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
           <div className="flex items-center justify-between p-3 border-b border-navy-100">
@@ -716,6 +899,98 @@ export default function PaymentsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Toplu Ödeme Modal */}
+      <Modal isOpen={showBulkModal} onClose={() => setShowBulkModal(false)} title="Toplu Tahsilat" size="sm">
+        <div className="space-y-4">
+          <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-2">Seçili Müşteriler ({selectedFiles.length})</p>
+            <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
+              {selectedFiles.map(f => (
+                <div key={f.id} className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-navy-900 truncate">{f.musteri_ad}</span>
+                  <span className="text-navy-500 text-xs flex-shrink-0 ml-2">{formatCurrency(getTotalDosyaAmount(f), f.ucret_currency || "TL")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Toplam Ödeme Tutarı</p>
+            {bulkPaymentEntries.map((entry, index) => (
+              <div key={index} className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Input label={index === 0 ? "Tutar" : undefined} type="number" placeholder="0" value={entry.amount} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, amount: e.target.value } : en))} />
+                </div>
+                <div className="w-24">
+                  <select value={entry.currency} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value } : en))} className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="TL">TL</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={bulkYontem} onChange={(e) => setBulkYontem(e.target.value)} />
+
+          {bulkYontem === "hesaba" && (
+            <div className="space-y-3">
+              <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={bulkHesapSahibi} onChange={(e) => setBulkHesapSahibi(e.target.value as HesapSahibi)} />
+              <div>
+                <label className="block text-xs font-medium text-navy-600 mb-1">Dekont Yükle</label>
+                <input type="file" accept="image/*,.pdf" onChange={(e) => { const f = e.target.files?.[0] || null; setBulkDekontFile(f); setBulkDekontPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null); }} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-navy-600" />
+                {bulkDekontPreview && (
+                  <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-navy-200">
+                    <img src={bulkDekontPreview} alt="Dekont" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => { setBulkDekontFile(null); setBulkDekontPreview(null); }} className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px]">x</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="text-xs font-medium text-navy-500">Muhasebe Notu <span className="text-navy-300">(isteğe bağlı)</span></label>
+            <textarea value={bulkNotlar} onChange={(e) => setBulkNotlar(e.target.value)} placeholder="Muhasebeye iletilecek not..." className="w-full mt-1 px-3 py-2 border border-navy-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" rows={2} />
+          </div>
+
+          <div className="flex gap-3 pt-3 border-t border-navy-100">
+            <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">İptal</button>
+            <button type="button" onClick={handleBulkConfirm} disabled={!bulkValidEntries.length} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Toplu Ödeme Onay Modal */}
+      <Modal isOpen={showBulkConfirmModal} onClose={() => setShowBulkConfirmModal(false)} title="Toplu Tahsilatı Onayla" size="sm">
+        <div className="space-y-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
+            <p className="text-xs text-navy-500 mb-3">{selectedFiles.length} müşteri için toplu tahsilat</p>
+            <div className="space-y-1 mb-3">
+              {selectedFiles.map(f => (
+                <p key={f.id} className="text-sm font-semibold text-navy-800">{f.musteri_ad} - {f.hedef_ulke}</p>
+              ))}
+            </div>
+            {bulkValidEntries.map((e, i) => (
+              <p key={i} className="text-2xl font-black text-emerald-700">{formatCurrency(parseFloat(e.amount), e.currency)}</p>
+            ))}
+            <p className="text-xs text-navy-500 mt-2">
+              {bulkYontem === "nakit" ? "Nakit" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === bulkHesapSahibi) || {label: ""}).label})`}
+            </p>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-amber-800 text-xs text-center">Bu işlem geri alınamaz. Emin misiniz?</p>
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => { setShowBulkConfirmModal(false); setShowBulkModal(true); }} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors" disabled={isSubmitting}>Geri</button>
+            <button type="button" onClick={handleBulkPaymentSave} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors" disabled={isSubmitting}>
+              {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

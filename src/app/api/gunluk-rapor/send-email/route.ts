@@ -129,12 +129,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { rows, tarih, personel, senderEmail, isRevize } = body as {
+    const { rows, tarih, personel, senderEmail, isRevize, personelNotu } = body as {
       rows: ReportRowPayload[];
       tarih: string;
       personel: string;
       senderEmail: string;
       isRevize?: boolean;
+      personelNotu?: string | null;
     };
 
     if (!rows || rows.length === 0) {
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
     const tarihGunAyYil = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : tarihFormatted;
     const revizeTag = isRevize ? " (REVİZE)" : "";
     const subject = `${tarihGunAyYil} GÜNLÜK RAPORUM${revizeTag}`;
-    const textBody = `${tarihGunAyYil} tarihli günlük rapor${revizeTag} ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).\n\nFox Turizm Vize Yönetim Sistemi`;
+    const textBody = `${tarihGunAyYil} tarihli günlük rapor${revizeTag} ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).${personelNotu ? `\n\nPersonel Notu: ${personelNotu}` : ""}\n\nFox Turizm Vize Yönetim Sistemi`;
 
     const revizeBadge = isRevize
       ? `<div style="margin-top:8px;"><span style="display:inline-block;background:rgba(239,68,68,0.15);color:#ef4444;font-size:10px;font-weight:800;padding:5px 16px;border-radius:20px;letter-spacing:3px;">REVİZE</span></div>`
@@ -209,6 +210,12 @@ export async function POST(request: NextRequest) {
         </p>
       </div>
     </div>
+    ${personelNotu ? `<div style="padding:0 32px 16px;">
+      <div style="background:rgba(251,191,36,0.1);border-radius:12px;padding:16px;border:1px solid rgba(251,191,36,0.2);">
+        <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#d97706;font-weight:700;">Personel Notu</p>
+        <p style="margin:0;font-size:13px;color:#fbbf24;font-style:italic;">"${personelNotu}"</p>
+      </div>
+    </div>` : ""}
     <div style="padding:4px 32px 32px;">
       <table style="width:100%;border-collapse:collapse;">
         <tr>

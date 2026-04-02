@@ -204,6 +204,7 @@ export default function GunlukRaporPage() {
   const [pastReports, setPastReports] = useState<PastReport[]>([]);
   const [activeTab, setActiveTab] = useState<"rapor" | "gecmis">("rapor");
   const [hasDraft, setHasDraft] = useState(false);
+  const [personelNotu, setPersonelNotu] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -514,7 +515,7 @@ export default function GunlukRaporPage() {
       const res = await fetch("/api/gunluk-rapor/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: payload, tarih: raporTarih, personel: userName, senderEmail: userEmail, isRevize: !!isRevize }),
+        body: JSON.stringify({ rows: payload, tarih: raporTarih, personel: userName, senderEmail: userEmail, isRevize: !!isRevize, personelNotu: personelNotu.trim() || null }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -941,6 +942,18 @@ export default function GunlukRaporPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Personel Notu */}
+            <div className="px-6 py-3 border-t border-gray-100">
+              <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Muhasebe Notu <span className="text-gray-400 font-normal normal-case">(isteğe bağlı)</span></label>
+              <textarea
+                value={personelNotu}
+                onChange={(e) => setPersonelNotu(e.target.value)}
+                placeholder="Muhasebeye iletilecek not yazın..."
+                className="w-full mt-1.5 px-3 py-2 border border-gray-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                rows={2}
+              />
             </div>
 
             {/* Modal Footer */}
