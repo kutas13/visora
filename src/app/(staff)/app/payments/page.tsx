@@ -96,8 +96,8 @@ export default function PaymentsPage() {
       .eq("assigned_user_id", user.id)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
-      .eq("cari_sahibi", profileName)
       .neq("cari_tipi", "firma_cari")
+      .or(`cari_sahibi.eq.${profileName},cari_sahibi.is.null`)
       .order("created_at", { ascending: false });
 
     setUnpaidFiles(unpaid || []);
