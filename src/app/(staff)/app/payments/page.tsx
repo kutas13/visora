@@ -90,20 +90,20 @@ export default function PaymentsPage() {
     setUserName(profileName);
     setUserEmail(profile?.email || user.email || "");
 
-    // Tüm ödenmemiş cari dosyaları getir, client-side filtrele (cari-hesap sayfasıyla aynı mantık)
-    const { data: allUnpaid } = await supabase
+    // Cari-hesap sayfasıyla birebir aynı sorgu: tüm cari dosyaları çek, client-side filtrele
+    const { data: allCariFiles } = await supabase
       .from("visa_files")
       .select("*")
       .eq("odeme_plani", "cari")
-      .eq("odeme_durumu", "odenmedi")
       .neq("cari_tipi", "firma_cari")
       .order("created_at", { ascending: false });
 
     const upperName = profileName.toUpperCase();
-    const unpaidFiltered = (allUnpaid || []).filter(f =>
+    const myFiles = (allCariFiles || []).filter(f =>
       f.cari_sahibi ? f.cari_sahibi.toUpperCase() === upperName : f.assigned_user_id === user.id
     );
-    setUnpaidFiles(unpaidFiltered);
+    // Ödenmemiş dosyalar: odeme_durumu "odendi" olmayanlar
+    setUnpaidFiles(myFiles.filter(f => f.odeme_durumu !== "odendi"));
 
     const { data: paymentData } = await supabase
       .from("payments")
