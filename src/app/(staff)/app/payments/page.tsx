@@ -99,7 +99,9 @@ export default function PaymentsPage() {
       .neq("cari_tipi", "firma_cari")
       .order("created_at", { ascending: false });
 
-    setUnpaidFiles(unpaid || []);
+    // Başkasının carisine atılan dosyaları gösterme (cari_sahibi null = eski dosya, göster)
+    const filtered = (unpaid || []).filter(f => !f.cari_sahibi || f.cari_sahibi === profileName);
+    setUnpaidFiles(filtered);
 
     const { data: paymentData } = await supabase
       .from("payments")
