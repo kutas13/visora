@@ -90,30 +90,20 @@ export default function PaymentsPage() {
     setUserName(profileName);
     setUserEmail(profile?.email || user.email || "");
 
-    // Carime atanmış dosyalar (cari_sahibi = profil adım, assigned_user_id farketmez)
-    const { data: unpaidByCari } = await supabase
+    // Tüm ödenmemiş cari dosyaları getir, client-side filtrele (cari-hesap sayfasıyla aynı mantık)
+    const { data: allUnpaid } = await supabase
       .from("visa_files")
       .select("*")
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
       .neq("cari_tipi", "firma_cari")
-      .eq("cari_sahibi", profileName)
       .order("created_at", { ascending: false });
 
-    // Eski dosyalar (cari_sahibi henüz atanmamış, assigned_user_id ile eşleştir)
-    const { data: unpaidLegacy } = await supabase
-      .from("visa_files")
-      .select("*")
-      .eq("assigned_user_id", user.id)
-      .eq("odeme_plani", "cari")
-      .eq("odeme_durumu", "odenmedi")
-      .neq("cari_tipi", "firma_cari")
-      .is("cari_sahibi", null)
-      .order("created_at", { ascending: false });
-
-    const unpaidMap = new Map<string, VisaFile>();
-    [...(unpaidByCari || []), ...(unpaidLegacy || [])].forEach(f => unpaidMap.set(f.id, f));
-    setUnpaidFiles(Array.from(unpaidMap.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    const upperName = profileName.toUpperCase();
+    const unpaidFiltered = (allUnpaid || []).filter(f =>
+      f.cari_sahibi ? f.cari_sahibi.toUpperCase() === upperName : f.assigned_user_id === user.id
+    );
+    setUnpaidFiles(unpaidFiltered);
 
     const { data: paymentData } = await supabase
       .from("payments")
