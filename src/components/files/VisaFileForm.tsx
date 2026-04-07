@@ -270,6 +270,22 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         throw new Error("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
       }
 
+      // Yeni dosya oluşturulurken aynı pasaport no ile aktif dosya var mı kontrol et
+      if (!isEdit) {
+        const { data: activeFiles } = await supabase
+          .from("visa_files")
+          .select("id, musteri_ad, hedef_ulke, assigned_user_id")
+          .ilike("pasaport_no", pasaportNo.trim())
+          .is("sonuc", null);
+
+        if (activeFiles && activeFiles.length > 0) {
+          const existing = activeFiles[0];
+          setError(`Bu pasaport numarasıyla zaten aktif bir dosya var: ${existing.musteri_ad} (${existing.hedef_ulke}). Önce mevcut dosya sonuçlanmalı.`);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const { data: userProfile } = await supabase
         .from("profiles")
         .select("name")
