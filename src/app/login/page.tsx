@@ -406,6 +406,35 @@ export default function LoginPage() {
                         <p className="font-medium text-green-800">{formatDate(file.vize_bitis_tarihi)}</p>
                       </div>
                     )}
+                    {file.vize_gorseli && (
+                      <div className="mt-3 bg-violet-50 rounded-lg p-3 border border-violet-100">
+                        <p className="text-xs text-violet-600 mb-2 font-medium">🛂 Vize Görseli</p>
+                        <div className="relative group inline-block">
+                          <img
+                            src={file.vize_gorseli}
+                            alt={`${file.musteri_ad} - ${file.hedef_ulke} Vizesi`}
+                            className="max-w-full max-h-48 rounded-lg border border-violet-200 cursor-pointer hover:shadow-md transition-shadow"
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.href = file.vize_gorseli!;
+                              const safeName = (file.musteri_ad || "musteri").replace(/\s+/g, "_");
+                              const safeCountry = (file.hedef_ulke || "ulke").replace(/\s+/g, "_");
+                              const ext = file.vize_gorseli!.match(/^data:image\/(\w+);/) ? file.vize_gorseli!.match(/^data:image\/(\w+);/)![1] : "jpg";
+                              link.download = `${safeName}_${safeCountry}_Vizesi.${ext}`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                          />
+                          <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-black/60 text-white text-xs rounded-lg">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                              İndir
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               };

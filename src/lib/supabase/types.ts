@@ -86,6 +86,7 @@ export interface VisaFile {
   musteri_telefon: string | null;
   vize_tipleri: string[];
   tahmini_cikis_tarihi: string | null;
+  vize_gorseli: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -222,6 +223,7 @@ export interface Database {
           musteri_telefon?: string | null;
           vize_tipleri?: string[];
           tahmini_cikis_tarihi?: string | null;
+          vize_gorseli?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -256,6 +258,7 @@ export interface Database {
           odeme_plani?: OdemePlani;
           odeme_durumu?: OdemeDurumu;
           cari_sahibi?: string | null;
+          vize_gorseli?: string | null;
           created_at?: string;
           updated_at?: string;
         };

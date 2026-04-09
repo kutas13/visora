@@ -33,6 +33,8 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   const [musteriTelefon, setMusteriTelefon] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [sonucError, setSonucError] = useState<string | null>(null);
+  const [vizeGorselFile, setVizeGorselFile] = useState<File | null>(null);
+  const [vizeGorselPreview, setVizeGorselPreview] = useState<string | null>(null);
 
   // Dosya tamamlandı mı kontrolü
   const isCompleted = file.sonuc !== null;
@@ -180,6 +182,8 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
     setSonuc("");
     setSonucTarihi(new Date().toISOString().split("T")[0]);
     setVizeBitisTarihi("");
+    setVizeGorselFile(null);
+    setVizeGorselPreview(null);
     setShowSonucModal(true);
   };
 
@@ -212,6 +216,16 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
       const userName = profile?.name || "Kullanıcı";
 
+      let gorselBase64: string | null = null;
+      if (vizeGorselFile) {
+        gorselBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(vizeGorselFile);
+        });
+      }
+
       const timestamp = new Date().toISOString();
       const updateData: Partial<VisaFile> = {
         islemden_cikti: true,
@@ -221,6 +235,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         vize_bitis_tarihi: sonuc === "vize_onay" ? vizeBitisTarihi : null,
         musteri_telefon: musteriTelefon.trim() || null,
         arsiv_mi: true,
+        ...(gorselBase64 ? { vize_gorseli: gorselBase64 } : {}),
       };
 
       const { error } = await supabase.from("visa_files").update(updateData).eq("id", file.id);
@@ -299,6 +314,17 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
           console.log("WhatsApp müşteri sonuç:", wpRes.status, wpData);
 
           if (wpRes.ok) {
+            if (gorselBase64) {
+              try {
+                await fetch("/api/whatsapp/send-image", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ phone, imageBase64: gorselBase64, caption: `${file.musteri_ad} - ${file.hedef_ulke} Vizesi` }),
+                });
+              } catch (imgErr) {
+                console.error("WhatsApp görsel gönderilemedi:", imgErr);
+              }
+            }
             setToast({ message: `${file.musteri_ad} müşterinize WhatsApp bilgilendirme mesajı gönderildi ✅`, type: "success" });
             setTimeout(() => setToast(null), 4000);
           } else {
@@ -514,6 +540,38 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
               onChange={(e) => setVizeBitisTarihi(e.target.value)}
               required
             />
+          )}
+
+          {/* Vize Görseli */}
+          {sonuc === "vize_onay" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-navy-700">Vize Görseli (İsteğe Bağlı)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setVizeGorselFile(f);
+                    const reader = new FileReader();
+                    reader.onload = () => setVizeGorselPreview(reader.result as string);
+                    reader.readAsDataURL(f);
+                  }
+                }}
+                className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-violet-100 file:text-violet-700 hover:file:bg-violet-200 text-navy-600"
+              />
+              {vizeGorselPreview && (
+                <div className="mt-2 relative inline-block">
+                  <img src={vizeGorselPreview} alt="Vize görseli" className="max-h-32 rounded-lg border border-navy-200 shadow-sm" />
+                  <button
+                    type="button"
+                    onClick={() => { setVizeGorselFile(null); setVizeGorselPreview(null); }}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow"
+                  >×</button>
+                </div>
+              )}
+              <p className="text-xs text-navy-500">Vize sticker görseli yüklenirse dosya detaylarında görünür ve WhatsApp ile gönderilebilir.</p>
+            </div>
           )}
 
           {/* İletişim Bilgisi */}
