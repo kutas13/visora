@@ -206,6 +206,7 @@ export default function GunlukRaporPage() {
   const [hasDraft, setHasDraft] = useState(false);
   const [personelNotu, setPersonelNotu] = useState("");
   const [pastSearchTerm, setPastSearchTerm] = useState("");
+  const [showPastPicker, setShowPastPicker] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -472,6 +473,42 @@ export default function GunlukRaporPage() {
     setHasDraft(false);
   }, []);
 
+  const loadPastReportAsNew = useCallback((report: PastReport) => {
+    if (!report.rows || report.rows.length === 0) return;
+    const converted: ReportRow[] = report.rows.map(er => {
+      let musteriAd = er.yolcuAdi || "";
+      let ucret = 0;
+      let ucretCurrency = "TL";
+      const match = musteriAd.match(/^(.+?)\s*\((\d+(?:\.\d+)?)\s*(EURO|DOLAR|TL|EUR|USD)\)$/i);
+      if (match) {
+        musteriAd = match[1].trim();
+        ucret = parseFloat(match[2]);
+        const cur = match[3].toUpperCase();
+        ucretCurrency = cur === "EUR" ? "EURO" : cur === "USD" ? "DOLAR" : cur;
+      }
+      return {
+        id: nextRowId(),
+        fileId: `past_${er.biletNo}_${Date.now()}`,
+        type: (["VIZ", "SIG", "RAN", "DAV"].includes(er.hyKodu) ? er.hyKodu : "VIZ") as RecordType,
+        musteriAd,
+        hedefUlke: er.acenta || "",
+        ucret,
+        ucretCurrency,
+        tarih: er.tarih || toDateStr(new Date()),
+        biletTut: er.biletTut || 0,
+        servis: er.servis || 0,
+        toplam: er.toplam || 0,
+        kartNo: er.kartNo || "NAKIT",
+        cariAdi: er.cariAdi || "",
+      };
+    });
+    setRows(converted);
+    setRaporTarih(toDateStr(new Date()));
+    setShowPastPicker(false);
+    setStatusMsg({ type: "success", text: `"${report.tarih}" raporundaki ${converted.length} kayıt yüklendi` });
+    setTimeout(() => setStatusMsg(null), 3000);
+  }, []);
+
   const openPreview = () => {
     setPreviewRows(buildExcelRows());
     setPreviewOpen(true);
@@ -697,6 +734,31 @@ export default function GunlukRaporPage() {
                     Taslağı Yükle
                   </button>
                 )}
+                <div className="relative">
+                  <button onClick={() => setShowPastPicker(!showPastPicker)} className="px-3 py-2 text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200 rounded-lg hover:bg-violet-100 transition-colors flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Eski Raporu Çek
+                  </button>
+                  {showPastPicker && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setShowPastPicker(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-40 w-72 bg-white border border-gray-200 rounded-xl shadow-xl max-h-[300px] overflow-y-auto">
+                        {pastReports.length === 0 ? (
+                          <p className="p-4 text-sm text-gray-400 text-center">Geçmiş rapor yok</p>
+                        ) : pastReports.map(r => (
+                          <button
+                            key={r.id}
+                            onClick={() => loadPastReportAsNew(r)}
+                            className="w-full text-left px-4 py-3 hover:bg-violet-50 border-b border-gray-100 last:border-0 transition-colors"
+                          >
+                            <p className="text-sm font-medium text-gray-900">{r.tarih.replace(/-/g, ".")}</p>
+                            <p className="text-xs text-gray-500">{r.kayitSayisi} kayıt, {r.musteriSayisi} müşteri</p>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 <button onClick={saveDraft} disabled={rows.length === 0} className="px-3 py-2 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                   Taslak Kaydet
                 </button>
