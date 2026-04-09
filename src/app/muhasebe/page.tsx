@@ -64,6 +64,8 @@ export default function MuhasebePage() {
   const [loading, setLoading] = useState(true);
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterCountry, setFilterCountry] = useState<string>("all");
+  const [filterPayment, setFilterPayment] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const today = new Date();
   const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -103,6 +105,18 @@ export default function MuhasebePage() {
     return prof?.name?.toUpperCase() || "";
   }, [profiles]);
 
+  const countryOptions = useMemo(() => {
+    const set = new Set<string>();
+    allFiles.forEach(f => { if (f.hedef_ulke) set.add(f.hedef_ulke.toUpperCase()); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "tr"));
+  }, [allFiles]);
+
+  const getPaymentStatus = useCallback((f: VisaFileWithProfile) => {
+    if (f.odeme_durumu === "odendi") return "odendi";
+    if (f.cari_tipi === "firma_cari") return "firma_cari";
+    return "odenmedi";
+  }, []);
+
   const filteredFiles = useMemo(() => {
     let result = allFiles;
     if (filterStaff !== "all") {
@@ -112,6 +126,12 @@ export default function MuhasebePage() {
       result = result.filter(f => !f.sonuc);
     } else if (filterStatus === "sonuclanan") {
       result = result.filter(f => f.sonuc !== null);
+    }
+    if (filterCountry !== "all") {
+      result = result.filter(f => (f.hedef_ulke || "").toUpperCase() === filterCountry);
+    }
+    if (filterPayment !== "all") {
+      result = result.filter(f => getPaymentStatus(f) === filterPayment);
     }
     if (searchTerm.trim()) {
       const q = normalize(searchTerm.trim());
@@ -130,7 +150,7 @@ export default function MuhasebePage() {
       });
     }
     return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [allFiles, filterStaff, filterStatus, searchTerm, dateFilterActive, dateStart, dateEnd, getCariKey]);
+  }, [allFiles, filterStaff, filterStatus, filterCountry, filterPayment, searchTerm, dateFilterActive, dateStart, dateEnd, getCariKey, getPaymentStatus]);
 
   const handleLogout = async () => {
     const { createClient } = await import("@/lib/supabase/client");
@@ -270,6 +290,42 @@ export default function MuhasebePage() {
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-400"
               />
             </div>
+
+            <div className="h-6 w-px bg-gray-200 hidden sm:block" />
+
+            {/* Ülke Filtresi */}
+            <select
+              value={filterCountry}
+              onChange={(e) => setFilterCountry(e.target.value)}
+              className={`px-3 py-2 border rounded-lg text-xs font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                filterCountry !== "all"
+                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <option value="all">Tüm Ülkeler</option>
+              {countryOptions.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            {/* Ödeme Durumu Filtresi */}
+            <select
+              value={filterPayment}
+              onChange={(e) => setFilterPayment(e.target.value)}
+              className={`px-3 py-2 border rounded-lg text-xs font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                filterPayment !== "all"
+                  ? filterPayment === "odendi" ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : filterPayment === "firma_cari" ? "bg-blue-50 text-blue-700 border-blue-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <option value="all">Tüm Ödemeler</option>
+              <option value="odendi">Ödendi</option>
+              <option value="odenmedi">Ödenmedi</option>
+              <option value="firma_cari">Firma Cari</option>
+            </select>
 
             <div className="h-6 w-px bg-gray-200 hidden sm:block" />
 
