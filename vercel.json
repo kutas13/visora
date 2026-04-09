@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/whatsapp-reminder?secret=fox-turizm-cron-secret-2024",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/daily-randevu?secret=fox-turizm-cron-secret-2024",
+      "schedule": "0 14 * * *"
     }
   ]
 }

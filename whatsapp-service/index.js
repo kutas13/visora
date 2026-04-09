@@ -50,14 +50,6 @@ const PORT = process.env.WA_PORT || 3001;
 const AUTH_DIR = path.join(__dirname, "auth_info");
 const SENT_LOG = path.join(__dirname, "sent_today.json");
 const CHECK_INTERVAL = 4 * 60 * 60 * 1000; // 4 saat (ms)
-const DAILY_REMINDER_HOUR = 17; // Her gun saat 17:00'de yarinki randevulari bildir
-
-const STAFF_PHONES = {
-  BAHAR: "905055623279",
-  ERCAN: "905055623301",
-  YUSUF: "905058937071",
-  DAVUT: "905435680874",
-};
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -254,143 +246,6 @@ async function checkAppointments() {
   }
 }
 
-// ─── Günlük 17:00 randevu hatırlatma ─────────────────────
-async function sendDailyReminders() {
-  if (!isConnected || !sock) {
-    console.log("  WhatsApp bagli degil, gunluk hatirlatma atlanıyor.");
-    return;
-  }
-  if (!supabase) {
-    console.log("  Supabase ayarlari eksik, gunluk hatirlatma atlanıyor.");
-    return;
-  }
-
-  console.log(`\n📅 Gunluk randevu hatirlatma (17:00) baslatiliyor... (${new Date().toLocaleString("tr-TR")})`);
-
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const dayAfterTomorrow = new Date(today);
-    dayAfterTomorrow.setDate(today.getDate() + 2);
-
-    const { data: files, error } = await supabase
-      .from("visa_files")
-      .select("*, profiles:assigned_user_id(name)")
-      .not("randevu_tarihi", "is", null)
-      .is("sonuc", null);
-
-    if (error) {
-      console.error("  Supabase sorgu hatasi:", error.message);
-      return;
-    }
-
-    if (!files || files.length === 0) {
-      console.log("  Randevusu olan dosya bulunamadi.");
-      return;
-    }
-
-    const tomorrowFiles = files.filter((f) => {
-      if (!f.randevu_tarihi) return false;
-      const rd = new Date(f.randevu_tarihi);
-      rd.setHours(0, 0, 0, 0);
-      return rd >= tomorrow && rd < dayAfterTomorrow;
-    });
-
-    if (tomorrowFiles.length === 0) {
-      console.log("  Yarin randevusu olan dosya yok.");
-      return;
-    }
-
-    console.log(`  ${tomorrowFiles.length} dosyanin yarın randevusu var.`);
-
-    // Personellere gore grupla
-    const staffGroups = {};
-    for (const file of tomorrowFiles) {
-      const staffName = (file.profiles?.name || "").toUpperCase();
-      if (!staffGroups[staffName]) staffGroups[staffName] = [];
-      staffGroups[staffName].push(file);
-    }
-
-    let sentCount = 0;
-    for (const [staffName, staffFiles] of Object.entries(staffGroups)) {
-      const staffPhone = STAFF_PHONES[staffName];
-      if (!staffPhone) {
-        console.log(`  ⚠️  ${staffName} icin telefon numarasi bulunamadi, atlaniyor.`);
-        continue;
-      }
-
-      const fileList = staffFiles.map((f, i) => {
-        const randevuSaat = new Date(f.randevu_tarihi).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-        return `${i + 1}. *${f.musteri_ad}* - ${f.hedef_ulke} (⏰ ${randevuSaat})`;
-      }).join("\n");
-
-      const message =
-        `📋 *YARIN'S RANDEVULAR*\n\n` +
-        `Merhaba ${staffName}, yarın *${staffFiles.length}* randevunuz var:\n\n` +
-        `${fileList}\n\n` +
-        `📅 Tarih: ${tomorrow.toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric", weekday: "long" })}\n\n` +
-        `Hazırlıklarınızı unutmayın! ✅\n\n` +
-        `_Fox Turizm 🦊_`;
-
-      try {
-        await sendMessage(staffPhone, message);
-        sentCount++;
-        console.log(`  ✅ ${staffName} - ${staffFiles.length} randevu bildirimi gonderildi.`);
-        await new Promise((r) => setTimeout(r, 2000));
-      } catch (err) {
-        console.error(`  ❌ ${staffName} - gonderim hatasi:`, err.message);
-      }
-    }
-
-    // Davut'a (admin) toplam ozet gonder
-    if (NOTIFY_NUMBER && tomorrowFiles.length > 0) {
-      const allList = tomorrowFiles.map((f, i) => {
-        const staffName = f.profiles?.name || "?";
-        const randevuSaat = new Date(f.randevu_tarihi).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-        return `${i + 1}. *${f.musteri_ad}* - ${f.hedef_ulke} (${staffName}) ⏰ ${randevuSaat}`;
-      }).join("\n");
-
-      const summaryMsg =
-        `📊 *YARIN'S TÜM RANDEVULAR*\n\n` +
-        `Toplam *${tomorrowFiles.length}* randevu:\n\n` +
-        `${allList}\n\n` +
-        `📅 ${tomorrow.toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric", weekday: "long" })}\n\n` +
-        `_Fox Turizm 🦊_`;
-
-      try {
-        await sendMessage(NOTIFY_NUMBER, summaryMsg);
-        console.log(`  ✅ Admin ozet bildirimi gonderildi.`);
-      } catch (err) {
-        console.error(`  ❌ Admin ozet gonderim hatasi:`, err.message);
-      }
-    }
-
-    console.log(`\n📊 Gunluk hatirlatma: ${sentCount} personele bildirim gonderildi.\n`);
-  } catch (err) {
-    console.error("  Gunluk hatirlatma hatasi:", err.message);
-  }
-}
-
-// Her dakika kontrol et, saat 17:00 oldugunda gunluk hatirlatma gonder
-let dailyReminderInterval = null;
-let lastDailyReminderDate = null;
-
-function startDailyReminderScheduler() {
-  if (dailyReminderInterval) clearInterval(dailyReminderInterval);
-  dailyReminderInterval = setInterval(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    if (now.getHours() === DAILY_REMINDER_HOUR && now.getMinutes() === 0 && lastDailyReminderDate !== todayStr) {
-      lastDailyReminderDate = todayStr;
-      console.log("\n🕐 Saat 17:00 - Gunluk randevu hatirlatma tetiklendi!");
-      sendDailyReminders();
-    }
-  }, 30000); // 30 saniyede bir kontrol
-  console.log(`  ⏰ Gunluk hatirlatma zamanlayici aktif (her gun saat ${DAILY_REMINDER_HOUR}:00)`);
-}
-
 // ─── Baileys bağlantısı ────────────────────────────────
 async function startWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -441,10 +296,6 @@ async function startWhatsApp() {
       }, CHECK_INTERVAL);
 
       console.log(`⏰ Sonraki kontrol: ${CHECK_INTERVAL / 3600000} saat sonra.`);
-
-      // Günlük 17:00 hatırlatma zamanlayıcısı
-      startDailyReminderScheduler();
-
       console.log("📨 POST /send ile manuel mesaj da gonderebilirsiniz.\n");
     }
 
