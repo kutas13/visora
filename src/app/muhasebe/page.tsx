@@ -364,6 +364,11 @@ export default function MuhasebePage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             Ödendi
                           </span>
+                        ) : f.cari_tipi === "firma_cari" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            Firma Cari
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
