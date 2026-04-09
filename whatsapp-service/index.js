@@ -348,6 +348,29 @@ async function sendMessage(to, message) {
   return result;
 }
 
+// ─── Görsel gönderme ─────────────────────────────────────
+async function sendImage(to, imageBase64, mimetype, caption) {
+  if (!isConnected || !sock) {
+    throw new Error("WhatsApp bagli degil.");
+  }
+
+  let cleanNumber = to.replace(/[\s\-\(\)\+]/g, "");
+  if (cleanNumber.startsWith("0")) {
+    cleanNumber = "90" + cleanNumber.slice(1);
+  } else if (!cleanNumber.startsWith("90") && cleanNumber.length === 10) {
+    cleanNumber = "90" + cleanNumber;
+  }
+
+  const jid = cleanNumber + "@s.whatsapp.net";
+  const imageBuffer = Buffer.from(imageBase64, "base64");
+  const result = await sock.sendMessage(jid, {
+    image: imageBuffer,
+    mimetype: mimetype || "image/jpeg",
+    caption: caption || "",
+  });
+  return result;
+}
+
 // ─── HTTP Sunucu ────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -398,6 +421,30 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // POST /send-image
+  if (req.method === "POST" && req.url === "/send-image") {
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", async () => {
+      try {
+        const { to, image, mimetype, caption } = JSON.parse(body);
+        if (!to || !image) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: "to ve image zorunlu" }));
+          return;
+        }
+        const result = await sendImage(to, image, mimetype, caption);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, messageId: result?.key?.id, to }));
+      } catch (err) {
+        console.error("Gorsel gonderim hatasi:", err.message);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
   // POST /check - Manuel randevu kontrolü tetikle
   if (req.method === "POST" && req.url === "/check") {
     res.writeHead(200);
@@ -418,6 +465,7 @@ const server = http.createServer(async (req, res) => {
         endpoints: {
           "GET /status": "Baglanti durumu",
           "POST /send": "Mesaj gonder { to, message }",
+          "POST /send-image": "Gorsel gonder { to, image, mimetype?, caption? }",
           "POST /check": "Randevu kontrolunu manuel tetikle",
         },
       })
