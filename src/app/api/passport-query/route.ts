@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limiting (canlı arama + sorgula; yazdıkça istek artabilir)
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const { allowed } = rateLimit(`passport:${clientIp}`, 45, 60_000);
+    const { allowed } = rateLimit(`passport:${clientIp}`, 90, 60_000);
     if (!allowed) {
       return NextResponse.json({ error: "Çok fazla sorgu. Biraz bekleyin." }, { status: 429 });
     }
@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
-      .or(orConditions.join(","));
+      .or(orConditions.join(","))
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Pasaport sorgu hatası:", error.message, error.details);
@@ -71,7 +72,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data: data || [] });
+    const rows = [...(data || [])];
+    rows.sort(
+      (a, b) =>
+        new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
+
+    return NextResponse.json({ data: rows });
   } catch (err) {
     console.error("Passport query error:", err);
     return NextResponse.json(

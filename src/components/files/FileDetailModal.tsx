@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Modal, Badge, Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, ActivityLog, Payment } from "@/lib/supabase/types";
@@ -9,6 +9,10 @@ interface FileDetailModalProps {
   fileId: string | null;
   isOpen: boolean;
   onClose: () => void;
+  /** Açılınca işlem geçmişi bölümüne kaydır */
+  scrollToHistoryOnOpen?: boolean;
+  /** Modal başlığı */
+  title?: string;
 }
 
 type ActivityLogWithActor = ActivityLog & { profiles?: { name: string } | null };
@@ -35,11 +39,18 @@ function getStatusBadge(file: VisaFile) {
   return <Badge variant="default">Yeni</Badge>;
 }
 
-export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailModalProps) {
+export default function FileDetailModal({
+  fileId,
+  isOpen,
+  onClose,
+  scrollToHistoryOnOpen = false,
+  title = "Dosya Detayları",
+}: FileDetailModalProps) {
   const [file, setFile] = useState<(VisaFile & { profiles?: { name: string } | null }) | null>(null);
   const [activities, setActivities] = useState<ActivityLogWithActor[]>([]);
   const [payments, setPayments] = useState<PaymentWithCreator[]>([]);
   const [loading, setLoading] = useState(true);
+  const historySectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!fileId || !isOpen) return;
@@ -78,6 +89,14 @@ export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailM
     loadData();
   }, [fileId, isOpen]);
 
+  useLayoutEffect(() => {
+    if (!isOpen || loading || !scrollToHistoryOnOpen || !file) return;
+    const t = window.setTimeout(() => {
+      historySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [isOpen, loading, file?.id, scrollToHistoryOnOpen]);
+
   const getActivityIcon = (type: string) => {
     switch (type) {
       case "file_created": return { icon: "📁", bg: "bg-green-100", color: "text-green-600" };
@@ -94,7 +113,7 @@ export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailM
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Dosya Detayları" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
@@ -232,7 +251,7 @@ export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailM
           )}
 
           {/* İşlem Geçmişi */}
-          <div>
+          <div ref={historySectionRef}>
             <h4 className="text-sm font-semibold text-navy-700 uppercase tracking-wide mb-3">
               📋 İşlem Geçmişi ({activities.length})
             </h4>

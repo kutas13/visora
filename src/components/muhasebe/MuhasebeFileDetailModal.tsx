@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { Modal, Badge, Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, ActivityLog, Payment } from "@/lib/supabase/types";
@@ -12,6 +12,7 @@ interface MuhasebeFileDetailModalProps {
   fileId: string | null;
   isOpen: boolean;
   onClose: () => void;
+  scrollToHistoryOnOpen?: boolean;
 }
 
 function formatDateTime(dateStr: string) {
@@ -43,11 +44,17 @@ function getActivityIcon(type: string) {
   }
 }
 
-export default function MuhasebeFileDetailModal({ fileId, isOpen, onClose }: MuhasebeFileDetailModalProps) {
+export default function MuhasebeFileDetailModal({
+  fileId,
+  isOpen,
+  onClose,
+  scrollToHistoryOnOpen = false,
+}: MuhasebeFileDetailModalProps) {
   const [file, setFile] = useState<(VisaFile & { profiles?: { name: string } | null }) | null>(null);
   const [activities, setActivities] = useState<ActivityLogWithActor[]>([]);
   const [payments, setPayments] = useState<PaymentWithCreator[]>([]);
   const [loading, setLoading] = useState(true);
+  const historySectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!fileId || !isOpen) return;
@@ -82,6 +89,14 @@ export default function MuhasebeFileDetailModal({ fileId, isOpen, onClose }: Muh
 
     loadData();
   }, [fileId, isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || loading || !scrollToHistoryOnOpen || !file) return;
+    const t = window.setTimeout(() => {
+      historySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [isOpen, loading, file?.id, scrollToHistoryOnOpen]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Dosya Özgeçmişi (Sadece Görüntüleme)" size="lg">
@@ -166,7 +181,7 @@ export default function MuhasebeFileDetailModal({ fileId, isOpen, onClose }: Muh
           )}
 
           {/* İşlem Geçmişi (Özgeçmiş) */}
-          <div>
+          <div ref={historySectionRef}>
             <h4 className="text-sm font-semibold text-navy-700 uppercase tracking-wide mb-3">📋 Dosya Özgeçmişi</h4>
             {activities.length === 0 ? (
               <p className="text-navy-500 text-center py-4">Henüz işlem kaydı yok</p>

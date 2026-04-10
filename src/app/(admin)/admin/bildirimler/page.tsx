@@ -353,6 +353,8 @@ export default function AdminBildirimlerPage() {
         fileId={detailFileId}
         isOpen={showDetailModal}
         onClose={() => { setShowDetailModal(false); setDetailFileId(null); }}
+        scrollToHistoryOnOpen
+        title="Dosya ve işlem geçmişi"
       />
     </div>
   );

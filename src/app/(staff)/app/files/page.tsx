@@ -84,7 +84,8 @@ export default function FilesPage() {
     
     let query = supabase
       .from("visa_files")
-      .select("*, profiles:assigned_user_id(name)");
+      .select("*, profiles:assigned_user_id(name)")
+      .order("created_at", { ascending: false });
 
     if (user) {
       const { data: profile } = await supabase
@@ -133,7 +134,9 @@ export default function FilesPage() {
     if (ulkeFilter && ulkeFilter !== "all") {
       result = result.filter(f => f.hedef_ulke === ulkeFilter);
     }
-    return result;
+    return result.sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
   }, [allFiles, searchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter]);
 
   const handleFormSuccess = () => { setShowForm(false); setEditingFile(null); loadFiles(); };
@@ -307,12 +310,16 @@ export default function FilesPage() {
             </div>
           ) : (() => {
             const activeFiles = files.filter(f => !f.sonuc);
-            const displayFiles = stepFilter === "sonuclanan" ? files.filter(f => !!f.sonuc)
-              : stepFilter === "all" ? activeFiles
-              : stepFilter === "yeni" ? activeFiles.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi)
-              : stepFilter === "evrak_eksik" ? activeFiles.filter(f => f.evrak_eksik_mi && !f.dosya_hazir)
-              : stepFilter === "dosya_hazir" ? activeFiles.filter(f => f.dosya_hazir && !f.basvuru_yapildi)
-              : activeFiles.filter(f => f.basvuru_yapildi && !f.islemden_cikti);
+            const displayFiles = (
+              stepFilter === "sonuclanan" ? files.filter(f => !!f.sonuc)
+                : stepFilter === "all" ? activeFiles
+                : stepFilter === "yeni" ? activeFiles.filter(f => !f.dosya_hazir && !f.basvuru_yapildi && !f.islemden_cikti && !f.evrak_eksik_mi)
+                : stepFilter === "evrak_eksik" ? activeFiles.filter(f => f.evrak_eksik_mi && !f.dosya_hazir)
+                : stepFilter === "dosya_hazir" ? activeFiles.filter(f => f.dosya_hazir && !f.basvuru_yapildi)
+                : activeFiles.filter(f => f.basvuru_yapildi && !f.islemden_cikti)
+            ).sort(
+              (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+            );
             return displayFiles.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-24 h-24 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -382,12 +389,14 @@ export default function FilesPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex flex-col gap-2">
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => handleDetail(file.id)} className="hover:bg-primary-50">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                            <div className="flex gap-1 flex-wrap items-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDetail(file.id)}
+                                className="text-[11px] h-8 px-2.5 shrink-0 border-navy-200 text-navy-700 hover:bg-primary-50 hover:border-primary-300"
+                              >
+                                Görüntüle
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => handleEdit(file)} className="hover:bg-blue-50">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -448,7 +457,7 @@ export default function FilesPage() {
                       {file.evrak_eksik_mi && <Badge variant="error" size="sm">Eksik</Badge>}
                     </div>
                     <div className="flex gap-2 pt-3 border-t border-navy-100">
-                      <Button size="sm" variant="ghost" onClick={() => handleDetail(file.id)} className="flex-1">Detay</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleDetail(file.id)} className="flex-1 text-xs">Görüntüle</Button>
                       <Button size="sm" variant="outline" onClick={() => handleEdit(file)} className="flex-1">Düzenle</Button>
                       <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(file)}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -470,7 +479,13 @@ export default function FilesPage() {
         <VisaFileForm file={editingFile} onSuccess={handleFormSuccess} onCancel={() => { setShowForm(false); setEditingFile(null); }} />
       </Modal>
 
-      <FileDetailModal fileId={detailFileId} isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setDetailFileId(null); }} />
+      <FileDetailModal
+        fileId={detailFileId}
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailFileId(null); }}
+        scrollToHistoryOnOpen
+        title="Dosya ve işlem geçmişi"
+      />
       
       {/* Silme Onay Modal */}
       <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setFileToDelete(null); }} title="Dosyayı Sil" size="sm">

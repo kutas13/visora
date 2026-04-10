@@ -74,7 +74,6 @@ export default function LoginPage() {
 
     setQueryLoading(true);
     setQueryError(null);
-    setQueryResult(null);
 
     try {
       const res = await fetch("/api/passport-query", {
@@ -90,10 +89,12 @@ export default function LoginPage() {
       if (passportInputRef.current.trim() !== term) return;
 
       if (!res.ok) {
+        setQueryResult(null);
         throw new Error(json.error || "Sorgulama hatası");
       }
 
       if (!json.data || json.data.length === 0) {
+        setQueryResult(null);
         setQueryError("Eşleşen dosya bulunamadı.");
       } else {
         setQueryResult(json.data as VisaFile[]);
@@ -101,6 +102,7 @@ export default function LoginPage() {
     } catch (err) {
       if (ac.signal.aborted) return;
       if (passportInputRef.current.trim() !== term) return;
+      setQueryResult(null);
       setQueryError(err instanceof Error ? err.message : "Sorgulama sırasında bir hata oluştu.");
     } finally {
       if (!ac.signal.aborted && passportInputRef.current.trim() === term) {
@@ -124,14 +126,10 @@ export default function LoginPage() {
       return;
     }
 
-    setQueryError(null);
-    setQueryResult(null);
-    setQueryLoading(true);
-
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
       void fetchPassportByTerm(term);
-    }, 450);
+    }, 50);
 
     return () => {
       if (debounceTimerRef.current) {
@@ -337,8 +335,8 @@ export default function LoginPage() {
           </div>
 
           <p className="text-navy-600 text-sm mb-4">
-            Pasaport numaranızı veya adınızı yazın; en az iki karakterden sonra liste otomatik güncellenir. İsterseniz{" "}
-            <span className="font-medium text-navy-700">Sorgula</span> ile hemen arayın. Kayıtta{" "}
+            Pasaport veya adınızı yazın; en az 2 karakterden sonra sonuçlar kısa gecikmeyle anında güncellenir.{" "}
+            <span className="font-medium text-navy-700">Sorgula</span> ile beklemeden arayabilirsiniz. Kayıtta{" "}
             <span className="font-medium">IBRAHIM</span>, siz <span className="font-medium">İBRAHİM</span> yazsanız da eşleşir.
           </p>
 
@@ -543,7 +541,7 @@ export default function LoginPage() {
                   </svg>
                 </div>
                 <p className="text-navy-500">Aramaya başlamak için yazın</p>
-                <p className="text-navy-400 text-sm mt-1">En az 2 karakter; yazdıkça sonuçlar gelir veya Sorgula ile hemen arayın</p>
+                <p className="text-navy-400 text-sm mt-1">En az 2 karakter; yazmaya devam edin veya Sorgula ile anında arayın</p>
               </div>
             )}
           </div>

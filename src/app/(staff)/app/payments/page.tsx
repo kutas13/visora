@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Card, Button, Badge, Modal, Input, Select, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
+
+const FileDetailModal = dynamic(() => import("@/components/files/FileDetailModal"), { ssr: false });
 import { createClient } from "@/lib/supabase/client";
 import { notifyPaymentReceived } from "@/lib/notifications";
 import { ODEME_YONTEMLERI, PARA_BIRIMLERI, HESAP_SAHIPLERI } from "@/lib/constants";
@@ -79,6 +82,9 @@ export default function PaymentsPage() {
   const [bulkDekontPreview, setBulkDekontPreview] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
+
+  const [fileDetailId, setFileDetailId] = useState<string | null>(null);
+  const [showFileDetailModal, setShowFileDetailModal] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -429,13 +435,19 @@ export default function PaymentsPage() {
 
   const searchQ = norm(searchTerm.trim());
 
-  const filteredUnpaidFiles = searchQ
+  const filteredUnpaidFiles = (searchQ
     ? unpaidFiles.filter(f => norm(f.musteri_ad || "").includes(searchQ))
-    : unpaidFiles;
+    : unpaidFiles
+  ).sort(
+    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  );
 
   const filteredPayments = payments
     .filter(p => filterCurrency === "all" || (p.currency || "TL") === filterCurrency)
-    .filter(p => !searchQ || norm(p.visa_files?.musteri_ad || "").includes(searchQ));
+    .filter(p => !searchQ || norm(p.visa_files?.musteri_ad || "").includes(searchQ))
+    .sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
 
   const currencyOptions = [{ value: "all", label: "Tümü" }, ...PARA_BIRIMLERI.map(p => ({ value: p.value, label: p.label }))];
 
@@ -687,13 +699,20 @@ export default function PaymentsPage() {
                         <p className="text-xs text-navy-400">{file.hedef_ulke} · {file.pasaport_no}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                       <div className="text-right">
                         <p className="font-bold text-navy-900">{formatCurrency(getTotalDosyaAmount(file), file.ucret_currency || "TL")}</p>
                         {file.on_odeme_tutar && (
                           <p className="text-[10px] text-blue-600">ön ödeme: {file.on_odeme_tutar} {file.on_odeme_currency}</p>
                         )}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => { setFileDetailId(file.id); setShowFileDetailModal(true); }}
+                        className="px-2 py-1.5 text-[11px] font-semibold rounded-lg border border-navy-200 text-navy-600 hover:bg-primary-50 hover:border-primary-300 transition-colors"
+                      >
+                        Görüntüle
+                      </button>
                       {!bulkMode && (
                         <button onClick={() => handleTahsilatYap(file)} className="px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-medium rounded-lg transition-colors">
                           Tahsilat
@@ -736,9 +755,20 @@ export default function PaymentsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-navy-900 text-sm">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
-                    <p className="text-[10px] text-navy-400">{formatDate(p.created_at)}</p>
+                  <div className="text-right flex-shrink-0 flex flex-col items-end gap-1.5">
+                    {p.file_id ? (
+                      <button
+                        type="button"
+                        onClick={() => { setFileDetailId(p.file_id); setShowFileDetailModal(true); }}
+                        className="px-2 py-1 text-[10px] font-semibold rounded-md border border-navy-200 text-navy-600 hover:bg-primary-50"
+                      >
+                        Görüntüle
+                      </button>
+                    ) : null}
+                    <div>
+                      <p className="font-bold text-navy-900 text-sm">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
+                      <p className="text-[10px] text-navy-400">{formatDate(p.created_at)}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1225,6 +1255,14 @@ export default function PaymentsPage() {
           </div>
         </div>
       </Modal>
+
+      <FileDetailModal
+        fileId={fileDetailId}
+        isOpen={showFileDetailModal}
+        onClose={() => { setShowFileDetailModal(false); setFileDetailId(null); }}
+        scrollToHistoryOnOpen
+        title="Dosya ve işlem geçmişi"
+      />
     </div>
   );
 }

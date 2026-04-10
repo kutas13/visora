@@ -127,14 +127,18 @@ export default function AdminFilesPage() {
     }
   };
 
-  const filteredFiles = search.trim()
-    ? files.filter(f =>
-        f.musteri_ad.toLowerCase().includes(search.toLowerCase()) ||
-        f.pasaport_no.toLowerCase().includes(search.toLowerCase()) ||
-        f.hedef_ulke.toLowerCase().includes(search.toLowerCase()) ||
-        (f.profiles?.name || "").toLowerCase().includes(search.toLowerCase())
-      )
-    : files;
+  const filteredFiles = (
+    search.trim()
+      ? files.filter(f =>
+          f.musteri_ad.toLowerCase().includes(search.toLowerCase()) ||
+          f.pasaport_no.toLowerCase().includes(search.toLowerCase()) ||
+          f.hedef_ulke.toLowerCase().includes(search.toLowerCase()) ||
+          (f.profiles?.name || "").toLowerCase().includes(search.toLowerCase())
+        )
+      : files
+  ).sort(
+    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  );
 
   const staffOptions = profiles.map(p => ({ value: p.id, label: p.name }));
 
@@ -215,13 +219,13 @@ export default function AdminFilesPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-1 justify-end items-center flex-wrap">
                         <button
+                          type="button"
                           onClick={() => { setDetailFileId(file.id); setShowDetailModal(true); }}
-                          className="p-1.5 text-navy-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                          title="Görüntüle"
+                          className="px-2 py-1 text-[11px] font-semibold rounded-lg border border-navy-200 text-navy-700 hover:bg-primary-50 hover:border-primary-300 transition-colors"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          Görüntüle
                         </button>
                         <button
                           onClick={() => { setSelectedFile(file); setNewAssignee(file.assigned_user_id); setShowTransferModal(true); }}
@@ -267,7 +271,13 @@ export default function AdminFilesPage() {
         )}
       </Modal>
 
-      <FileDetailModal fileId={detailFileId} isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setDetailFileId(null); }} />
+      <FileDetailModal
+        fileId={detailFileId}
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailFileId(null); }}
+        scrollToHistoryOnOpen
+        title="Dosya ve işlem geçmişi"
+      />
 
       {/* Silme Modal */}
       <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setFileToDelete(null); }} title="Dosyayı Sil" size="sm">

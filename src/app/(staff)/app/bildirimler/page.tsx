@@ -223,8 +223,8 @@ export default function BildirimlerPage() {
                           <p className="text-navy-400 text-xs mt-1">{formatTime(notif.created_at)}</p>
                         </div>
                         {notif.file_id && (
-                          <Button size="sm" variant="ghost" onClick={() => handleDetailClick(notif.file_id)}>
-                            Detay
+                          <Button size="sm" variant="outline" onClick={() => handleDetailClick(notif.file_id)} className="text-xs shrink-0">
+                            Görüntüle
                           </Button>
                         )}
                       </div>
@@ -241,6 +241,8 @@ export default function BildirimlerPage() {
         fileId={detailFileId}
         isOpen={showDetailModal}
         onClose={() => { setShowDetailModal(false); setDetailFileId(null); }}
+        scrollToHistoryOnOpen
+        title="Dosya ve işlem geçmişi"
       />
     </div>
   );

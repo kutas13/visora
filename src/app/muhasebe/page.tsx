@@ -455,7 +455,12 @@ export default function MuhasebePage() {
         </div>
       </div>
 
-      <MuhasebeFileDetailModal fileId={detailFileId} isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setDetailFileId(null); }} />
+      <MuhasebeFileDetailModal
+        fileId={detailFileId}
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailFileId(null); }}
+        scrollToHistoryOnOpen
+      />
     </div>
   );
 }
