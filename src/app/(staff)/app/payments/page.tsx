@@ -61,8 +61,6 @@ export default function PaymentsPage() {
   const [stats, setStats] = useState<Record<string, number>>({ TL: 0, EUR: 0, USD: 0 });
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
-  const [posKartTutar, setPosKartTutar] = useState("");
-  const [posKartCurrency, setPosKartCurrency] = useState<"USD" | "EUR">("USD");
   const [posPrefillLoading, setPosPrefillLoading] = useState(false);
   const [bulkPosPrefillLoading, setBulkPosPrefillLoading] = useState(false);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 49.50, EUR: 53.00, TL: 1 });
@@ -79,9 +77,6 @@ export default function PaymentsPage() {
   const [bulkPaymentEntries, setBulkPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
   const [bulkDekontFile, setBulkDekontFile] = useState<File | null>(null);
   const [bulkDekontPreview, setBulkDekontPreview] = useState<string | null>(null);
-  const [bulkPosKartTutar, setBulkPosKartTutar] = useState("");
-  const [bulkPosKartCurrency, setBulkPosKartCurrency] = useState<"USD" | "EUR">("USD");
-
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
@@ -212,8 +207,6 @@ export default function PaymentsPage() {
     const tahsilatTutari = getTotalDosyaAmount(file);
     setPaymentEntries([{ amount: tahsilatTutari?.toString() || "", currency: file.ucret_currency || "TL" }]);
     setYontem("nakit");
-    setPosKartTutar("");
-    setPosKartCurrency(file.ucret_currency === "EUR" ? "EUR" : "USD");
     setNotlar("");
     setDekontFile(null);
     setDekontPreview(null);
@@ -238,7 +231,6 @@ export default function PaymentsPage() {
   const onTahsilatYontemChange = (v: string) => {
     setYontem(v);
     if (v !== "pos") {
-      setPosKartTutar("");
       setPosPrefillLoading(false);
       return;
     }
@@ -253,11 +245,8 @@ export default function PaymentsPage() {
         const kur = rates[fc] || 0;
         const tlRounded = kur > 0 ? Math.round(totalDosya * kur) : Math.round(totalDosya);
         setPaymentEntries([{ amount: String(tlRounded), currency: "TL" }]);
-        setPosKartTutar(String(totalDosya));
-        setPosKartCurrency(fc);
       } else {
         setPaymentEntries([{ amount: String(Math.round(totalDosya)), currency: "TL" }]);
-        setPosKartTutar("");
       }
       setPosPrefillLoading(false);
     })();
@@ -266,7 +255,6 @@ export default function PaymentsPage() {
   const onBulkYontemChange = (v: string) => {
     setBulkYontem(v);
     if (v !== "pos") {
-      setBulkPosKartTutar("");
       setBulkPosPrefillLoading(false);
       return;
     }
@@ -280,7 +268,6 @@ export default function PaymentsPage() {
         return sum + (curr === "TL" ? amount : amount * (rates[curr] || 0));
       }, 0);
       setBulkPaymentEntries([{ amount: String(Math.round(totalTL)), currency: "TL" }]);
-      setBulkPosKartTutar("");
       setBulkPosPrefillLoading(false);
     })();
   };
@@ -324,8 +311,10 @@ export default function PaymentsPage() {
       const primaryAmount = parseFloat(primaryEntry.amount);
       const effectiveCurrency = (yontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
 
-      const posDovizNum = yontem === "pos" && posKartTutar && parseFloat(posKartTutar) > 0 ? parseFloat(posKartTutar) : null;
-      const posDovizCurr = posDovizNum ? posKartCurrency : null;
+      const fc = selectedFile.ucret_currency || "TL";
+      const posDovizNum =
+        yontem === "pos" && (fc === "USD" || fc === "EUR") ? getTotalDosyaAmount(selectedFile) : null;
+      const posDovizCurr = posDovizNum ? (fc as "USD" | "EUR") : null;
 
       const { error: paymentError } = await supabase.from("payments").insert({
         file_id: selectedFile.id,
@@ -394,8 +383,6 @@ export default function PaymentsPage() {
             tutar: primaryAmount,
             currency: effectiveCurrency,
             yontem: yontem,
-            posDovizTutar: posDovizNum,
-            posDovizCurrency: posDovizCurr,
             hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
             notlar: notlar.trim() || null,
             paymentBreakdown,
@@ -431,7 +418,6 @@ export default function PaymentsPage() {
       setPaymentEntries([{ amount: "", currency: "TL" }]);
       setDekontFile(null);
       setDekontPreview(null);
-      setPosKartTutar("");
       loadData();
     } catch (err) {
       console.error(err);
@@ -470,8 +456,6 @@ export default function PaymentsPage() {
     if (selectedFiles.length === 0) return;
     setBulkPaymentEntries([{ amount: "", currency: "TL" }]);
     setBulkYontem("nakit");
-    setBulkPosKartTutar("");
-    setBulkPosKartCurrency("USD");
     setBulkNotlar("");
     setBulkDekontFile(null);
     setBulkDekontPreview(null);
@@ -507,10 +491,12 @@ export default function PaymentsPage() {
       const primaryAmount = parseFloat(primaryEntry.amount);
       const effectiveBulkCurrency = (bulkYontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
       const perFileAmount = Math.round((primaryAmount / selectedFiles.length) * 100) / 100;
-      const bulkPosNum = bulkYontem === "pos" && bulkPosKartTutar && parseFloat(bulkPosKartTutar) > 0 ? parseFloat(bulkPosKartTutar) : null;
-      const bulkPosCurr = bulkPosNum ? bulkPosKartCurrency : null;
 
       for (const file of selectedFiles) {
+        const fcur = file.ucret_currency || "TL";
+        const filePosDoviz =
+          bulkYontem === "pos" && (fcur === "USD" || fcur === "EUR") ? getTotalDosyaAmount(file) : null;
+        const filePosCurr = filePosDoviz ? (fcur as "USD" | "EUR") : null;
         await supabase.from("payments").insert({
           file_id: file.id,
           tutar: perFileAmount,
@@ -519,8 +505,8 @@ export default function PaymentsPage() {
           currency: effectiveBulkCurrency,
           payment_type: "tahsilat",
           created_by: user.id,
-          pos_doviz_tutar: bulkPosNum,
-          pos_doviz_currency: bulkPosCurr,
+          pos_doviz_tutar: filePosDoviz,
+          pos_doviz_currency: filePosCurr,
         });
         await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);
         await supabase.from("activity_logs").insert({
@@ -571,8 +557,6 @@ export default function PaymentsPage() {
             tutar: primaryAmount,
             currency: effectiveBulkCurrency,
             yontem: bulkYontem,
-            posDovizTutar: bulkPosNum,
-            posDovizCurrency: bulkPosCurr,
             hesapSahibi: bulkYontem === "hesaba" ? bulkHesapSahibi : null,
             notlar: bulkNotlar.trim() || null,
             emailType: "tahsilat",
@@ -970,25 +954,6 @@ export default function PaymentsPage() {
 
             <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={yontem} onChange={(e) => onTahsilatYontemChange(e.target.value)} />
 
-            {yontem === "pos" && (
-              <div className="space-y-2 p-3 bg-violet-50 border border-violet-200 rounded-lg">
-                <p className="text-xs font-semibold text-violet-800 uppercase tracking-wide">POS — karttan çekilen (isteğe bağlı)</p>
-                <p className="text-[10px] text-violet-700 leading-relaxed">Hesaba yansıyan tutarı yukarıda <strong>TL</strong> girin. Slip’te döviz görünüyorsa tutarı ve birimi yazın; mailde hem döviz hem TL belirtilir.</p>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1 min-w-0">
-                    <Input label="Karttan çekilen" type="number" placeholder="Örn. 100" value={posKartTutar} onChange={(e) => setPosKartTutar(e.target.value)} />
-                  </div>
-                  <div className="w-24 shrink-0">
-                    <label className="block text-[10px] font-medium text-violet-700 mb-1">Birim</label>
-                    <select value={posKartCurrency} onChange={(e) => setPosKartCurrency(e.target.value as "USD" | "EUR")} className="w-full px-2 py-2.5 border border-violet-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {yontem === "hesaba" && (
               <div className="space-y-3">
                 <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
@@ -1203,22 +1168,6 @@ export default function PaymentsPage() {
           )}
 
           <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={bulkYontem} onChange={(e) => onBulkYontemChange(e.target.value)} />
-
-          {bulkYontem === "pos" && (
-            <div className="space-y-2 p-3 bg-violet-50 border border-violet-200 rounded-lg">
-              <p className="text-xs font-semibold text-violet-800">Toplam POS slip (isteğe bağlı)</p>
-              <p className="text-[10px] text-violet-700">Tutar yukarıda TL olmalı. Tüm toplam için tek slip dövizi varsa girin.</p>
-              <div className="flex gap-2 items-end">
-                <div className="flex-1 min-w-0">
-                  <Input type="number" placeholder="Karttan çekilen" value={bulkPosKartTutar} onChange={(e) => setBulkPosKartTutar(e.target.value)} />
-                </div>
-                <select value={bulkPosKartCurrency} onChange={(e) => setBulkPosKartCurrency(e.target.value as "USD" | "EUR")} className="w-24 px-2 py-2.5 border border-violet-300 rounded-lg text-sm">
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                </select>
-              </div>
-            </div>
-          )}
 
           {bulkYontem === "hesaba" && (
             <div className="space-y-3">

@@ -80,8 +80,6 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   type PesinYontem = "nakit" | "hesaba" | "pos";
   const [pesinYontem, setPesinYontem] = useState<PesinYontem>(file?.hesap_sahibi ? "hesaba" : "nakit");
   const [pesinPosTl, setPesinPosTl] = useState("");
-  const [pesinPosKartTutar, setPesinPosKartTutar] = useState("");
-  const [pesinPosKartCurrency, setPesinPosKartCurrency] = useState<"USD" | "EUR">("USD");
   const [pesinPosLoading, setPesinPosLoading] = useState(false);
   const [onOdemeVar, setOnOdemeVar] = useState(!!file?.on_odeme_tutar);
   const [onOdemeTutar, setOnOdemeTutar] = useState(file?.on_odeme_tutar?.toString() || "");
@@ -268,13 +266,6 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       const total = Math.round((uN + dMain) * 100) / 100;
       const tlRounded = ucretCurrency === "TL" ? total : Math.round(total * getRate(ucretCurrency));
       setPesinPosTl(String(tlRounded));
-      if (ucretCurrency === "USD" || ucretCurrency === "EUR") {
-        setPesinPosKartTutar(String(total));
-        setPesinPosKartCurrency(ucretCurrency);
-      } else {
-        setPesinPosKartTutar("");
-        setPesinPosKartCurrency("USD");
-      }
     },
     [ucret, davetiyeUcreti, showDavetiyeUcreti, davetiyeUcretiCurrency, ucretCurrency]
   );
@@ -449,8 +440,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
             const yDb = pesinYontem === "hesaba" ? "hesaba" : pesinYontem === "pos" ? "pos" : "nakit";
             const tKayit = pesinYontem === "pos" ? parseFloat(pesinPosTl) : totalDosyaAmount;
             const cKayit = pesinYontem === "pos" ? ("TL" as const) : ucretCurrency;
-            const pdn = pesinYontem === "pos" && pesinPosKartTutar && parseFloat(pesinPosKartTutar) > 0 ? parseFloat(pesinPosKartTutar) : null;
-            const pdc = pdn ? pesinPosKartCurrency : null;
+            const pdn =
+              pesinYontem === "pos" && (ucretCurrency === "USD" || ucretCurrency === "EUR") ? totalDosyaAmount : null;
+            const pdc = pdn ? ucretCurrency : null;
             await supabase.from("payments").insert({
               file_id: file.id,
               tutar: tKayit,
@@ -473,10 +465,10 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                 tutar: tKayit,
                 currency: cKayit,
                 yontem: yDb,
-                posDovizTutar: pdn,
-                posDovizCurrency: pdc,
                 hesapSahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
                 emailType: "pesin_satis",
+                dosyaCurrency: ucretCurrency,
+                dosyaTutar: totalDosyaAmount,
                 ucretDetay: {
                   vizeTutar: ucretNum,
                   vizeCurrency: ucretCurrency,
@@ -521,8 +513,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
             const yDb = pesinYontem === "hesaba" ? "hesaba" : pesinYontem === "pos" ? "pos" : "nakit";
             const tKayit = pesinYontem === "pos" ? parseFloat(pesinPosTl) : totalDosyaAmount;
             const cKayit = pesinYontem === "pos" ? ("TL" as const) : ucretCurrency;
-            const pdn = pesinYontem === "pos" && pesinPosKartTutar && parseFloat(pesinPosKartTutar) > 0 ? parseFloat(pesinPosKartTutar) : null;
-            const pdc = pdn ? pesinPosKartCurrency : null;
+            const pdn =
+              pesinYontem === "pos" && (ucretCurrency === "USD" || ucretCurrency === "EUR") ? totalDosyaAmount : null;
+            const pdc = pdn ? ucretCurrency : null;
 
             await supabase.from("payments").insert({
               file_id: newFile.id,
@@ -538,7 +531,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
             const validPesinEntries = pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
             const breakdownText = pesinYontem === "pos"
-              ? `${parseFloat(pesinPosTl).toLocaleString("tr-TR")} TL (POS)${pdn ? ` · slip ${pdn} ${pdc}` : ""}`
+              ? `${parseFloat(pesinPosTl).toLocaleString("tr-TR")} TL (POS)${pdn ? ` · dosya ${pdn} ${pdc}` : ""}`
               : validPesinEntries.length > 0
                 ? validPesinEntries.map(e => `${parseFloat(e.amount).toLocaleString("tr-TR")} ${e.currency}`).join(" + ")
                 : `${totalDosyaAmount} ${ucretCurrency}`;
@@ -569,8 +562,6 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   tutar: tKayit,
                   currency: cKayit,
                   yontem: yDb,
-                  posDovizTutar: pdn,
-                  posDovizCurrency: pdc,
                   hesapSahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
                   companyInfo: selectedCompany,
                   faturaTipi: String(odemePlani) === "firma_cari" ? faturaTipi : null,
@@ -918,19 +909,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                     Ücret TL cinsinden. Tutar aşağıda otomatik yazıldı — <strong>düzenleyebilirsiniz</strong>.
                   </p>
                 )}
-                <p className="text-xs font-semibold text-violet-800">Hesaba geçen tutar (TL)</p>
+                <p className="text-xs font-semibold text-violet-800">POS — hesaba geçen tutar (TL)</p>
                 <Input type="number" placeholder="0" value={pesinPosTl} onChange={(e) => setPesinPosTl(e.target.value)} disabled={pesinPosLoading} />
-                <p className="text-xs font-semibold text-violet-800 mt-2">Karttan çekilen (isteğe bağlı)</p>
-                <p className="text-[10px] text-violet-700">Slip’te USD/EUR görünüyorsa girin; mailde döviz ve TL birlikte yer alır.</p>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1 min-w-0">
-                    <Input type="number" placeholder="Tutar" value={pesinPosKartTutar} onChange={(e) => setPesinPosKartTutar(e.target.value)} disabled={pesinPosLoading} />
-                  </div>
-                  <select value={pesinPosKartCurrency} onChange={(e) => setPesinPosKartCurrency(e.target.value as "USD" | "EUR")} className="w-24 px-2 py-2.5 border border-violet-300 rounded-lg text-sm shrink-0 disabled:opacity-50" disabled={pesinPosLoading}>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
               </div>
             )}
 

@@ -18,14 +18,15 @@ function cSym(c: string) {
   return ({ USD: "$", EUR: "\u20ac", TL: "\u20ba" } as Record<string, string>)[c] || c;
 }
 
-/** POS: kart dövizi + hesaba geçen TL */
-function posOdemeCumlesi(tutar: number, posDovizTutar: unknown, posDovizCurrency: unknown) {
-  const tl = Number(tutar).toLocaleString("tr-TR");
-  if (posDovizTutar != null && posDovizCurrency && String(posDovizCurrency) !== "TL") {
-    const pd = Number(posDovizTutar).toLocaleString("tr-TR");
-    return `POS üzerinden ${pd} ${cText(String(posDovizCurrency))} çekilmiştir; hesaba geçen tutar ${tl} TL'dir`;
+/** POS: tahsil edilen TL (formdaki tutar) + dosya oluşturulurken girilen ücret dövizi */
+function posOdemeCumlesi(tlTutar: number, dosyaTutar: unknown, dosyaCurrency: unknown) {
+  const tlStr = Number(tlTutar).toLocaleString("tr-TR");
+  if (dosyaTutar != null && dosyaCurrency && String(dosyaCurrency) !== "TL") {
+    const da = Number(dosyaTutar).toLocaleString("tr-TR");
+    const dc = String(dosyaCurrency);
+    return `${tlStr} TL POS üzerinden tahsil edilmiştir. Dosya ücreti ${da} ${cText(dc)} cinsindendir.`;
   }
-  return `POS ile ${tl} TL tahsil edilmiştir`;
+  return `${tlStr} TL POS üzerinden tahsil edilmiştir.`;
 }
 
 export async function POST(request: NextRequest) {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     const raw = await request.text();
     const body = JSON.parse(raw);
 
-    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType, hesapSahibi, companyInfo, faturaTipi, notlar, onOdemeGecmisi, dekontBase64, dekontName, tlKarsiligi, dosyaCurrency, dosyaTutar, paymentBreakdown, ucretDetay, posDovizTutar, posDovizCurrency } = body;
+    const { senderEmail, senderName, musteriAd, hedefUlke, tutar, currency, yontem, emailType, hesapSahibi, companyInfo, faturaTipi, notlar, onOdemeGecmisi, dekontBase64, dekontName, tlKarsiligi, dosyaCurrency, dosyaTutar, paymentBreakdown, ucretDetay } = body;
 
     if (!senderEmail || !musteriAd || !tutar || !currency) {
       return NextResponse.json({ error: "Eksik alanlar" }, { status: 400 });
@@ -72,18 +73,19 @@ export async function POST(request: NextRequest) {
       const bulkSubject = `TOPLU TAHSİLAT \u2022 ${customers.length} müşteri \u2022 ${totalAmt}${totalCs}`;
 
       const customerLines = customers.map(c => {
-        const dosyaAmt = c.dosyaTutar ? Number(c.dosyaTutar).toLocaleString("tr-TR") : Number(c.tutar).toLocaleString("tr-TR");
+        const dosyaAmt = c.dosyaTutar != null ? Number(c.dosyaTutar).toLocaleString("tr-TR") : Number(c.tutar).toLocaleString("tr-TR");
         const dosyaCurr = c.dosyaCurrency || c.currency;
-        const yontemEk =
-          yontem === "nakit" ? "nakit olarak alınmıştır" : yontem === "pos" ? "POS ile tahsil edilmiştir" : "hesaba ödenmiştir";
+        if (yontem === "pos") {
+          const tlP = Number(c.tutar).toLocaleString("tr-TR");
+          if (dosyaCurr && dosyaCurr !== "TL" && c.dosyaTutar != null) {
+            return `${c.musteriAd} ${c.hedefUlke}: ${tlP} TL POS üzerinden tahsil edildi. Dosya ücreti ${dosyaAmt} ${cText(String(dosyaCurr))} cinsinden. Cariden çıkartabiliriz.`;
+          }
+          return `${c.musteriAd} ${c.hedefUlke}: ${tlP} TL POS üzerinden tahsil edildi. Cariden çıkartabiliriz.`;
+        }
+        const yontemEk = yontem === "nakit" ? "nakit olarak alınmıştır" : "hesaba ödenmiştir";
         return `${c.musteriAd} ${c.hedefUlke} vize ücreti ${dosyaAmt} ${cText(dosyaCurr)} ${yontemEk} carimden çıkartabiliriz`;
       });
-      const posBulkEk =
-        yontem === "pos" && posDovizTutar != null && posDovizCurrency
-          ? `\n\n${posOdemeCumlesi(Number(tutar), posDovizTutar, posDovizCurrency)}`
-          : yontem === "pos"
-            ? `\n\n${posOdemeCumlesi(Number(tutar), null, null)}`
-            : "";
+      const posBulkEk = yontem === "pos" ? `\n\nToplam ${Number(tutar).toLocaleString("tr-TR")} TL POS üzerinden tahsil edilmiştir (dosya ücretleri müşteri satırlarında).` : "";
       const bulkPlain = customerLines.join("\n\n") + posBulkEk + (notlar ? `\n\nPersonel Notu: ${notlar}` : "");
 
       const customerCards = customers.map(c => {
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest) {
       <p style="margin:0 0 6px;font-size:12px;color:#64748b;font-weight:500;letter-spacing:2px;text-transform:uppercase;">Toplam Tutar</p>
       <p style="margin:0;font-size:48px;font-weight:900;color:#ffffff;letter-spacing:-2px;line-height:1;">${totalAmt}<span style="font-size:32px;font-weight:700;color:#f97316;margin-left:4px;">${totalCs}</span></p>
       <p style="margin:8px 0 0;font-size:14px;color:#94a3b8;">${customers.length} m\u00fc\u015fteri \u2022 ${methodLabel}</p>
-      ${yontem === "pos" ? `<p style="margin:12px 0 0;font-size:13px;color:#a78bfa;line-height:1.5;">${posOdemeCumlesi(Number(tutar), posDovizTutar, posDovizCurrency)}</p>` : ""}
+      ${yontem === "pos" ? `<p style="margin:12px 0 0;font-size:13px;color:#a78bfa;line-height:1.5;">Toplam ${Number(tutar).toLocaleString("tr-TR")} TL POS üzerinden tahsil edilmiştir.</p>` : ""}
     </div>
     <div style="margin:0 32px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent);"></div>
     <div style="padding:24px 32px;">
@@ -199,7 +201,7 @@ export async function POST(request: NextRequest) {
     if (isPesin) {
       const tlEkPesin = tlKarsiligi ? ` (TL karşılığı ${Number(tlKarsiligi).toLocaleString("tr-TR")} TL olarak alınmıştır)` : "";
       if (yontem === "pos") {
-        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti peşin ${posOdemeCumlesi(Number(tutar), posDovizTutar, posDovizCurrency)}${ucretDetayText ? ` (${ucretDetayText})` : ""}${faturaBilgisi}`;
+        plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti peşin ${posOdemeCumlesi(Number(tutar), dosyaTutar, dosyaCurrency)}${ucretDetayText ? ` (${ucretDetayText})` : ""}${faturaBilgisi}`;
       } else if (yontem === "nakit") {
         plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti ${amt} ${ct} peşin nakit olarak alınmıştır${ucretDetayText ? ` (${ucretDetayText})` : ""}${tlEkPesin}${faturaBilgisi}`;
       } else {
@@ -212,7 +214,7 @@ export async function POST(request: NextRequest) {
     } else if (yontem === "pos") {
       const onOdemeEk = onOdemeGecmisi ? ` (${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde ${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency} ön ödeme alınmıştı)` : "";
       const breakdownEk = paymentBreakdown && paymentBreakdown.length > 1 ? ` (Ödeme detayı: ${paymentBreakdown.map((p: any) => `${Number(p.tutar).toLocaleString("tr-TR")} ${cSym(p.currency)}`).join(" + ")})` : "";
-      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti için ${posOdemeCumlesi(Number(tutar), posDovizTutar, posDovizCurrency)}; cariden çıkartabiliriz${ucretDetayText ? ` (${ucretDetayText})` : ""}${breakdownEk}${onOdemeEk}`;
+      plainBody = `${musteriAd}${firmaBilgisi} ${hedefUlke} vize ücreti için ${posOdemeCumlesi(Number(tutar), dosyaTutar, dosyaCurrency)}; cariden çıkartabiliriz${ucretDetayText ? ` (${ucretDetayText})` : ""}${breakdownEk}${onOdemeEk}`;
     } else if (yontem === "nakit") {
       const onOdemeEk = onOdemeGecmisi ? ` (${new Date(onOdemeGecmisi.tarih).toLocaleDateString("tr-TR")} tarihinde ${onOdemeGecmisi.tutar} ${onOdemeGecmisi.currency} ön ödeme alınmıştı)` : "";
       const tlEk = tlKarsiligi ? ` (${dosyaTutar} ${dosyaCurrency} karşılığı ${Number(tlKarsiligi).toLocaleString("tr-TR")} TL olarak tahsil edildi)` : "";
@@ -392,7 +394,7 @@ export async function POST(request: NextRequest) {
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">POS</span>
           </td>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
-            <span style="font-size:13px;color:#e2e8f0;line-height:1.5;">${posOdemeCumlesi(Number(tutar), posDovizTutar, posDovizCurrency)}</span>
+            <span style="font-size:13px;color:#e2e8f0;line-height:1.5;">${posOdemeCumlesi(Number(tutar), dosyaTutar, dosyaCurrency)}</span>
           </td>
         </tr>` : ""}
         ${tlKarsiligi ? `<tr>
