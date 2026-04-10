@@ -220,12 +220,14 @@ export default function GunlukRaporPage() {
       setUserEmail(profile.email || user.email || "");
     }
 
+    // İşlemden çıkınca dosya arşivleniyor; rapora henüz yansımamış bu müşteriler de eklenebilsin diye
+    // arşivde olsa bile islemden_cikti=true olanlar (ve raporlanmamış olanlar) listede kalsın.
     const { data: files } = await supabase
       .from("visa_files")
       .select("*, companies(firma_adi)")
       .eq("assigned_user_id", user.id)
-      .eq("arsiv_mi", false)
       .eq("gunluk_rapor_gonderildi", false)
+      .or("arsiv_mi.eq.false,islemden_cikti.eq.true")
       .order("created_at", { ascending: false });
 
     if (files) setUserFiles(files as VisaFileWithCompany[]);
@@ -815,7 +817,10 @@ export default function GunlukRaporPage() {
                           <p className="text-sm font-semibold text-gray-800">
                             {getMainCurrencyTotal(f).toLocaleString("tr-TR")} {f.ucret_currency === "EUR" ? "€" : f.ucret_currency === "USD" ? "$" : "₺"}
                           </p>
-                          <p className="text-xs text-gray-400">{f.odeme_plani === "pesin" ? "Peşin" : f.cari_tipi === "firma_cari" ? "Firma Cari" : "Cari"}</p>
+                          <p className="text-xs text-gray-400">
+                            {f.islemden_cikti && <span className="text-violet-600 font-medium">İşlemden çıktı · </span>}
+                            {f.odeme_plani === "pesin" ? "Peşin" : f.cari_tipi === "firma_cari" ? "Firma Cari" : "Cari"}
+                          </p>
                         </div>
                       </div>
                     </button>
