@@ -63,6 +63,8 @@ export default function PaymentsPage() {
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
   const [posKartTutar, setPosKartTutar] = useState("");
   const [posKartCurrency, setPosKartCurrency] = useState<"USD" | "EUR">("USD");
+  const [posPrefillLoading, setPosPrefillLoading] = useState(false);
+  const [bulkPosPrefillLoading, setBulkPosPrefillLoading] = useState(false);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 49.50, EUR: 53.00, TL: 1 });
   const [ratesLoading, setRatesLoading] = useState(false);
 
@@ -184,16 +186,22 @@ export default function PaymentsPage() {
 
   useEffect(() => { loadData(); loadExchangeRates(); }, []);
 
+  const fetchExchangeRatesFromApi = async (fallback: Record<string, number>): Promise<Record<string, number>> => {
+    try {
+      const res = await fetch("/api/exchange-rates");
+      const data = await res.json();
+      if (data.rates && typeof data.rates === "object") return data.rates as Record<string, number>;
+    } catch (err) {
+      console.error("Exchange rates error:", err);
+    }
+    return fallback;
+  };
+
   const loadExchangeRates = async () => {
     setRatesLoading(true);
     try {
-      const res = await fetch('/api/exchange-rates');
-      const data = await res.json();
-      if (data.rates) {
-        setExchangeRates(data.rates);
-      }
-    } catch (err) {
-      console.error('Exchange rates error:', err);
+      const rates = await fetchExchangeRatesFromApi(exchangeRates);
+      setExchangeRates(rates);
     } finally {
       setRatesLoading(false);
     }
@@ -229,45 +237,52 @@ export default function PaymentsPage() {
 
   const onTahsilatYontemChange = (v: string) => {
     setYontem(v);
-    if (v === "pos" && selectedFile) {
-      setPaymentEntries((prev) => {
-        const v0 = prev.find((e) => e.amount && parseFloat(e.amount) > 0) || prev[0];
-        if (v0 && v0.currency !== "TL" && exchangeRates[v0.currency]) {
-          const tl = Math.round(parseFloat(v0.amount) * exchangeRates[v0.currency]).toString();
-          return [{ amount: tl, currency: "TL" }];
-        }
-        if (v0?.currency === "TL") return [{ amount: v0.amount, currency: "TL" }];
-        const fc = selectedFile.ucret_currency || "TL";
-        if (fc !== "TL" && exchangeRates[fc]) {
-          const tl = Math.round(getTotalDosyaAmount(selectedFile) * exchangeRates[fc]).toString();
-          return [{ amount: tl, currency: "TL" }];
-        }
-        return [{ amount: v0?.amount || "", currency: "TL" }];
-      });
-      setPosKartCurrency(selectedFile.ucret_currency === "EUR" ? "EUR" : "USD");
+    if (v !== "pos") {
+      setPosKartTutar("");
+      setPosPrefillLoading(false);
+      return;
     }
-    if (v !== "pos") setPosKartTutar("");
+    if (!selectedFile) return;
+    void (async () => {
+      setPosPrefillLoading(true);
+      const rates = await fetchExchangeRatesFromApi(exchangeRates);
+      setExchangeRates(rates);
+      const fc = selectedFile.ucret_currency || "TL";
+      const totalDosya = getTotalDosyaAmount(selectedFile);
+      if (fc === "USD" || fc === "EUR") {
+        const kur = rates[fc] || 0;
+        const tlRounded = kur > 0 ? Math.round(totalDosya * kur) : Math.round(totalDosya);
+        setPaymentEntries([{ amount: String(tlRounded), currency: "TL" }]);
+        setPosKartTutar(String(totalDosya));
+        setPosKartCurrency(fc);
+      } else {
+        setPaymentEntries([{ amount: String(Math.round(totalDosya)), currency: "TL" }]);
+        setPosKartTutar("");
+      }
+      setPosPrefillLoading(false);
+    })();
   };
 
   const onBulkYontemChange = (v: string) => {
     setBulkYontem(v);
-    if (v === "pos") {
-      setBulkPaymentEntries((prev) => {
-        const v0 = prev.find((e) => e.amount && parseFloat(e.amount) > 0) || prev[0];
-        if (v0 && v0.currency !== "TL" && exchangeRates[v0.currency]) {
-          const tl = Math.round(parseFloat(v0.amount) * exchangeRates[v0.currency]).toString();
-          return [{ amount: tl, currency: "TL" }];
-        }
-        if (v0?.currency === "TL") return [{ amount: v0.amount, currency: "TL" }];
-        const totalTL = selectedFiles.reduce((sum, f) => {
-          const amount = getTotalDosyaAmount(f);
-          const curr = f.ucret_currency || "TL";
-          return sum + (curr === "TL" ? amount : amount * (exchangeRates[curr] || 0));
-        }, 0);
-        return [{ amount: Math.round(totalTL).toString(), currency: "TL" }];
-      });
+    if (v !== "pos") {
+      setBulkPosKartTutar("");
+      setBulkPosPrefillLoading(false);
+      return;
     }
-    if (v !== "pos") setBulkPosKartTutar("");
+    void (async () => {
+      setBulkPosPrefillLoading(true);
+      const rates = await fetchExchangeRatesFromApi(exchangeRates);
+      setExchangeRates(rates);
+      const totalTL = selectedFiles.reduce((sum, f) => {
+        const amount = getTotalDosyaAmount(f);
+        const curr = f.ucret_currency || "TL";
+        return sum + (curr === "TL" ? amount : amount * (rates[curr] || 0));
+      }, 0);
+      setBulkPaymentEntries([{ amount: String(Math.round(totalTL)), currency: "TL" }]);
+      setBulkPosKartTutar("");
+      setBulkPosPrefillLoading(false);
+    })();
   };
 
   const hasValidEntries = paymentEntries.some(e => e.amount && parseFloat(e.amount) > 0);
@@ -275,6 +290,10 @@ export default function PaymentsPage() {
   const handleTahsilatOnay = () => {
     if (!selectedFile || !hasValidEntries) {
       alert("Lütfen en az bir geçerli tutar girin");
+      return;
+    }
+    if (yontem === "pos" && posPrefillLoading) {
+      alert("Anlık kur yükleniyor, lütfen birkaç saniye bekleyin.");
       return;
     }
     if (yontem === "pos") {
@@ -461,6 +480,10 @@ export default function PaymentsPage() {
 
   const handleBulkConfirm = () => {
     if (!bulkValidEntries.length) { alert("Lütfen en az bir geçerli tutar girin"); return; }
+    if (bulkYontem === "pos" && bulkPosPrefillLoading) {
+      alert("Anlık kur yükleniyor, lütfen birkaç saniye bekleyin.");
+      return;
+    }
     if (bulkYontem === "pos") {
       const cur = bulkPaymentEntries.find((e) => e.amount && parseFloat(e.amount) > 0)?.currency;
       if (cur && cur !== "TL") {
@@ -768,6 +791,24 @@ export default function PaymentsPage() {
                 </button>
                 )}
               </div>
+              {yontem === "pos" && posPrefillLoading && (
+                <p className="text-xs text-violet-600 flex items-center gap-2">
+                  <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                  Anlık kur yükleniyor…
+                </p>
+              )}
+              {yontem === "pos" && !posPrefillLoading && selectedFile.ucret_currency !== "TL" && exchangeRates[selectedFile.ucret_currency] && (
+                <div className="rounded-lg border border-violet-200 bg-violet-50/90 px-3 py-2 text-[11px] text-violet-900 leading-relaxed">
+                  Ücret <strong>{getTotalDosyaAmount(selectedFile).toLocaleString("tr-TR")} {selectedFile.ucret_currency}</strong> cinsinden; güncel kur{" "}
+                  <strong>1 {selectedFile.ucret_currency} = {Number(exchangeRates[selectedFile.ucret_currency]).toLocaleString("tr-TR", { maximumFractionDigits: 4 })} TL</strong>.
+                  Tutar alanı bu kurla dolduruldu — <strong>istediğiniz gibi değiştirebilirsiniz</strong>.
+                </div>
+              )}
+              {yontem === "pos" && !posPrefillLoading && selectedFile.ucret_currency === "TL" && (
+                <div className="rounded-lg border border-violet-200 bg-violet-50/90 px-3 py-2 text-[11px] text-violet-900">
+                  Ücret TL cinsinden. Tutar aşağıda otomatik yazıldı — <strong>düzenleyebilirsiniz</strong>.
+                </div>
+              )}
               {paymentEntries.map((entry, index) => (
                 <div key={index} className="flex items-end gap-2">
                   <div className="flex-1">
@@ -777,6 +818,7 @@ export default function PaymentsPage() {
                       placeholder="0"
                       value={entry.amount}
                       onChange={(e) => updatePaymentEntry(index, "amount", e.target.value)}
+                      disabled={yontem === "pos" && posPrefillLoading && index === 0}
                     />
                   </div>
                   <div className="w-24">
@@ -999,7 +1041,7 @@ export default function PaymentsPage() {
 
             <div className="flex gap-3 pt-3 border-t border-navy-100">
               <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">İptal</button>
-              <button type="button" onClick={handleTahsilatOnay} disabled={!hasValidEntries} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
+              <button type="button" onClick={handleTahsilatOnay} disabled={!hasValidEntries || (yontem === "pos" && posPrefillLoading)} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
             </div>
           </div>
         )}
@@ -1055,10 +1097,21 @@ export default function PaymentsPage() {
 
           <div className="space-y-2">
             <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Toplam Ödeme Tutarı</p>
+            {bulkYontem === "pos" && bulkPosPrefillLoading && (
+              <p className="text-xs text-violet-600 flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                Anlık kur ile dosya ücretleri TL’ye çevriliyor…
+              </p>
+            )}
+            {bulkYontem === "pos" && !bulkPosPrefillLoading && (
+              <div className="rounded-lg border border-violet-200 bg-violet-50/90 px-3 py-2 text-[11px] text-violet-900 leading-relaxed">
+                Her dosyanın ücreti kendi para biriminde anlık kur ile TL’ye çevrilip toplandı. Tutarı <strong>istediğiniz gibi değiştirebilirsiniz</strong>.
+              </div>
+            )}
             {bulkPaymentEntries.map((entry, index) => (
               <div key={index} className="flex items-end gap-2">
                 <div className="flex-1">
-                  <Input label={index === 0 ? "Tutar" : undefined} type="number" placeholder="0" value={entry.amount} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, amount: e.target.value } : en))} />
+                  <Input label={index === 0 ? "Tutar" : undefined} type="number" placeholder="0" value={entry.amount} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, amount: e.target.value } : en))} disabled={bulkYontem === "pos" && bulkPosPrefillLoading && index === 0} />
                 </div>
                 <div className="w-24">
                   <select value={bulkYontem === "pos" ? "TL" : entry.currency} disabled={bulkYontem === "pos"} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value as ParaBirimi } : en))} className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-navy-100">
@@ -1190,7 +1243,7 @@ export default function PaymentsPage() {
 
           <div className="flex gap-3 pt-3 border-t border-navy-100">
             <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">İptal</button>
-            <button type="button" onClick={handleBulkConfirm} disabled={!bulkValidEntries.length} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
+            <button type="button" onClick={handleBulkConfirm} disabled={!bulkValidEntries.length || (bulkYontem === "pos" && bulkPosPrefillLoading)} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
           </div>
         </div>
       </Modal>
