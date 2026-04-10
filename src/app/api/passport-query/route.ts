@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limiting (canlı arama + sorgula; yazdıkça istek artabilir)
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const { allowed } = rateLimit(`passport:${clientIp}`, 90, 60_000);
+    const { allowed } = rateLimit(`passport:${clientIp}`, 200, 60_000);
     if (!allowed) {
       return NextResponse.json({ error: "Çok fazla sorgu. Biraz bekleyin." }, { status: 429 });
     }
@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
       .or(orConditions.join(","))
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(120);
 
     if (error) {
       console.error("Pasaport sorgu hatası:", error.message, error.details);

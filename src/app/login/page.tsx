@@ -60,7 +60,6 @@ export default function LoginPage() {
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryResult, setQueryResult] = useState<VisaFile[] | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queryAbortRef = useRef<AbortController | null>(null);
   const passportInputRef = useRef(passportNo);
   passportInputRef.current = passportNo;
@@ -72,7 +71,19 @@ export default function LoginPage() {
     const ac = new AbortController();
     queryAbortRef.current = ac;
 
-    setQueryLoading(true);
+    let loadingTimer: number | null = null;
+    const clearLoadingTimer = () => {
+      if (loadingTimer !== null) {
+        window.clearTimeout(loadingTimer);
+        loadingTimer = null;
+      }
+    };
+    ac.signal.addEventListener("abort", clearLoadingTimer, { once: true });
+    loadingTimer = window.setTimeout(() => {
+      if (ac.signal.aborted || passportInputRef.current.trim() !== term) return;
+      setQueryLoading(true);
+    }, 80);
+
     setQueryError(null);
 
     try {
@@ -105,6 +116,7 @@ export default function LoginPage() {
       setQueryResult(null);
       setQueryError(err instanceof Error ? err.message : "Sorgulama sırasında bir hata oluştu.");
     } finally {
+      clearLoadingTimer();
       if (!ac.signal.aborted && passportInputRef.current.trim() === term) {
         setQueryLoading(false);
       }
@@ -112,11 +124,6 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
-
     const term = passportNo.trim();
     if (term.length < 2) {
       queryAbortRef.current?.abort();
@@ -125,18 +132,7 @@ export default function LoginPage() {
       setQueryLoading(false);
       return;
     }
-
-    debounceTimerRef.current = setTimeout(() => {
-      debounceTimerRef.current = null;
-      void fetchPassportByTerm(term);
-    }, 50);
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-        debounceTimerRef.current = null;
-      }
-    };
+    void fetchPassportByTerm(term);
   }, [passportNo, fetchPassportByTerm]);
 
   const handleUserSelect = (user: typeof STAFF_USERS[number]) => {
@@ -298,18 +294,10 @@ export default function LoginPage() {
   const handlePassportQuery = () => {
     const term = passportNo.trim();
     if (term.length < 2) return;
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
     void fetchPassportByTerm(term);
   };
 
   const handleClearQuery = () => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
     queryAbortRef.current?.abort();
     setPassportNo("");
     setQueryResult(null);
@@ -335,7 +323,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-navy-600 text-sm mb-4">
-            Pasaport veya adınızı yazın; en az 2 karakterden sonra sonuçlar kısa gecikmeyle anında güncellenir.{" "}
+            Pasaport veya adınızı yazın; en az 2 karakterden sonra sonuçlar yazdığınız anda sorgulanır (bekleme yok).{" "}
             <span className="font-medium text-navy-700">Sorgula</span> ile beklemeden arayabilirsiniz. Kayıtta{" "}
             <span className="font-medium">IBRAHIM</span>, siz <span className="font-medium">İBRAHİM</span> yazsanız da eşleşir.
           </p>

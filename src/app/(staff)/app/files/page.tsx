@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useDeferredValue } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Card, Button, Input, Select, Checkbox, Modal, Badge, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
@@ -63,6 +63,7 @@ export default function FilesPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [filterIslemTipi, setFilterIslemTipi] = useState("all");
   const [filterUlke, setFilterUlke] = useState("all");
   const [isManualCountry, setIsManualCountry] = useState(false);
@@ -119,8 +120,9 @@ export default function FilesPage() {
 
   const files = useMemo(() => {
     let result = allFiles;
-    if (searchTerm.trim()) {
-      const q = norm(searchTerm.trim());
+    const searchQ = deferredSearchTerm.trim();
+    if (searchQ) {
+      const q = norm(searchQ);
       result = result.filter(f =>
         norm(f.musteri_ad || "").includes(q) ||
         norm(f.pasaport_no || "").includes(q) ||
@@ -137,7 +139,7 @@ export default function FilesPage() {
     return result.sort(
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     );
-  }, [allFiles, searchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter]);
+  }, [allFiles, deferredSearchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter]);
 
   const handleFormSuccess = () => { setShowForm(false); setEditingFile(null); loadFiles(); };
   const handleEdit = (file: VisaFile) => { setEditingFile(file); setShowForm(true); };

@@ -35,7 +35,8 @@ export function sanitizeSearchToken(s: string): string {
 }
 
 /**
- * Sorgu metninden Supabase OR filtresi için benzersiz alt dizeler (kısa tutulur).
+ * Sorgu metninden Supabase OR filtresi için benzersiz alt dizeler.
+ * Az sayıda tutulur (ILIKE + OR sayısı DB gecikmesini doğrudan artırır).
  */
 export function turkishSearchVariants(raw: string): string[] {
   const t = sanitizeSearchToken(raw);
@@ -59,16 +60,11 @@ export function turkishSearchVariants(raw: string): string[] {
     trUpper = t.toUpperCase();
     trLower = t.toLowerCase();
   }
-
   add(trUpper);
   add(trLower);
-  add(turkishFoldAscii(trUpper));
-  add(turkishFoldAscii(trLower));
 
-  const folded = turkishFoldAscii(t);
-  add(folded.toUpperCase());
-  add(folded.toLowerCase());
-  add(asciiCapsIToTurkishİ(folded.toUpperCase()));
+  const foldedUpper = turkishFoldAscii(t).toUpperCase();
+  add(asciiCapsIToTurkishİ(foldedUpper));
 
   return Array.from(set);
 }

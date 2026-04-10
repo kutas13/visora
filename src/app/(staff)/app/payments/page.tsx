@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useDeferredValue } from "react";
 import dynamic from "next/dynamic";
 import { Card, Button, Badge, Modal, Input, Select, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 
@@ -61,6 +61,7 @@ export default function PaymentsPage() {
 
   const [filterCurrency, setFilterCurrency] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [stats, setStats] = useState<Record<string, number>>({ TL: 0, EUR: 0, USD: 0 });
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
@@ -433,7 +434,7 @@ export default function PaymentsPage() {
     }
   };
 
-  const searchQ = norm(searchTerm.trim());
+  const searchQ = norm(deferredSearchTerm.trim());
 
   const filteredUnpaidFiles = (searchQ
     ? unpaidFiles.filter(f => norm(f.musteri_ad || "").includes(searchQ))
