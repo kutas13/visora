@@ -118,9 +118,9 @@ export async function POST(request: NextRequest) {
         `👤 Müşteri: *${file.musteri_ad}*\n` +
         `🌍 Ülke: *${file.hedef_ulke}*\n` +
         `📅 Randevu: *${randevuStr}*\n` +
-        `👨‍💼 Çalışan: *${staffName}*\n\n` +
-        `⏰ Randevuya *3 gün* kaldı.\n\n` +
-        `_Fox Turizm Vize Yönetim Sistemi_`;
+        `👨‍💼 Personel: *${staffName}*\n\n` +
+        `⏳ Randevuya *3 gün* kaldı.\n\n` +
+        `🦊 _Fox Turizm Vize Yönetim Sistemi_`;
 
       const sent = await sendWhatsApp(whatsappTo, message, baseUrl);
       if (sent) sentCount++;

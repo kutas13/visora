@@ -288,6 +288,11 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     }
   }, [exchangeRates, fillPesinPosFields]);
 
+  useEffect(() => {
+    if (odemePlani !== "pesin" || pesinYontem !== "pos" || pesinPosLoading) return;
+    fillPesinPosFields(exchangeRates);
+  }, [odemePlani, pesinYontem, pesinPosLoading, exchangeRates, fillPesinPosFields]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
