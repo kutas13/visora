@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button, Card, Badge, Input } from "@/components/ui";
 import MuhasebeFileDetailModal from "@/components/muhasebe/MuhasebeFileDetailModal";
@@ -59,6 +60,7 @@ function toDateStr(d: Date) {
 }
 
 export default function MuhasebePage() {
+  const router = useRouter();
   const [allFiles, setAllFiles] = useState<VisaFileWithProfile[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,7 +158,7 @@ export default function MuhasebePage() {
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    router.replace("/login");
   };
 
   if (loading) {
@@ -196,7 +198,7 @@ export default function MuhasebePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.location.href = "/muhasebe/firmalar"}
+              onClick={() => router.push("/muhasebe/firmalar")}
               className="text-xs"
             >
               Firmalar

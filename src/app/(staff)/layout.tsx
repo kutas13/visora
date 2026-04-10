@@ -45,6 +45,8 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
         return;
       }
 
+      setLoading(false);
+
       const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
@@ -54,7 +56,6 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       if (profileData) {
         setProfile(profileData);
       }
-      setLoading(false);
     }
 
     loadProfile();

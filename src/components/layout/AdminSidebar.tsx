@@ -3,19 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import dynamic from "next/dynamic";
-
-const AIAssistant = dynamic(() => import("@/components/ai/AIAssistant"), {
-  ssr: false,
-  loading: () => (
-    <div className="bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-white/[0.06] rounded-2xl h-full flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-primary-400/30 border-t-primary-400 rounded-full animate-spin mx-auto mb-2" />
-        <p className="text-[10px] text-slate-500">AI yükleniyor...</p>
-      </div>
-    </div>
-  ),
-});
+import SidebarAiPanel from "./SidebarAiPanel";
 
 const menuItems = [
   {
@@ -179,10 +167,7 @@ export default function AdminSidebar() {
         </ul>
       </nav>
 
-      {/* FOX AI Asistan */}
-      <div className="flex-1 p-3 pt-0 min-h-[260px] flex flex-col justify-end">
-        <AIAssistant isAdmin={true} />
-      </div>
+      <SidebarAiPanel isAdmin />
 
       {/* Alt bilgi */}
       <div className="p-3 border-t border-navy-800 flex-shrink-0">

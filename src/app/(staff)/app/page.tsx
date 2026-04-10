@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, Badge, Button } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { ActivityLog, VisaFile } from "@/lib/supabase/types";
@@ -33,6 +34,7 @@ function getTimeGreeting() {
 }
 
 export default function StaffDashboard() {
+  const router = useRouter();
   const [userName, setUserName] = useState("Kullanıcı");
   const [stats, setStats] = useState({
     randevu15Gun: 0,
@@ -193,6 +195,12 @@ export default function StaffDashboard() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    router.prefetch("/app/files/new");
+    router.prefetch("/app/payments");
+    router.prefetch("/app/calendar");
+  }, [router]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -227,7 +235,7 @@ export default function StaffDashboard() {
         <h3 className="text-lg font-semibold text-navy-900 mb-4">Hızlı İşlemler</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button 
-            onClick={() => window.location.href = "/app/files/new"}
+            onClick={() => router.push("/app/files/new")}
             className="bg-primary-500 hover:bg-primary-600 text-white p-4 h-auto flex items-center gap-3"
           >
             <span className="text-2xl">📁</span>
@@ -237,7 +245,7 @@ export default function StaffDashboard() {
             </div>
           </Button>
           <Button 
-            onClick={() => window.location.href = "/app/payments"}
+            onClick={() => router.push("/app/payments")}
             className="bg-green-500 hover:bg-green-600 text-white p-4 h-auto flex items-center gap-3"
           >
             <span className="text-2xl">💰</span>
@@ -247,7 +255,7 @@ export default function StaffDashboard() {
             </div>
           </Button>
           <Button 
-            onClick={() => window.location.href = "/app/calendar"}
+            onClick={() => router.push("/app/calendar")}
             className="bg-blue-500 hover:bg-blue-600 text-white p-4 h-auto flex items-center gap-3"
           >
             <span className="text-2xl">📅</span>

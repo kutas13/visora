@@ -1,10 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Card, Button, Input, Select, Checkbox, Modal, Badge, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
-import VisaFileForm from "@/components/files/VisaFileForm";
 import FileActions from "@/components/files/FileActions";
-import FileDetailModal from "@/components/files/FileDetailModal";
+
+const VisaFileForm = dynamic(() => import("@/components/files/VisaFileForm"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center py-16">
+      <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+    </div>
+  ),
+});
+
+const FileDetailModal = dynamic(() => import("@/components/files/FileDetailModal"), { ssr: false });
 import { TARGET_COUNTRIES, ISLEM_TIPLERI, PARA_BIRIMLERI } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, VisaFileWithProfile } from "@/lib/supabase/types";
@@ -44,6 +55,7 @@ function norm(s: string) {
 }
 
 export default function FilesPage() {
+  const router = useRouter();
   const [allFiles, setAllFiles] = useState<VisaFileWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -99,6 +111,10 @@ export default function FilesPage() {
   }, []);
 
   useEffect(() => { loadFiles(); }, [loadFiles]);
+
+  useEffect(() => {
+    router.prefetch("/app/files/new");
+  }, [router]);
 
   const files = useMemo(() => {
     let result = allFiles;
@@ -166,7 +182,7 @@ export default function FilesPage() {
           </h1>
           <p className="text-navy-500 mt-1">Müşteri dosyalarını yönetin ve takip edin</p>
         </div>
-        <Button onClick={() => window.location.href = "/app/files/new"} className="shadow-lg hover:shadow-xl transition-shadow">
+        <Button onClick={() => router.push("/app/files/new")} className="shadow-lg hover:shadow-xl transition-shadow">
           <span className="mr-2">+</span> Yeni Dosya
         </Button>
       </div>

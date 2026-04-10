@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, VisaFile, Payment } from "@/lib/supabase/types";
@@ -32,6 +33,7 @@ type StaffCari = {
 };
 
 export default function AdminCariHesapPage() {
+  const router = useRouter();
   const [staffList, setStaffList] = useState<StaffCari[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export default function AdminCariHesapPage() {
         </div>
           <div className="flex gap-3">
             <button
-              onClick={() => window.location.href = "/admin/cari-hesap/firmalar"}
+              onClick={() => router.push("/admin/cari-hesap/firmalar")}
               className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
