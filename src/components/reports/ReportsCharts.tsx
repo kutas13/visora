@@ -145,6 +145,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
   const paymentMethodData = useMemo(() => {
     const nakit = payments.filter((p) => p.yontem === "nakit").length;
     const hesaba = payments.filter((p) => p.yontem === "hesaba").length;
+    const pos = payments.filter((p) => p.yontem === "pos").length;
     const pesin = payments.filter((p) => p.payment_type === "pesin_satis").length;
     const cari = payments.filter((p) => p.payment_type === "tahsilat").length;
     const firmaCari = payments.filter((p) => p.payment_type === "firma_cari").length;
@@ -153,6 +154,7 @@ export default function ReportsCharts({ files, allFiles, payments, allPayments, 
       method: [
         { name: "Nakit", value: nakit },
         { name: "Hesaba", value: hesaba },
+        { name: "POS", value: pos },
       ].filter((d) => d.value > 0),
       type: [
         { name: "Peşin Satış", value: pesin },

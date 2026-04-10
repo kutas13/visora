@@ -220,7 +220,7 @@ export default function FileDetailModal({ fileId, isOpen, onClose }: FileDetailM
                       <div>
                         <p className="font-semibold text-green-700">{formatCurrency(Number(payment.tutar))}</p>
                         <p className="text-xs text-green-600">
-                          {payment.profiles?.name} • {payment.yontem === "nakit" ? "Nakit" : "Cari"}
+                          {payment.profiles?.name} • {payment.yontem === "nakit" ? "Nakit" : payment.yontem === "pos" ? "POS" : payment.yontem === "hesaba" ? "Hesaba" : "Cari"}
                         </p>
                       </div>
                     </div>

@@ -155,7 +155,7 @@ export default function MuhasebeFileDetailModal({ fileId, isOpen, onClose }: Muh
                     <div>
                       <p className="font-semibold text-green-700">{fmt(Number(payment.tutar), payment.currency || "TL")}</p>
                       <p className="text-xs text-green-600">
-                        {payment.profiles?.name || "-"} • {payment.yontem === "nakit" ? "Nakit" : payment.yontem === "hesaba" ? "Hesaba" : "Cari"}
+                        {payment.profiles?.name || "-"} • {payment.yontem === "nakit" ? "Nakit" : payment.yontem === "hesaba" ? "Hesaba" : payment.yontem === "pos" ? "POS" : "Cari"}
                       </p>
                     </div>
                     <p className="text-xs text-green-500">{formatDateTime(payment.created_at)}</p>

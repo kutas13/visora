@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Button, Input, Select, Modal } from "@/components/ui";
 import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME_PLANLARI_EXTENDED, HESAP_SAHIPLERI, FATURA_TIPLERI, ALL_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
@@ -77,6 +77,11 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
   
   // Yeni ödeme detayları
   const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi | null>(file?.hesap_sahibi || null);
+  type PesinYontem = "nakit" | "hesaba" | "pos";
+  const [pesinYontem, setPesinYontem] = useState<PesinYontem>(file?.hesap_sahibi ? "hesaba" : "nakit");
+  const [pesinPosTl, setPesinPosTl] = useState("");
+  const [pesinPosKartTutar, setPesinPosKartTutar] = useState("");
+  const [pesinPosKartCurrency, setPesinPosKartCurrency] = useState<"USD" | "EUR">("USD");
   const [onOdemeVar, setOnOdemeVar] = useState(!!file?.on_odeme_tutar);
   const [onOdemeTutar, setOnOdemeTutar] = useState(file?.on_odeme_tutar?.toString() || "");
   const [onOdemeCurrency, setOnOdemeCurrency] = useState<ParaBirimi>(file?.on_odeme_currency || "TL");
@@ -246,6 +251,30 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     );
   }, [companies, companySearch]);
 
+  const applyPesinPosDefaults = useCallback(() => {
+    const uN = parseFloat(ucret) || 0;
+    const dN = showDavetiyeUcreti ? parseFloat(davetiyeUcreti || "0") : 0;
+    const getRate = (c: ParaBirimi) => (c === "TL" ? 1 : Number(exchangeRates[c]) || 0);
+    const conv = (amt: number, fr: ParaBirimi, to: ParaBirimi) => {
+      if (fr === to) return amt;
+      const frR = getRate(fr);
+      const toR = getRate(to);
+      if (!frR || !toR) return amt;
+      return (amt * frR) / toR;
+    };
+    const dMain = showDavetiyeUcreti ? conv(dN, davetiyeUcretiCurrency, ucretCurrency) : 0;
+    const total = Math.round((uN + dMain) * 100) / 100;
+    const tlRounded = ucretCurrency === "TL" ? total : Math.round(total * getRate(ucretCurrency));
+    setPesinPosTl(String(tlRounded));
+    if (ucretCurrency === "USD" || ucretCurrency === "EUR") {
+      setPesinPosKartTutar(String(total));
+      setPesinPosKartCurrency(ucretCurrency);
+    } else {
+      setPesinPosKartTutar("");
+      setPesinPosKartCurrency("USD");
+    }
+  }, [ucret, davetiyeUcreti, showDavetiyeUcreti, davetiyeUcretiCurrency, ucretCurrency, exchangeRates]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -257,7 +286,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     if (odemePlani === "firma_cari" && !selectedCompany) { setError("Firma seçimi zorunludur"); return; }
     if (!ucret || parseFloat(ucret) <= 0) { setError("Ücret zorunludur"); return; }
     if (showDavetiyeUcreti && (!davetiyeUcreti || parseFloat(davetiyeUcreti) <= 0)) { setError("Davetiye ücreti girin"); return; }
-    if (odemePlani === "pesin" && hesapSahibi !== null && !hesapSahibi) { setError("Hesap sahibi seçimi zorunludur"); return; }
+    if (odemePlani === "pesin" && pesinYontem === "hesaba" && !hesapSahibi) { setError("Hesap sahibi seçimi zorunludur"); return; }
+    if (odemePlani === "pesin" && pesinYontem === "pos" && (!pesinPosTl || parseFloat(pesinPosTl) <= 0)) { setError("POS için hesaba geçen TL tutarını girin"); return; }
     if (onOdemeVar && (!onOdemeTutar || parseFloat(onOdemeTutar) <= 0)) { setError("Ön ödeme tutarı zorunludur"); return; }
 
     setIsLoading(true);
@@ -344,7 +374,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         odeme_plani: odemePlani === "firma_cari" ? "cari" as OdemePlani : odemePlani as OdemePlani,
         odeme_durumu: (odemePlani === "pesin" ? "odendi" : "odenmedi") as "odendi" | "odenmedi",
         // Yeni ödeme detayları
-        hesap_sahibi: (odemePlani === "pesin" && hesapSahibi) ? hesapSahibi : null,
+        hesap_sahibi: (odemePlani === "pesin" && pesinYontem === "hesaba" && hesapSahibi) ? hesapSahibi : null,
         cari_tipi: odemePlani === "firma_cari" ? "firma_cari" : (odemePlani === "cari" ? "kullanici_cari" : null),
         cari_sahibi: (odemePlani === "cari" && cariSahibi) ? cariSahibi : null,
         company_id: (odemePlani === "firma_cari" && selectedCompany) ? selectedCompany.id : null,
@@ -393,14 +423,21 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
         if (changedToPesin) {
           try {
+            const yDb = pesinYontem === "hesaba" ? "hesaba" : pesinYontem === "pos" ? "pos" : "nakit";
+            const tKayit = pesinYontem === "pos" ? parseFloat(pesinPosTl) : totalDosyaAmount;
+            const cKayit = pesinYontem === "pos" ? ("TL" as const) : ucretCurrency;
+            const pdn = pesinYontem === "pos" && pesinPosKartTutar && parseFloat(pesinPosKartTutar) > 0 ? parseFloat(pesinPosKartTutar) : null;
+            const pdc = pdn ? pesinPosKartCurrency : null;
             await supabase.from("payments").insert({
               file_id: file.id,
-              tutar: totalDosyaAmount,
-              yontem: hesapSahibi ? "hesaba" : "nakit",
+              tutar: tKayit,
+              yontem: yDb,
               durum: "odendi",
-              currency: ucretCurrency,
+              currency: cKayit,
               payment_type: "pesin_satis",
               created_by: user.id,
+              pos_doviz_tutar: pdn,
+              pos_doviz_currency: pdc,
             });
             await fetch("/api/send-tahsilat-email", {
               method: "POST",
@@ -410,10 +447,12 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                 senderName: userName,
                 musteriAd: musteriAd.trim(),
                 hedefUlke: finalUlke,
-                tutar: totalDosyaAmount,
-                currency: ucretCurrency,
-                yontem: hesapSahibi ? "hesaba" : "nakit",
-                hesapSahibi: hesapSahibi,
+                tutar: tKayit,
+                currency: cKayit,
+                yontem: yDb,
+                posDovizTutar: pdn,
+                posDovizCurrency: pdc,
+                hesapSahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
                 emailType: "pesin_satis",
                 ucretDetay: {
                   vizeTutar: ucretNum,
@@ -456,20 +495,30 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
           // Peşin satışta otomatik ödeme kaydı oluştur
           if (odemePlani === "pesin") {
+            const yDb = pesinYontem === "hesaba" ? "hesaba" : pesinYontem === "pos" ? "pos" : "nakit";
+            const tKayit = pesinYontem === "pos" ? parseFloat(pesinPosTl) : totalDosyaAmount;
+            const cKayit = pesinYontem === "pos" ? ("TL" as const) : ucretCurrency;
+            const pdn = pesinYontem === "pos" && pesinPosKartTutar && parseFloat(pesinPosKartTutar) > 0 ? parseFloat(pesinPosKartTutar) : null;
+            const pdc = pdn ? pesinPosKartCurrency : null;
+
             await supabase.from("payments").insert({
               file_id: newFile.id,
-              tutar: totalDosyaAmount,
-              yontem: hesapSahibi ? "hesaba" : "nakit",
+              tutar: tKayit,
+              yontem: yDb,
               durum: "odendi",
-              currency: ucretCurrency,
+              currency: cKayit,
               payment_type: "pesin_satis",
               created_by: user.id,
+              pos_doviz_tutar: pdn,
+              pos_doviz_currency: pdc,
             });
 
             const validPesinEntries = pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
-            const breakdownText = validPesinEntries.length > 0
-              ? validPesinEntries.map(e => `${parseFloat(e.amount).toLocaleString("tr-TR")} ${e.currency}`).join(" + ")
-              : `${totalDosyaAmount} ${ucretCurrency}`;
+            const breakdownText = pesinYontem === "pos"
+              ? `${parseFloat(pesinPosTl).toLocaleString("tr-TR")} TL (POS)${pdn ? ` · slip ${pdn} ${pdc}` : ""}`
+              : validPesinEntries.length > 0
+                ? validPesinEntries.map(e => `${parseFloat(e.amount).toLocaleString("tr-TR")} ${e.currency}`).join(" + ")
+                : `${totalDosyaAmount} ${ucretCurrency}`;
 
             await supabase.from("activity_logs").insert({
               type: "payment_added",
@@ -482,7 +531,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
             try {
               let dekontBase64: string | null = null;
               let dekontName: string | null = null;
-              if (dekontFile && hesapSahibi) {
+              if (dekontFile && pesinYontem === "hesaba" && hesapSahibi) {
                 dekontBase64 = await fileToBase64(dekontFile);
                 dekontName = dekontFile.name;
               }
@@ -494,10 +543,12 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   senderName: userName,
                   musteriAd: musteriAd.trim(),
                   hedefUlke: finalUlke,
-                  tutar: totalDosyaAmount,
-                  currency: ucretCurrency,
-                  yontem: hesapSahibi ? "hesaba" : "nakit",
-                  hesapSahibi: hesapSahibi,
+                  tutar: tKayit,
+                  currency: cKayit,
+                  yontem: yDb,
+                  posDovizTutar: pdn,
+                  posDovizCurrency: pdc,
+                  hesapSahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
                   companyInfo: selectedCompany,
                   faturaTipi: String(odemePlani) === "firma_cari" ? faturaTipi : null,
                   emailType: "pesin_satis",
@@ -505,8 +556,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   dekontName,
                   dosyaCurrency: ucretCurrency,
                   dosyaTutar: totalDosyaAmount,
-                  tlKarsiligi: validPesinEntries.length === 1 && validPesinEntries[0].currency === "TL" && ucretCurrency !== "TL" ? validPesinEntries[0].amount : null,
-                  paymentBreakdown: validPesinEntries.length > 1 ? validPesinEntries.map(e => ({ tutar: parseFloat(e.amount), currency: e.currency })) : null,
+                  tlKarsiligi: pesinYontem === "pos" ? null : validPesinEntries.length === 1 && validPesinEntries[0].currency === "TL" && ucretCurrency !== "TL" ? validPesinEntries[0].amount : null,
+                  paymentBreakdown: pesinYontem === "pos" ? null : validPesinEntries.length > 1 ? validPesinEntries.map(e => ({ tutar: parseFloat(e.amount), currency: e.currency })) : null,
                   ucretDetay: {
                     vizeTutar: ucretNum,
                     vizeCurrency: ucretCurrency,
@@ -807,17 +858,40 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         {odemePlani === "pesin" && (
           <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
             <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Ödeme Yöntemi</p>
-            <div className="grid grid-cols-2 gap-2">
-              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${!hesapSahibi ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-                <input type="radio" checked={!hesapSahibi} onChange={() => setHesapSahibi(null)} className="sr-only" />
+            <div className="grid grid-cols-3 gap-2">
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${pesinYontem === "nakit" ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" name="pesinYontem" checked={pesinYontem === "nakit"} onChange={() => { setPesinYontem("nakit"); setHesapSahibi(null); }} className="sr-only" />
                 Nakit
               </label>
-              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${hesapSahibi ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-                <input type="radio" checked={!!hesapSahibi} onChange={() => setHesapSahibi("DAVUT_TURGUT")} className="sr-only" />
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${pesinYontem === "hesaba" ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" name="pesinYontem" checked={pesinYontem === "hesaba"} onChange={() => { setPesinYontem("hesaba"); setHesapSahibi("DAVUT_TURGUT"); }} className="sr-only" />
                 Hesaba
               </label>
+              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${pesinYontem === "pos" ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                <input type="radio" name="pesinYontem" checked={pesinYontem === "pos"} onChange={() => { setPesinYontem("pos"); setHesapSahibi(null); applyPesinPosDefaults(); }} className="sr-only" />
+                POS
+              </label>
             </div>
-            {ucretCurrency !== "TL" && ucret && parseFloat(ucret) > 0 && exchangeRates[ucretCurrency] > 0 && (
+
+            {pesinYontem === "pos" && (
+              <div className="space-y-2 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+                <p className="text-xs font-semibold text-violet-800">Hesaba geçen tutar (TL)</p>
+                <Input type="number" placeholder="0" value={pesinPosTl} onChange={(e) => setPesinPosTl(e.target.value)} required={pesinYontem === "pos"} />
+                <p className="text-xs font-semibold text-violet-800 mt-2">Karttan çekilen (isteğe bağlı)</p>
+                <p className="text-[10px] text-violet-700">Slip’te USD/EUR görünüyorsa girin; mailde döviz ve TL birlikte yer alır.</p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 min-w-0">
+                    <Input type="number" placeholder="Tutar" value={pesinPosKartTutar} onChange={(e) => setPesinPosKartTutar(e.target.value)} />
+                  </div>
+                  <select value={pesinPosKartCurrency} onChange={(e) => setPesinPosKartCurrency(e.target.value as "USD" | "EUR")} className="w-24 px-2 py-2.5 border border-violet-300 rounded-lg text-sm shrink-0">
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {pesinYontem !== "pos" && ucretCurrency !== "TL" && ucret && parseFloat(ucret) > 0 && exchangeRates[ucretCurrency] > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Ödeme Kalemleri</p>
@@ -908,7 +982,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
               </div>
             )}
 
-            {hesapSahibi && (
+            {pesinYontem === "hesaba" && hesapSahibi && (
               <>
                 <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi || ""} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
                 <div>

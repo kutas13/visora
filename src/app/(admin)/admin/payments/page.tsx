@@ -233,8 +233,8 @@ export default function AdminPaymentsPage() {
                     {p.payment_type === "firma_cari" ? (
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-50 text-purple-600">Fatura</span>
                     ) : (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.yontem === "nakit" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                        {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${p.yontem === "nakit" ? "bg-green-100 text-green-700" : p.yontem === "pos" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700"}`}>
+                        {p.yontem === "nakit" ? "Nakit" : p.yontem === "pos" ? "POS" : "Hesaba"}
                       </span>
                     )}
                   </td>

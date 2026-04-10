@@ -192,7 +192,7 @@ export async function notifyPaymentReceived(
 ) {
   const timestamp = Date.now();
   const formattedAmount = new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(amount);
-  const methodText = method === "nakit" ? "Nakit" : "Cari";
+  const methodText = method === "nakit" ? "Nakit" : method === "pos" ? "POS" : method === "hesaba" ? "Hesaba" : "Cari";
 
   // Tahsilat yapan kişiye
   await createNotification({

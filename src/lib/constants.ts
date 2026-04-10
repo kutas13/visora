@@ -59,6 +59,7 @@ export const VIZE_SONUCLARI = [
 export const ODEME_YONTEMLERI = [
   { value: "nakit", label: "Nakit (Cariden Düşüş)" },
   { value: "hesaba", label: "Hesaba" },
+  { value: "pos", label: "POS (hesaba TL)" },
 ] as const;
 
 // Ödeme durumları

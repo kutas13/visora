@@ -61,6 +61,8 @@ export default function PaymentsPage() {
   const [stats, setStats] = useState<Record<string, number>>({ TL: 0, EUR: 0, USD: 0 });
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
+  const [posKartTutar, setPosKartTutar] = useState("");
+  const [posKartCurrency, setPosKartCurrency] = useState<"USD" | "EUR">("USD");
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 49.50, EUR: 53.00, TL: 1 });
   const [ratesLoading, setRatesLoading] = useState(false);
 
@@ -75,6 +77,8 @@ export default function PaymentsPage() {
   const [bulkPaymentEntries, setBulkPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
   const [bulkDekontFile, setBulkDekontFile] = useState<File | null>(null);
   const [bulkDekontPreview, setBulkDekontPreview] = useState<string | null>(null);
+  const [bulkPosKartTutar, setBulkPosKartTutar] = useState("");
+  const [bulkPosKartCurrency, setBulkPosKartCurrency] = useState<"USD" | "EUR">("USD");
 
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -200,6 +204,8 @@ export default function PaymentsPage() {
     const tahsilatTutari = getTotalDosyaAmount(file);
     setPaymentEntries([{ amount: tahsilatTutari?.toString() || "", currency: file.ucret_currency || "TL" }]);
     setYontem("nakit");
+    setPosKartTutar("");
+    setPosKartCurrency(file.ucret_currency === "EUR" ? "EUR" : "USD");
     setNotlar("");
     setDekontFile(null);
     setDekontPreview(null);
@@ -207,6 +213,7 @@ export default function PaymentsPage() {
   };
 
   const addPaymentEntry = () => {
+    if (yontem === "pos") return;
     setPaymentEntries(prev => [...prev, { amount: "", currency: "TL" }]);
   };
 
@@ -216,7 +223,51 @@ export default function PaymentsPage() {
   };
 
   const updatePaymentEntry = (index: number, field: "amount" | "currency", value: string) => {
+    if (yontem === "pos" && field === "currency") return;
     setPaymentEntries(prev => prev.map((e, i) => i === index ? { ...e, [field]: value } : e));
+  };
+
+  const onTahsilatYontemChange = (v: string) => {
+    setYontem(v);
+    if (v === "pos" && selectedFile) {
+      setPaymentEntries((prev) => {
+        const v0 = prev.find((e) => e.amount && parseFloat(e.amount) > 0) || prev[0];
+        if (v0 && v0.currency !== "TL" && exchangeRates[v0.currency]) {
+          const tl = Math.round(parseFloat(v0.amount) * exchangeRates[v0.currency]).toString();
+          return [{ amount: tl, currency: "TL" }];
+        }
+        if (v0?.currency === "TL") return [{ amount: v0.amount, currency: "TL" }];
+        const fc = selectedFile.ucret_currency || "TL";
+        if (fc !== "TL" && exchangeRates[fc]) {
+          const tl = Math.round(getTotalDosyaAmount(selectedFile) * exchangeRates[fc]).toString();
+          return [{ amount: tl, currency: "TL" }];
+        }
+        return [{ amount: v0?.amount || "", currency: "TL" }];
+      });
+      setPosKartCurrency(selectedFile.ucret_currency === "EUR" ? "EUR" : "USD");
+    }
+    if (v !== "pos") setPosKartTutar("");
+  };
+
+  const onBulkYontemChange = (v: string) => {
+    setBulkYontem(v);
+    if (v === "pos") {
+      setBulkPaymentEntries((prev) => {
+        const v0 = prev.find((e) => e.amount && parseFloat(e.amount) > 0) || prev[0];
+        if (v0 && v0.currency !== "TL" && exchangeRates[v0.currency]) {
+          const tl = Math.round(parseFloat(v0.amount) * exchangeRates[v0.currency]).toString();
+          return [{ amount: tl, currency: "TL" }];
+        }
+        if (v0?.currency === "TL") return [{ amount: v0.amount, currency: "TL" }];
+        const totalTL = selectedFiles.reduce((sum, f) => {
+          const amount = getTotalDosyaAmount(f);
+          const curr = f.ucret_currency || "TL";
+          return sum + (curr === "TL" ? amount : amount * (exchangeRates[curr] || 0));
+        }, 0);
+        return [{ amount: Math.round(totalTL).toString(), currency: "TL" }];
+      });
+    }
+    if (v !== "pos") setBulkPosKartTutar("");
   };
 
   const hasValidEntries = paymentEntries.some(e => e.amount && parseFloat(e.amount) > 0);
@@ -225,6 +276,13 @@ export default function PaymentsPage() {
     if (!selectedFile || !hasValidEntries) {
       alert("Lütfen en az bir geçerli tutar girin");
       return;
+    }
+    if (yontem === "pos") {
+      const cur = paymentEntries.find((e) => e.amount && parseFloat(e.amount) > 0)?.currency;
+      if (cur && cur !== "TL") {
+        alert("POS tahsilatında yalnızca TL tutarı kaydedilir. Lütfen tutarı TL olarak girin.");
+        return;
+      }
     }
     setShowModal(false);
     setShowConfirmModal(true);
@@ -245,15 +303,21 @@ export default function PaymentsPage() {
       const validEntries = paymentEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
       const primaryEntry = validEntries[0];
       const primaryAmount = parseFloat(primaryEntry.amount);
+      const effectiveCurrency = (yontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
+
+      const posDovizNum = yontem === "pos" && posKartTutar && parseFloat(posKartTutar) > 0 ? parseFloat(posKartTutar) : null;
+      const posDovizCurr = posDovizNum ? posKartCurrency : null;
 
       const { error: paymentError } = await supabase.from("payments").insert({
         file_id: selectedFile.id,
         tutar: primaryAmount,
-        yontem: yontem as "nakit" | "hesaba",
+        yontem: yontem as "nakit" | "hesaba" | "pos",
         durum: "odendi",
-        currency: primaryEntry.currency,
+        currency: effectiveCurrency,
         payment_type: "tahsilat",
         created_by: user.id,
+        pos_doviz_tutar: posDovizNum,
+        pos_doviz_currency: posDovizCurr,
       });
 
       if (paymentError) throw paymentError;
@@ -261,7 +325,9 @@ export default function PaymentsPage() {
       const { error: updateError } = await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", selectedFile.id);
       if (updateError) throw updateError;
 
-      const breakdownText = validEntries.map(e => formatCurrency(parseFloat(e.amount), e.currency)).join(" + ");
+      const breakdownText = validEntries.map((e) =>
+        formatCurrency(parseFloat(e.amount), yontem === "pos" ? "TL" : e.currency)
+      ).join(" + ");
 
       await supabase.from("activity_logs").insert({
         type: "payment_added",
@@ -291,7 +357,12 @@ export default function PaymentsPage() {
         })) : null;
 
         // TL karşılığı hesapla (dosya farklı currency, tahsilat TL ise)
-        const tlKarsiligi = selectedFile.ucret_currency !== "TL" && primaryEntry.currency === "TL" ? primaryAmount.toString() : null;
+        const tlKarsiligi =
+          yontem === "pos"
+            ? null
+            : selectedFile.ucret_currency !== "TL" && primaryEntry.currency === "TL"
+              ? primaryAmount.toString()
+              : null;
 
         const emailRes = await fetch("/api/send-tahsilat-email", {
           method: "POST",
@@ -302,8 +373,10 @@ export default function PaymentsPage() {
             musteriAd: selectedFile.musteri_ad,
             hedefUlke: selectedFile.hedef_ulke,
             tutar: primaryAmount,
-            currency: primaryEntry.currency,
+            currency: effectiveCurrency,
             yontem: yontem,
+            posDovizTutar: posDovizNum,
+            posDovizCurrency: posDovizCurr,
             hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
             notlar: notlar.trim() || null,
             paymentBreakdown,
@@ -339,6 +412,7 @@ export default function PaymentsPage() {
       setPaymentEntries([{ amount: "", currency: "TL" }]);
       setDekontFile(null);
       setDekontPreview(null);
+      setPosKartTutar("");
       loadData();
     } catch (err) {
       console.error(err);
@@ -377,6 +451,8 @@ export default function PaymentsPage() {
     if (selectedFiles.length === 0) return;
     setBulkPaymentEntries([{ amount: "", currency: "TL" }]);
     setBulkYontem("nakit");
+    setBulkPosKartTutar("");
+    setBulkPosKartCurrency("USD");
     setBulkNotlar("");
     setBulkDekontFile(null);
     setBulkDekontPreview(null);
@@ -385,6 +461,13 @@ export default function PaymentsPage() {
 
   const handleBulkConfirm = () => {
     if (!bulkValidEntries.length) { alert("Lütfen en az bir geçerli tutar girin"); return; }
+    if (bulkYontem === "pos") {
+      const cur = bulkPaymentEntries.find((e) => e.amount && parseFloat(e.amount) > 0)?.currency;
+      if (cur && cur !== "TL") {
+        alert("POS tahsilatında yalnızca TL tutarı kaydedilir. Lütfen tutarı TL olarak girin.");
+        return;
+      }
+    }
     setShowBulkModal(false);
     setShowBulkConfirmModal(true);
   };
@@ -399,22 +482,27 @@ export default function PaymentsPage() {
 
       const primaryEntry = bulkValidEntries[0];
       const primaryAmount = parseFloat(primaryEntry.amount);
+      const effectiveBulkCurrency = (bulkYontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
       const perFileAmount = Math.round((primaryAmount / selectedFiles.length) * 100) / 100;
+      const bulkPosNum = bulkYontem === "pos" && bulkPosKartTutar && parseFloat(bulkPosKartTutar) > 0 ? parseFloat(bulkPosKartTutar) : null;
+      const bulkPosCurr = bulkPosNum ? bulkPosKartCurrency : null;
 
       for (const file of selectedFiles) {
         await supabase.from("payments").insert({
           file_id: file.id,
           tutar: perFileAmount,
-          yontem: bulkYontem as "nakit" | "hesaba",
+          yontem: bulkYontem as "nakit" | "hesaba" | "pos",
           durum: "odendi",
-          currency: primaryEntry.currency,
+          currency: effectiveBulkCurrency,
           payment_type: "tahsilat",
           created_by: user.id,
+          pos_doviz_tutar: bulkPosNum,
+          pos_doviz_currency: bulkPosCurr,
         });
         await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);
         await supabase.from("activity_logs").insert({
           type: "payment_added",
-          message: `${file.musteri_ad} için toplu tahsilat alındı: ${formatCurrency(perFileAmount, primaryEntry.currency)}`,
+          message: `${file.musteri_ad} için toplu tahsilat alındı: ${formatCurrency(perFileAmount, effectiveBulkCurrency)}`,
           file_id: file.id,
           actor_id: user.id,
         });
@@ -438,7 +526,7 @@ export default function PaymentsPage() {
           musteriAd: file.musteri_ad,
           hedefUlke: file.hedef_ulke,
           tutar: perFileAmount,
-          currency: primaryEntry.currency,
+          currency: effectiveBulkCurrency,
           dosyaCurrency: file.ucret_currency,
           dosyaTutar: getTotalDosyaAmount(file),
           ucretDetay: {
@@ -458,8 +546,10 @@ export default function PaymentsPage() {
             musteriAd: selectedFiles.map(f => f.musteri_ad).join(", "),
             hedefUlke: selectedFiles[0].hedef_ulke,
             tutar: primaryAmount,
-            currency: primaryEntry.currency,
+            currency: effectiveBulkCurrency,
             yontem: bulkYontem,
+            posDovizTutar: bulkPosNum,
+            posDovizCurrency: bulkPosCurr,
             hesapSahibi: bulkYontem === "hesaba" ? bulkHesapSahibi : null,
             notlar: bulkNotlar.trim() || null,
             emailType: "tahsilat",
@@ -633,8 +723,8 @@ export default function PaymentsPage() {
                         {p.payment_type === "pesin_satis" ? "Peşin" : p.payment_type === "firma_cari" ? "Firma Cari" : "Tahsilat"}
                       </span>
                       {p.payment_type !== "firma_cari" && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.yontem === "nakit" ? "bg-emerald-50 text-emerald-700" : "bg-indigo-50 text-indigo-700"}`}>
-                          {p.yontem === "nakit" ? "Nakit" : "Hesaba"}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.yontem === "nakit" ? "bg-emerald-50 text-emerald-700" : p.yontem === "pos" ? "bg-violet-50 text-violet-700" : "bg-indigo-50 text-indigo-700"}`}>
+                          {p.yontem === "nakit" ? "Nakit" : p.yontem === "pos" ? "POS" : "Hesaba"}
                         </span>
                       )}
                     </div>
@@ -671,10 +761,12 @@ export default function PaymentsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Ödeme Kalemleri</p>
+                {yontem !== "pos" && (
                 <button type="button" onClick={addPaymentEntry} className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                   Kalem Ekle
                 </button>
+                )}
               </div>
               {paymentEntries.map((entry, index) => (
                 <div key={index} className="flex items-end gap-2">
@@ -689,13 +781,14 @@ export default function PaymentsPage() {
                   </div>
                   <div className="w-24">
                     <select
-                      value={entry.currency}
+                      value={yontem === "pos" ? "TL" : entry.currency}
                       onChange={(e) => updatePaymentEntry(index, "currency", e.target.value)}
-                      className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      disabled={yontem === "pos"}
+                      className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-navy-100 disabled:text-navy-500"
                     >
                       <option value="TL">TL ₺</option>
-                      <option value="EUR">EUR €</option>
-                      <option value="USD">USD $</option>
+                      {yontem !== "pos" && <option value="EUR">EUR €</option>}
+                      {yontem !== "pos" && <option value="USD">USD $</option>}
                     </select>
                   </div>
                   {paymentEntries.length > 1 && (
@@ -716,7 +809,7 @@ export default function PaymentsPage() {
               )}
 
               {/* Hızlı Dönüşüm Butonları */}
-              {selectedFile && selectedFile.ucret_currency !== "TL" && (
+              {selectedFile && selectedFile.ucret_currency !== "TL" && yontem !== "pos" && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Oto Kur</p>
@@ -833,7 +926,26 @@ export default function PaymentsPage() {
               )}
             </div>
 
-            <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={yontem} onChange={(e) => setYontem(e.target.value)} />
+            <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={yontem} onChange={(e) => onTahsilatYontemChange(e.target.value)} />
+
+            {yontem === "pos" && (
+              <div className="space-y-2 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+                <p className="text-xs font-semibold text-violet-800 uppercase tracking-wide">POS — karttan çekilen (isteğe bağlı)</p>
+                <p className="text-[10px] text-violet-700 leading-relaxed">Hesaba yansıyan tutarı yukarıda <strong>TL</strong> girin. Slip’te döviz görünüyorsa tutarı ve birimi yazın; mailde hem döviz hem TL belirtilir.</p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1 min-w-0">
+                    <Input label="Karttan çekilen" type="number" placeholder="Örn. 100" value={posKartTutar} onChange={(e) => setPosKartTutar(e.target.value)} />
+                  </div>
+                  <div className="w-24 shrink-0">
+                    <label className="block text-[10px] font-medium text-violet-700 mb-1">Birim</label>
+                    <select value={posKartCurrency} onChange={(e) => setPosKartCurrency(e.target.value as "USD" | "EUR")} className="w-full px-2 py-2.5 border border-violet-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {yontem === "hesaba" && (
               <div className="space-y-3">
@@ -908,7 +1020,7 @@ export default function PaymentsPage() {
                 <p className="text-xs text-emerald-600 mt-2 bg-emerald-100 rounded-full px-3 py-1 inline-block">Karışık döviz ödemesi</p>
               )}
               <p className="text-xs text-navy-500 mt-2">
-                {yontem === "nakit" ? "Nakit" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
+                {yontem === "nakit" ? "Nakit" : yontem === "pos" ? "POS" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
               </p>
             </div>
 
@@ -949,10 +1061,10 @@ export default function PaymentsPage() {
                   <Input label={index === 0 ? "Tutar" : undefined} type="number" placeholder="0" value={entry.amount} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, amount: e.target.value } : en))} />
                 </div>
                 <div className="w-24">
-                  <select value={entry.currency} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value as ParaBirimi } : en))} className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500">
+                  <select value={bulkYontem === "pos" ? "TL" : entry.currency} disabled={bulkYontem === "pos"} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value as ParaBirimi } : en))} className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-navy-100">
                     <option value="TL">TL</option>
-                    <option value="EUR">EUR</option>
-                    <option value="USD">USD</option>
+                    {bulkYontem !== "pos" && <option value="EUR">EUR</option>}
+                    {bulkYontem !== "pos" && <option value="USD">USD</option>}
                   </select>
                 </div>
               </div>
@@ -960,7 +1072,7 @@ export default function PaymentsPage() {
           </div>
 
           {/* Oto Kur - Toplu */}
-          {selectedFiles.length > 0 && selectedFiles.some(f => (f.ucret_currency || "TL") !== "TL") && (
+          {selectedFiles.length > 0 && bulkYontem !== "pos" && selectedFiles.some(f => (f.ucret_currency || "TL") !== "TL") && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Oto Kur</p>
@@ -1037,7 +1149,23 @@ export default function PaymentsPage() {
             </div>
           )}
 
-          <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={bulkYontem} onChange={(e) => setBulkYontem(e.target.value)} />
+          <Select label="Ödeme Yöntemi" options={ODEME_YONTEMLERI} value={bulkYontem} onChange={(e) => onBulkYontemChange(e.target.value)} />
+
+          {bulkYontem === "pos" && (
+            <div className="space-y-2 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+              <p className="text-xs font-semibold text-violet-800">Toplam POS slip (isteğe bağlı)</p>
+              <p className="text-[10px] text-violet-700">Tutar yukarıda TL olmalı. Tüm toplam için tek slip dövizi varsa girin.</p>
+              <div className="flex gap-2 items-end">
+                <div className="flex-1 min-w-0">
+                  <Input type="number" placeholder="Karttan çekilen" value={bulkPosKartTutar} onChange={(e) => setBulkPosKartTutar(e.target.value)} />
+                </div>
+                <select value={bulkPosKartCurrency} onChange={(e) => setBulkPosKartCurrency(e.target.value as "USD" | "EUR")} className="w-24 px-2 py-2.5 border border-violet-300 rounded-lg text-sm">
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {bulkYontem === "hesaba" && (
             <div className="space-y-3">
@@ -1081,7 +1209,7 @@ export default function PaymentsPage() {
               <p key={i} className="text-2xl font-black text-emerald-700">{formatCurrency(parseFloat(e.amount), e.currency)}</p>
             ))}
             <p className="text-xs text-navy-500 mt-2">
-              {bulkYontem === "nakit" ? "Nakit" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === bulkHesapSahibi) || {label: ""}).label})`}
+              {bulkYontem === "nakit" ? "Nakit" : bulkYontem === "pos" ? "POS" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === bulkHesapSahibi) || {label: ""}).label})`}
             </p>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">

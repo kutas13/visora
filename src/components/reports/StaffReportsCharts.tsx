@@ -98,9 +98,11 @@ export default function StaffReportsCharts({ files, allFiles, payments, allPayme
   const paymentMethods = useMemo(() => {
     const nakit = payments.filter((p) => p.yontem === "nakit").length;
     const hesaba = payments.filter((p) => p.yontem === "hesaba").length;
+    const pos = payments.filter((p) => p.yontem === "pos").length;
     return [
       { name: "Nakit", value: nakit },
       { name: "Hesaba", value: hesaba },
+      { name: "POS", value: pos },
     ].filter((d) => d.value > 0);
   }, [payments]);
 

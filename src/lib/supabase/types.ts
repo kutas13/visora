@@ -4,7 +4,7 @@ export type EvrakDurumu = "gelmedi" | "geldi";
 export type VizeSonucu = "vize_onay" | "red";
 
 // Ödeme yöntemi
-export type OdemeYontemi = "nakit" | "hesaba";
+export type OdemeYontemi = "nakit" | "hesaba" | "pos";
 
 // Ödeme durumu
 export type OdemeDurumu = "odendi" | "odenmedi";
@@ -122,6 +122,10 @@ export interface Payment {
   durum: OdemeDurumu;
   currency: ParaBirimi;
   payment_type: PaymentType;
+  /** POS’ta karttan çekilen döviz tutarı (bilgi amaçlı) */
+  pos_doviz_tutar?: number | null;
+  /** POS’ta karttan çekilen döviz: USD veya EUR */
+  pos_doviz_currency?: ParaBirimi | null;
   created_at: string;
   created_by: string;
 }
@@ -294,6 +298,8 @@ export interface Database {
           durum?: OdemeDurumu;
           currency?: ParaBirimi;
           payment_type?: PaymentType;
+          pos_doviz_tutar?: number | null;
+          pos_doviz_currency?: ParaBirimi | null;
           created_at?: string;
           created_by: string;
         };
