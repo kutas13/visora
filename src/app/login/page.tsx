@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button, Input, Card, Modal, Badge } from "@/components/ui";
@@ -60,6 +60,86 @@ export default function LoginPage() {
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryResult, setQueryResult] = useState<VisaFile[] | null>(null);
   const [queryError, setQueryError] = useState<string | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queryAbortRef = useRef<AbortController | null>(null);
+  const passportInputRef = useRef(passportNo);
+  passportInputRef.current = passportNo;
+
+  const fetchPassportByTerm = useCallback(async (term: string) => {
+    if (term.length < 2) return;
+
+    queryAbortRef.current?.abort();
+    const ac = new AbortController();
+    queryAbortRef.current = ac;
+
+    setQueryLoading(true);
+    setQueryError(null);
+    setQueryResult(null);
+
+    try {
+      const res = await fetch("/api/passport-query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passportNo: term }),
+        signal: ac.signal,
+      });
+
+      const json = await res.json();
+
+      if (ac.signal.aborted) return;
+      if (passportInputRef.current.trim() !== term) return;
+
+      if (!res.ok) {
+        throw new Error(json.error || "Sorgulama hatası");
+      }
+
+      if (!json.data || json.data.length === 0) {
+        setQueryError("Eşleşen dosya bulunamadı.");
+      } else {
+        setQueryResult(json.data as VisaFile[]);
+      }
+    } catch (err) {
+      if (ac.signal.aborted) return;
+      if (passportInputRef.current.trim() !== term) return;
+      setQueryError(err instanceof Error ? err.message : "Sorgulama sırasında bir hata oluştu.");
+    } finally {
+      if (!ac.signal.aborted && passportInputRef.current.trim() === term) {
+        setQueryLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    const term = passportNo.trim();
+    if (term.length < 2) {
+      queryAbortRef.current?.abort();
+      setQueryResult(null);
+      setQueryError(null);
+      setQueryLoading(false);
+      return;
+    }
+
+    setQueryError(null);
+    setQueryResult(null);
+    setQueryLoading(true);
+
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      void fetchPassportByTerm(term);
+    }, 450);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, [passportNo, fetchPassportByTerm]);
 
   const handleUserSelect = (user: typeof STAFF_USERS[number]) => {
     setSelectedUser(user);
@@ -217,43 +297,26 @@ export default function LoginPage() {
     setNewPasswordConfirm("");
   };
 
-  const handlePassportQuery = async () => {
-    if (!passportNo.trim() || queryLoading) return;
-
-    setQueryLoading(true);
-    setQueryError(null);
-    setQueryResult(null);
-
-    try {
-      // API route kullan (RLS bypass - login sayfasında kullanıcı giriş yapmamış)
-      const res = await fetch("/api/passport-query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ passportNo: passportNo.trim() }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error || "Sorgulama hatası");
-      }
-
-      if (!json.data || json.data.length === 0) {
-        setQueryError("Bu pasaport numarasıyla kayıt bulunamadı.");
-      } else {
-        setQueryResult(json.data as VisaFile[]);
-      }
-    } catch (err) {
-      setQueryError(err instanceof Error ? err.message : "Sorgulama sırasında bir hata oluştu.");
-    } finally {
-      setQueryLoading(false);
+  const handlePassportQuery = () => {
+    const term = passportNo.trim();
+    if (term.length < 2) return;
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
     }
+    void fetchPassportByTerm(term);
   };
 
   const handleClearQuery = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    queryAbortRef.current?.abort();
     setPassportNo("");
     setQueryResult(null);
     setQueryError(null);
+    setQueryLoading(false);
   };
 
   return (
@@ -274,7 +337,9 @@ export default function LoginPage() {
           </div>
 
           <p className="text-navy-600 text-sm mb-4">
-            Pasaport numaranızı veya adınızı girerek vize dosyanızın güncel durumunu öğrenebilirsiniz.
+            Pasaport numaranızı veya adınızı yazın; en az iki karakterden sonra liste otomatik güncellenir. İsterseniz{" "}
+            <span className="font-medium text-navy-700">Sorgula</span> ile hemen arayın. Kayıtta{" "}
+            <span className="font-medium">IBRAHIM</span>, siz <span className="font-medium">İBRAHİM</span> yazsanız da eşleşir.
           </p>
 
           <div className="space-y-4">
@@ -289,7 +354,7 @@ export default function LoginPage() {
             <div className="flex gap-3">
               <Button 
                 onClick={handlePassportQuery} 
-                disabled={!passportNo.trim() || queryLoading}
+                disabled={passportNo.trim().length < 2}
                 className="flex-1"
               >
                 {queryLoading ? "Sorgulanıyor..." : "Sorgula"}
@@ -297,7 +362,6 @@ export default function LoginPage() {
               <Button 
                 variant="outline" 
                 onClick={handleClearQuery}
-                disabled={queryLoading}
               >
                 Temizle
               </Button>
@@ -463,15 +527,23 @@ export default function LoginPage() {
               );
             })()}
 
-            {!queryError && !queryResult && (
+            {!queryError && !queryResult && queryLoading && (
+              <div className="bg-navy-50 rounded-xl p-6 text-center border border-navy-200">
+                <div className="w-12 h-12 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-navy-600 font-medium">Dosyalar aranıyor…</p>
+                <p className="text-navy-400 text-sm mt-1">Yazmaya devam edebilirsiniz</p>
+              </div>
+            )}
+
+            {!queryError && !queryResult && !queryLoading && passportNo.trim().length < 2 && (
               <div className="bg-navy-50 rounded-xl p-6 text-center border border-navy-200">
                 <div className="w-16 h-16 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <svg className="w-8 h-8 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <p className="text-navy-500">Henüz sorgu yapılmadı</p>
-                <p className="text-navy-400 text-sm mt-1">Pasaport numaranızı veya adınızı girin ve sorgula butonuna basın</p>
+                <p className="text-navy-500">Aramaya başlamak için yazın</p>
+                <p className="text-navy-400 text-sm mt-1">En az 2 karakter; yazdıkça sonuçlar gelir veya Sorgula ile hemen arayın</p>
               </div>
             )}
           </div>

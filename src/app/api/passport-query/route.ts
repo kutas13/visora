@@ -1,14 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/security";
+import { sanitizeSearchToken, turkishSearchVariants } from "@/lib/turkishSearch";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting: dakikada max 15 sorgu
+    // Rate limiting (canlı arama + sorgula; yazdıkça istek artabilir)
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const { allowed } = rateLimit(`passport:${clientIp}`, 15, 60_000);
+    const { allowed } = rateLimit(`passport:${clientIp}`, 45, 60_000);
     if (!allowed) {
       return NextResponse.json({ error: "Çok fazla sorgu. Biraz bekleyin." }, { status: 429 });
     }
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const passportNo = body?.passportNo;
 
-    if (!passportNo || typeof passportNo !== "string" || passportNo.trim().length < 2) {
+    if (!passportNo || typeof passportNo !== "string") {
       return NextResponse.json(
         { error: "Geçerli bir pasaport numarası veya müşteri adı girin." },
         { status: 400 }
@@ -36,28 +37,25 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const searchTerm = passportNo.trim();
+    const searchTerm = sanitizeSearchToken(passportNo);
+    if (searchTerm.length < 2) {
+      return NextResponse.json(
+        { error: "Geçerli bir pasaport numarası veya müşteri adı girin." },
+        { status: 400 }
+      );
+    }
 
-    // Basit ILIKE aramaya dön ama Türkçe karakterler için birden fazla sorgu
-    const variants = [
-      searchTerm,
-      searchTerm.replace(/ı/g, 'i').replace(/i/g, 'ı'),
-      searchTerm.replace(/İ/g, 'I').replace(/I/g, 'İ'),
-      searchTerm.replace(/ü/g, 'u').replace(/u/g, 'ü'),
-      searchTerm.replace(/Ü/g, 'U').replace(/U/g, 'Ü'),
-      searchTerm.replace(/ö/g, 'o').replace(/o/g, 'ö'),
-      searchTerm.replace(/Ö/g, 'O').replace(/O/g, 'Ö'),
-      searchTerm.replace(/ş/g, 's').replace(/s/g, 'ş'),
-      searchTerm.replace(/Ş/g, 'S').replace(/S/g, 'Ş'),
-      searchTerm.replace(/ç/g, 'c').replace(/c/g, 'ç'),
-      searchTerm.replace(/Ç/g, 'C').replace(/C/g, 'Ç'),
-      searchTerm.replace(/ğ/g, 'g').replace(/g/g, 'ğ'),
-      searchTerm.replace(/Ğ/g, 'G').replace(/G/g, 'Ğ'),
-    ];
+    const variants = turkishSearchVariants(searchTerm);
+    if (variants.length === 0) {
+      return NextResponse.json(
+        { error: "Geçerli bir pasaport numarası veya müşteri adı girin." },
+        { status: 400 }
+      );
+    }
 
-    const orConditions = variants.flatMap(v => [
+    const orConditions = variants.flatMap((v) => [
       `pasaport_no.ilike.%${v}%`,
-      `musteri_ad.ilike.%${v}%`
+      `musteri_ad.ilike.%${v}%`,
     ]);
 
     const { data, error } = await supabase
