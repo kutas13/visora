@@ -187,6 +187,8 @@ export default function RandevuListesi() {
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
   const [isSirri, setIsSirri] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterUlke, setFilterUlke] = useState("");
 
   // Create form
   const [formUlkeler, setFormUlkeler] = useState<string[]>([]);
@@ -440,7 +442,17 @@ export default function RandevuListesi() {
     }
   };
 
-  const filteredTalepler = talepler.filter(t => showArchived ? t.arsivlendi : !t.arsivlendi);
+  const allUlkeler = Array.from(new Set(talepler.flatMap(t => t.ulkeler))).sort();
+
+  const filteredTalepler = talepler.filter(t => {
+    if (showArchived ? !t.arsivlendi : t.arsivlendi) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!t.dosya_adi.toLowerCase().includes(q) && !t.iletisim.toLowerCase().includes(q)) return false;
+    }
+    if (filterUlke && !t.ulkeler.includes(filterUlke)) return false;
+    return true;
+  });
 
   if (isSirri) {
     return (
@@ -488,6 +500,37 @@ export default function RandevuListesi() {
             Randevu Talebi Oluştur
           </Button>
         </div>
+      </div>
+
+      {/* Arama & Filtre */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="İsim veya iletişim ile ara..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-navy-200 bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-sm shadow-sm"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          )}
+        </div>
+        <select
+          value={filterUlke}
+          onChange={(e) => setFilterUlke(e.target.value)}
+          className="px-4 py-2.5 rounded-xl border border-navy-200 bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-sm shadow-sm min-w-[180px]"
+        >
+          <option value="">Tüm Ülkeler</option>
+          {allUlkeler.map(u => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
       </div>
 
       {/* Liste */}
