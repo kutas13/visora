@@ -175,6 +175,31 @@ export interface Notification {
   unique_key: string | null;
 }
 
+// Randevu Talebi
+export type RandevuVizeTipi = "turistik" | "ticari" | "ogrenci" | "konferans" | "aile" | "arkadas";
+export type RandevuAltKategori = "ilk_vize" | "multi_vize";
+
+export interface RandevuTalebi {
+  id: string;
+  ulkeler: string[];
+  vize_tipi: RandevuVizeTipi;
+  alt_kategori: RandevuAltKategori | null;
+  dosya_adi: string;
+  iletisim: string;
+  gorseller: string[];
+  randevu_tarihi: string | null;
+  randevu_alan_id: string | null;
+  arsivlendi: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RandevuTalebiWithProfile extends RandevuTalebi {
+  profiles: Pick<Profile, "name"> | null;
+  randevu_alan: Pick<Profile, "name"> | null;
+}
+
 // Veritabanı tipleri
 export interface Database {
   public: {
@@ -363,6 +388,25 @@ export interface Database {
           created_by: string;
         };
         Update: Partial<Company>;
+      };
+      randevu_talepleri: {
+        Row: RandevuTalebi;
+        Insert: {
+          id?: string;
+          ulkeler: string[];
+          vize_tipi: RandevuVizeTipi;
+          alt_kategori?: RandevuAltKategori | null;
+          dosya_adi: string;
+          iletisim: string;
+          gorseller?: string[];
+          randevu_tarihi?: string | null;
+          randevu_alan_id?: string | null;
+          arsivlendi?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<RandevuTalebi>;
       };
     };
   };
