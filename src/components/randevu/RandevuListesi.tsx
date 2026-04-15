@@ -30,6 +30,37 @@ const ALT_KATEGORILER = [
   { value: "multi_vize", label: "Son 2 Yıl İçinde Geçerli Olan Vize (Multi)" },
 ];
 
+const ULKE_RENKLERI: Record<string, { bg: string; text: string }> = {
+  "Fransa": { bg: "linear-gradient(135deg, #002395 0%, #002395 33%, #FFFFFF 33%, #FFFFFF 66%, #ED2939 66%, #ED2939 100%)", text: "text-white" },
+  "Hollanda": { bg: "linear-gradient(180deg, #AE1C28 0%, #AE1C28 33%, #FFFFFF 33%, #FFFFFF 66%, #21468B 66%, #21468B 100%)", text: "text-white" },
+  "Bulgaristan": { bg: "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 33%, #00966E 33%, #00966E 66%, #D62612 66%, #D62612 100%)", text: "text-gray-800" },
+  "İtalya": { bg: "linear-gradient(135deg, #009246 0%, #009246 33%, #FFFFFF 33%, #FFFFFF 66%, #CE2B37 66%, #CE2B37 100%)", text: "text-white" },
+  "Almanya": { bg: "linear-gradient(180deg, #000000 0%, #000000 33%, #DD0000 33%, #DD0000 66%, #FFCE00 66%, #FFCE00 100%)", text: "text-white" },
+  "İspanya": { bg: "linear-gradient(180deg, #AA151B 0%, #AA151B 25%, #F1BF00 25%, #F1BF00 75%, #AA151B 75%, #AA151B 100%)", text: "text-white" },
+  "Avusturya": { bg: "linear-gradient(180deg, #ED2939 0%, #ED2939 33%, #FFFFFF 33%, #FFFFFF 66%, #ED2939 66%, #ED2939 100%)", text: "text-white" },
+  "Belçika": { bg: "linear-gradient(135deg, #000000 0%, #000000 33%, #FAE042 33%, #FAE042 66%, #ED2939 66%, #ED2939 100%)", text: "text-yellow-300" },
+  "Portekiz": { bg: "linear-gradient(135deg, #006600 0%, #006600 40%, #FF0000 40%, #FF0000 100%)", text: "text-white" },
+  "Yunanistan": { bg: "linear-gradient(180deg, #0D5EAF 0%, #0D5EAF 50%, #FFFFFF 50%, #FFFFFF 100%)", text: "text-white" },
+  "İsviçre": { bg: "linear-gradient(135deg, #FF0000 0%, #FF0000 100%)", text: "text-white" },
+  "Polonya": { bg: "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 50%, #DC143C 50%, #DC143C 100%)", text: "text-red-700" },
+  "Çekya": { bg: "linear-gradient(135deg, #11457E 0%, #11457E 50%, #D7141A 50%, #D7141A 100%)", text: "text-white" },
+  "Macaristan": { bg: "linear-gradient(180deg, #CE2939 0%, #CE2939 33%, #FFFFFF 33%, #FFFFFF 66%, #477050 66%, #477050 100%)", text: "text-white" },
+  "Danimarka": { bg: "linear-gradient(135deg, #C8102E 0%, #C8102E 100%)", text: "text-white" },
+  "İsveç": { bg: "linear-gradient(135deg, #006AA7 0%, #006AA7 100%)", text: "text-yellow-300" },
+  "Norveç": { bg: "linear-gradient(135deg, #BA0C2F 0%, #BA0C2F 40%, #00205B 40%, #00205B 100%)", text: "text-white" },
+  "Finlandiya": { bg: "linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 50%, #003580 50%, #003580 100%)", text: "text-blue-800" },
+  "Hırvatistan": { bg: "linear-gradient(180deg, #FF0000 0%, #FF0000 33%, #FFFFFF 33%, #FFFFFF 66%, #171796 66%, #171796 100%)", text: "text-white" },
+  "Malta": { bg: "linear-gradient(135deg, #FFFFFF 0%, #FFFFFF 50%, #CF142B 50%, #CF142B 100%)", text: "text-red-700" },
+  "Slovenya": { bg: "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 33%, #003DA5 33%, #003DA5 66%, #ED1C24 66%, #ED1C24 100%)", text: "text-white" },
+  "Slovakya": { bg: "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 33%, #0B4EA2 33%, #0B4EA2 66%, #EE1C25 66%, #EE1C25 100%)", text: "text-white" },
+  "Lüksemburg": { bg: "linear-gradient(180deg, #ED2939 0%, #ED2939 33%, #FFFFFF 33%, #FFFFFF 66%, #00A1DE 66%, #00A1DE 100%)", text: "text-white" },
+  "İzlanda": { bg: "linear-gradient(135deg, #003897 0%, #003897 50%, #D72828 50%, #D72828 100%)", text: "text-white" },
+  "Estonya": { bg: "linear-gradient(180deg, #0072CE 0%, #0072CE 33%, #000000 33%, #000000 66%, #FFFFFF 66%, #FFFFFF 100%)", text: "text-white" },
+  "Letonya": { bg: "linear-gradient(180deg, #9E3039 0%, #9E3039 40%, #FFFFFF 40%, #FFFFFF 60%, #9E3039 60%, #9E3039 100%)", text: "text-white" },
+  "Litvanya": { bg: "linear-gradient(180deg, #FDB913 0%, #FDB913 33%, #006A44 33%, #006A44 66%, #C1272D 66%, #C1272D 100%)", text: "text-white" },
+  "Liechtenstein": { bg: "linear-gradient(180deg, #002B7F 0%, #002B7F 50%, #CE1126 50%, #CE1126 100%)", text: "text-white" },
+};
+
 const AVATAR_MAP: Record<string, string> = {
   DAVUT: "/davut-avatar.png",
   BAHAR: "/bahar-avatar.jpg",
@@ -797,14 +828,28 @@ export default function RandevuListesi() {
 
       {/* ===== DETAIL MODAL ===== */}
       <Modal isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setSelectedTalep(null); }} title="Randevu Talebi Detayı" size="lg">
-        {selectedTalep && (
+        {selectedTalep && (() => {
+          const firstUlke = selectedTalep.ulkeler[0] || "";
+          const flagStyle = ULKE_RENKLERI[firstUlke];
+          const headerBg = flagStyle ? flagStyle.bg : "linear-gradient(135deg, #e0e7ff, #dbeafe)";
+          const headerText = flagStyle ? flagStyle.text : "text-navy-900";
+          return (
           <div className="space-y-5">
-            <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl p-5">
-              <h3 className="text-xl font-bold text-navy-900 mb-1">{selectedTalep.dosya_adi}</h3>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedTalep.ulkeler.map((ulke) => (
-                  <span key={ulke} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">🌍 {ulke}</span>
-                ))}
+            <div className="rounded-xl p-5 relative overflow-hidden" style={{ background: headerBg }}>
+              <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" />
+              <div className="relative z-10">
+                <h3 className={`text-xl font-bold mb-1 ${headerText} drop-shadow-md`}>{selectedTalep.dosya_adi}</h3>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedTalep.ulkeler.map((ulke) => {
+                    const ulkeFlag = ULKE_RENKLERI[ulke];
+                    return (
+                      <span key={ulke} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-white/90 text-navy-800 shadow-sm backdrop-blur-sm">
+                        {ulkeFlag && <span className="w-4 h-3 rounded-sm inline-block border border-white/50 flex-shrink-0" style={{ background: ulkeFlag.bg }} />}
+                        {ulke}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -896,7 +941,8 @@ export default function RandevuListesi() {
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* ===== EDIT MODAL ===== */}
