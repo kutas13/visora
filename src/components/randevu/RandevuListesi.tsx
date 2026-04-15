@@ -68,6 +68,7 @@ const AVATAR_MAP: Record<string, string> = {
   ERCAN: "/ercan-avatar.jpg",
   YUSUF: "/yusuf-avatar.png",
   SIRRI: "/sirri-avatar.png",
+  ZAFER: "/zafer-avatar.png",
 };
 
 const WP_NUMARALARI = [

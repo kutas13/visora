@@ -16,6 +16,7 @@ const USER_AVATARS: Record<string, string> = {
   SIRRI: "/sirri-avatar.png",
   ERCAN: "/ercan-avatar.jpg",
   BAHAR: "/bahar-avatar.jpg",
+  ZAFER: "/zafer-avatar.png",
 };
 
 type SelectedUser = typeof STAFF_USERS[number] | null;
@@ -613,8 +614,14 @@ export default function LoginPage() {
                   onClick={() => handleUserSelect(ZAFER_USER as any)}
                   className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200 border-2 border-teal-200 hover:border-teal-400 rounded-xl transition-all duration-200 group"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
-                    <span className="text-white font-bold text-lg">Z</span>
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all ring-2 ring-teal-200">
+                    <Image
+                      src="/zafer-avatar.png"
+                      alt="ZAFER"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div className="text-left flex-1">
                     <p className="font-bold text-navy-900">{ZAFER_USER.name}</p>
