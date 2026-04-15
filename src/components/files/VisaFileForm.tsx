@@ -962,9 +962,10 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                 {(() => {
                   const base = parseFloat(ucret) || 0;
                   const dav = showDavetiyeUcreti && davetiyeUcreti ? (parseFloat(davetiyeUcreti) || 0) : 0;
+                  const rateOf = (c: string) => c === "TL" ? 1 : (Number(exchangeRates[c]) || 0);
                   const davInMain = dav > 0 && davetiyeUcretiCurrency !== ucretCurrency
-                    ? (exchangeRates[davetiyeUcretiCurrency] && exchangeRates[ucretCurrency]
-                      ? (dav * (davetiyeUcretiCurrency === "TL" ? 1 : exchangeRates[davetiyeUcretiCurrency]) / (ucretCurrency === "TL" ? 1 : exchangeRates[ucretCurrency]))
+                    ? (rateOf(davetiyeUcretiCurrency) && rateOf(ucretCurrency)
+                      ? (dav * rateOf(davetiyeUcretiCurrency) / rateOf(ucretCurrency))
                       : dav)
                     : dav;
                   const total = Math.round((base + davInMain) * 100) / 100;
