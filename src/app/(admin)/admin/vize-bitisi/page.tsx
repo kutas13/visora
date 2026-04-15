@@ -36,6 +36,7 @@ export default function AdminVizeBitisiPage() {
       .from("visa_files")
       .select("*, profiles:assigned_user_id(name)")
       .eq("sonuc", "vize_onay")
+      .eq("arsiv_mi", false)
       .not("vize_bitis_tarihi", "is", null);
 
     const { data: staffData } = await supabase

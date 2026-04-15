@@ -35,6 +35,7 @@ export default function VizeBitisiPage() {
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("sonuc", "vize_onay")
+      .eq("arsiv_mi", false)
       .not("vize_bitis_tarihi", "is", null);
 
     setFiles(data || []);
@@ -226,15 +227,15 @@ export default function VizeBitisiPage() {
                     <div className="text-right">
                       <p className="text-sm font-semibold text-navy-700">Bitiş: {formatDate(file.vize_bitis_tarihi!)}</p>
                       <Badge variant="success" size="sm" className="mt-1">Vize Onay</Badge>
-                      <div className="flex gap-2 mt-3">
+                      <div className="flex flex-wrap gap-2 mt-3">
                         <Button 
                           size="sm" 
                           variant="outline" 
                           onClick={async () => {
-                            if (confirm(`${file.musteri_ad} kaydını silmek istediğinizden emin misiniz?`)) {
+                            if (confirm(`${file.musteri_ad} kaydını kalıcı olarak silmek istediğinizden emin misiniz?`)) {
                               try {
                                 const supabase = createClient();
-                                await supabase.from("visa_files").update({ arsiv_mi: true }).eq("id", file.id);
+                                await supabase.from("visa_files").delete().eq("id", file.id);
                                 loadData();
                               } catch (err) {
                                 alert("Silme hatası");
@@ -247,24 +248,38 @@ export default function VizeBitisiPage() {
                         </Button>
                         <Button 
                           size="sm"
+                          variant="outline"
                           onClick={async () => {
                             try {
                               const supabase = createClient();
-                              // Yeni dosya oluştur (tekrar başvuru)
+                              await supabase.from("visa_files").update({ arsiv_mi: true }).eq("id", file.id);
+                              loadData();
+                            } catch (err) {
+                              alert("Bekletme hatası");
+                            }
+                          }}
+                          className="text-amber-600 hover:bg-amber-50 border-amber-200"
+                        >
+                          ⏸️ Beklet
+                        </Button>
+                        <Button 
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const supabase = createClient();
                               const newFile = {
                                 musteri_ad: file.musteri_ad,
-                                pasaport_no: file.pasaport_no + "-R", // Tekrar başvuru işareti
+                                pasaport_no: file.pasaport_no.replace(/-R+$/, "") + "-R",
                                 hedef_ulke: file.hedef_ulke,
                                 ulke_manuel_mi: file.ulke_manuel_mi,
                                 islem_tipi: file.islem_tipi,
                                 assigned_user_id: file.assigned_user_id,
                                 ucret: file.ucret,
                                 ucret_currency: file.ucret_currency,
-                                odeme_plani: "cari", // Yeni başvuru genelde cari
+                                odeme_plani: "cari",
                                 odeme_durumu: "odenmedi",
                               };
                               await supabase.from("visa_files").insert(newFile);
-                              // Eski dosyayı arşivle
                               await supabase.from("visa_files").update({ arsiv_mi: true }).eq("id", file.id);
                               alert(`✅ ${file.musteri_ad} için yeni başvuru oluşturuldu`);
                               loadData();
