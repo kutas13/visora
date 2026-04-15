@@ -206,6 +206,7 @@ export interface RandevuTalebi {
   randevu_dosyalari: string[];
   hesap_bilgileri: Record<string, HesapBilgileri> | null;
   son_hesap_hatirlatma: string | null;
+  evrak_hatirlatma_gonderildi: boolean;
   arsivlendi: boolean;
   created_by: string | null;
   created_at: string;
