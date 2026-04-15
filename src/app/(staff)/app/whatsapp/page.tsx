@@ -10,6 +10,7 @@ const USER_AVATARS: Record<string, string> = {
   ERCAN: "/ercan-avatar.jpg",
   YUSUF: "/yusuf-avatar.png",
   SIRRI: "/sirri-avatar.png",
+  ZAFER: "/zafer-avatar.png",
 };
 
 const CONTACT_LIST = [

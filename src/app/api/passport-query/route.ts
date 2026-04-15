@@ -7,7 +7,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting (canlı arama + sorgula; yazdıkça istek artabilir)
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { allowed } = rateLimit(`passport:${clientIp}`, 200, 60_000);
     if (!allowed) {

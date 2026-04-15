@@ -43,3 +43,4 @@ whatsapp-service/node_modules/
 whatsapp-service/sent_today.json
 
 .vercel
+.env*.local

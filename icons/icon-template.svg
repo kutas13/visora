@@ -1,0 +1,21 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="56" fill="#4F46E5"/>
+  <circle cx="64" cy="64" r="48" fill="#5B21B6"/>
+  
+  <!-- Form icon -->
+  <rect x="32" y="24" width="64" height="80" rx="8" fill="white" opacity="0.9"/>
+  <rect x="36" y="32" width="56" height="4" rx="2" fill="#4F46E5"/>
+  <rect x="36" y="42" width="40" height="3" rx="1.5" fill="#9CA3AF"/>
+  <rect x="36" y="50" width="48" height="3" rx="1.5" fill="#9CA3AF"/>
+  <rect x="36" y="58" width="36" height="3" rx="1.5" fill="#9CA3AF"/>
+  
+  <!-- Checkmark -->
+  <circle cx="80" cy="80" r="12" fill="#10B981"/>
+  <path d="M75 80 L78 83 L85 76" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Turkish flag element -->
+  <rect x="42" y="70" width="20" height="12" fill="#E53E3E"/>
+  <circle cx="50" cy="76" r="3" fill="white"/>
+  <path d="M53 74 L56 76 L53 78 L54 76 Z" fill="white"/>
+</svg>
