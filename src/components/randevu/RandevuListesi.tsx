@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, Button, Badge } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
-import type { RandevuTalebi, Profile } from "@/lib/supabase/types";
+import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER } from "@/lib/constants";
+import type { RandevuTalebi } from "@/lib/supabase/types";
 
 const SCHENGEN_ULKELERI = [
   "Fransa", "Hollanda", "Bulgaristan", "İtalya",
@@ -29,6 +30,22 @@ const ALT_KATEGORILER = [
   { value: "multi_vize", label: "Son 2 Yıl İçinde Geçerli Olan Vize (Multi)" },
 ];
 
+const AVATAR_MAP: Record<string, string> = {
+  DAVUT: "/davut-avatar.png",
+  BAHAR: "/bahar-avatar.jpg",
+  ERCAN: "/ercan-avatar.jpg",
+  YUSUF: "/yusuf-avatar.png",
+  SIRRI: "/sirri-avatar.png",
+};
+
+const WP_NUMARALARI = [
+  { name: "DAVUT", phone: "905435680874" },
+  { name: "BAHAR", phone: "905055623279" },
+  { name: "ERCAN", phone: "905055623301" },
+  { name: "YUSUF", phone: "905058937071" },
+  { name: "SIRRI", phone: "905078015033" },
+];
+
 interface RandevuRow extends RandevuTalebi {
   profiles: { name: string } | null;
   randevu_alan: { name: string } | null;
@@ -46,6 +63,117 @@ function formatDateTime(dateStr: string) {
   });
 }
 
+function normalizePhone(raw: string) {
+  let phone = raw.replace(/\D/g, "");
+  if (phone.startsWith("0")) phone = "90" + phone.slice(1);
+  if (!phone.startsWith("90")) phone = "90" + phone;
+  return "+" + phone;
+}
+
+// ─── Fullscreen Image Viewer ────────────────────────────────────────────
+function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = `gorsel-${Date.now()}.png`;
+    a.click();
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = "unset"; };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center" onClick={onClose}>
+      {/* Download */}
+      <button
+        onClick={(e) => { e.stopPropagation(); handleDownload(); }}
+        className="absolute top-4 left-4 z-10 w-11 h-11 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white transition-colors"
+        title="İndir"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      </button>
+      {/* Close */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute top-4 right-4 z-10 w-11 h-11 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white transition-colors"
+        title="Kapat"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      {/* Image */}
+      <img
+        src={src}
+        alt="Görsel"
+        className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
+// ─── Country Selector with Search ───────────────────────────────────────
+function CountrySelector({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (val: string[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = search
+    ? SCHENGEN_ULKELERI.filter(u => u.toLowerCase().includes(search.toLowerCase()))
+    : SCHENGEN_ULKELERI;
+
+  return (
+    <div>
+      <label className="block text-sm font-bold text-navy-700 mb-2">Ülkeler *</label>
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Ülke ara..."
+        className="w-full px-4 py-2 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all mb-2 text-sm"
+      />
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-3 bg-navy-50 rounded-xl border border-navy-200">
+        {filtered.map((ulke) => (
+          <label key={ulke} className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all text-sm ${selected.includes(ulke) ? "bg-primary-100 text-primary-700 font-medium" : "hover:bg-navy-100 text-navy-600"}`}>
+            <input
+              type="checkbox"
+              checked={selected.includes(ulke)}
+              onChange={(e) => {
+                if (e.target.checked) onChange([...selected, ulke]);
+                else onChange(selected.filter(u => u !== ulke));
+              }}
+              className="rounded border-navy-300 text-primary-500 focus:ring-primary-500"
+            />
+            {ulke}
+          </label>
+        ))}
+        {filtered.length === 0 && <p className="text-sm text-navy-400 col-span-4 text-center py-2">Sonuç bulunamadı</p>}
+      </div>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {selected.map(u => (
+            <span key={u} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-700">
+              {u}
+              <button onClick={() => onChange(selected.filter(x => x !== u))} className="hover:text-red-500">&times;</button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────
 export default function RandevuListesi() {
   const [talepler, setTalepler] = useState<RandevuRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +186,9 @@ export default function RandevuListesi() {
   const [showArchived, setShowArchived] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
   const [isSirri, setIsSirri] = useState(false);
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
 
-  // Create form state
+  // Create form
   const [formUlkeler, setFormUlkeler] = useState<string[]>([]);
   const [formVizeTipi, setFormVizeTipi] = useState("");
   const [formAltKategori, setFormAltKategori] = useState("");
@@ -72,7 +201,7 @@ export default function RandevuListesi() {
   const [randevuTarihi, setRandevuTarihi] = useState("");
   const [randevuSaving, setRandevuSaving] = useState(false);
 
-  // Edit form state
+  // Edit form
   const [editUlkeler, setEditUlkeler] = useState<string[]>([]);
   const [editVizeTipi, setEditVizeTipi] = useState("");
   const [editAltKategori, setEditAltKategori] = useState("");
@@ -114,12 +243,8 @@ export default function RandevuListesi() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const resetCreateForm = () => {
-    setFormUlkeler([]);
-    setFormVizeTipi("");
-    setFormAltKategori("");
-    setFormDosyaAdi("");
-    setFormIletisim("");
-    setFormGorseller([]);
+    setFormUlkeler([]); setFormVizeTipi(""); setFormAltKategori("");
+    setFormDosyaAdi(""); setFormIletisim(""); setFormGorseller([]);
   };
 
   const handleFileUpload = (
@@ -131,9 +256,7 @@ export default function RandevuListesi() {
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
-        if (reader.result) {
-          setter((prev: string[]) => [...prev, reader.result as string]);
-        }
+        if (reader.result) setter((prev: string[]) => [...prev, reader.result as string]);
       };
       reader.readAsDataURL(file);
     });
@@ -180,7 +303,17 @@ export default function RandevuListesi() {
         .eq("id", selectedTalep.id);
 
       if (!error) {
-        // Email gönder
+        const allStaff = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER];
+        const staffInfo = allStaff.find(s => s.name.toUpperCase() === currentUser.name.toUpperCase());
+        const staffHitap = staffInfo?.hitap || currentUser.name;
+        const staffPhone = staffInfo?.phone || "";
+        const ulkelerStr = selectedTalep.ulkeler.join(", ");
+        const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === selectedTalep.vize_tipi)?.label || selectedTalep.vize_tipi;
+        const randevuStr = new Date(randevuTarihi).toLocaleDateString("tr-TR", {
+          day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+        });
+
+        // 1) Email
         try {
           await fetch("/api/randevu-email", {
             method: "POST",
@@ -188,24 +321,67 @@ export default function RandevuListesi() {
             body: JSON.stringify({
               dosyaAdi: selectedTalep.dosya_adi,
               ulkeler: selectedTalep.ulkeler,
-              vizeTipi: VIZE_TIPLERI.find(v => v.value === selectedTalep.vize_tipi)?.label || selectedTalep.vize_tipi,
+              vizeTipi: vizeTipiLabel,
               randevuTarihi,
               alanKisi: currentUser.name,
             }),
           });
-        } catch { /* email hatası sessiz geçilir */ }
+        } catch { /* sessiz */ }
 
-        // WhatsApp gönder
+        // 2) WhatsApp müşteriye (güzel format)
+        const musteriMsg = [
+          `Sayın Müşterimiz,`,
+          ``,
+          `${ulkelerStr} vize randevunuzla ilgili güzel haberimiz var! 🎉`,
+          ``,
+          `Randevunuz *başarıyla alınmıştır*. ✅`,
+          ``,
+          `📅 Randevu Tarihi: *${randevuStr}*`,
+          `🌍 Ülke: *${ulkelerStr}*`,
+          `📋 Vize Tipi: *${vizeTipiLabel}*`,
+          `📁 Dosya: *${selectedTalep.dosya_adi}*`,
+          ``,
+          `Randevu gününde gerekli evraklarınızla birlikte hazır olmanızı rica ederiz.`,
+          ``,
+          `📌 Önemli: Randevu tarihinden önce herhangi bir değişiklik olursa tarafınıza bilgi verilecektir.`,
+          ``,
+          `Bizi tercih ettiğiniz için teşekkür ederiz! 🙏`,
+          ``,
+          `*Fox Turizm*`,
+          `${staffHitap}`,
+          staffPhone ? `📞 ${staffPhone}` : ``,
+        ].filter(Boolean).join("\n");
+
         try {
-          await fetch("/api/whatsapp-send", {
+          await fetch("/api/whatsapp/send-direct", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              to: selectedTalep.iletisim.replace(/\D/g, ""),
-              message: `Merhaba, ${currentUser.name} tarafından randevunuz alınmıştır.\n\n📁 Dosya: ${selectedTalep.dosya_adi}\n🌍 Ülke: ${selectedTalep.ulkeler.join(", ")}\n📅 Tarih: ${new Date(randevuTarihi).toLocaleDateString("tr-TR")}\n\nRandevu Alındı ✅\n\nFox Turizm`,
+              phone: normalizePhone(selectedTalep.iletisim),
+              message: musteriMsg,
             }),
           });
-        } catch { /* wp hatası sessiz geçilir */ }
+        } catch { /* sessiz */ }
+
+        // 3) WhatsApp ekip üyelerine
+        const ekipMsg =
+          `📋 *RANDEVU ALINDI*\n\n` +
+          `📁 Dosya: *${selectedTalep.dosya_adi}*\n` +
+          `🌍 Ülke: *${ulkelerStr}*\n` +
+          `📋 Vize Tipi: *${vizeTipiLabel}*\n` +
+          `📅 Randevu: *${randevuStr}*\n` +
+          `👤 Alan: *${currentUser.name}*\n\n` +
+          `🦊 _Fox Turizm Vize Yönetim Sistemi_`;
+
+        for (const kisi of WP_NUMARALARI) {
+          try {
+            await fetch("/api/whatsapp/send-direct", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: "+" + kisi.phone, message: ekipMsg }),
+            });
+          } catch { /* sessiz */ }
+        }
 
         setShowRandevuAlModal(false);
         setRandevuTarihi("");
@@ -280,6 +456,9 @@ export default function RandevuListesi() {
 
   return (
     <div className="space-y-6">
+      {/* Fullscreen Image Viewer */}
+      {viewerImage && <ImageViewer src={viewerImage} onClose={() => setViewerImage(null)} />}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -333,19 +512,14 @@ export default function RandevuListesi() {
           {filteredTalepler.map((talep) => (
             <Card key={talep.id} className={`p-5 shadow-lg hover:shadow-xl transition-all duration-200 ${talep.arsivlendi ? "opacity-75 border-l-4 border-l-green-500" : "border-l-4 border-l-primary-500"}`}>
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="font-bold text-navy-900 text-lg">{talep.dosya_adi}</h3>
-                    {talep.arsivlendi && (
-                      <Badge variant="success" size="sm">Randevu Alındı</Badge>
-                    )}
+                    {talep.arsivlendi && <Badge variant="success" size="sm">Randevu Alındı</Badge>}
                   </div>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {talep.ulkeler.map((ulke) => (
-                      <span key={ulke} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                        🌍 {ulke}
-                      </span>
+                      <span key={ulke} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">🌍 {ulke}</span>
                     ))}
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
                       {VIZE_TIPLERI.find(v => v.value === talep.vize_tipi)?.label || talep.vize_tipi}
@@ -356,18 +530,26 @@ export default function RandevuListesi() {
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-navy-500">
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-navy-500">
                     <span className="flex items-center gap-1">📞 {talep.iletisim}</span>
                     <span className="flex items-center gap-1">📅 {formatDate(talep.created_at)}</span>
-                    {talep.profiles && <span className="flex items-center gap-1">👤 {talep.profiles.name}</span>}
-                    {talep.randevu_tarihi && (
-                      <span className="flex items-center gap-1 text-green-600 font-medium">
-                        ✅ Randevu: {formatDateTime(talep.randevu_tarihi)}
+                    {talep.profiles && (
+                      <span className="flex items-center gap-1">
+                        {AVATAR_MAP[talep.profiles.name] && (
+                          <img src={AVATAR_MAP[talep.profiles.name]} alt="" className="w-5 h-5 rounded-full object-cover" />
+                        )}
+                        <span className="text-[10px] text-navy-400">Oluşturan:</span> {talep.profiles.name}
                       </span>
+                    )}
+                    {talep.randevu_tarihi && (
+                      <span className="flex items-center gap-1 text-green-600 font-medium">✅ Randevu: {formatDateTime(talep.randevu_tarihi)}</span>
                     )}
                     {talep.randevu_alan && (
                       <span className="flex items-center gap-1 text-green-600">
-                        🙋 {talep.randevu_alan.name}
+                        {AVATAR_MAP[talep.randevu_alan.name] && (
+                          <img src={AVATAR_MAP[talep.randevu_alan.name]} alt="" className="w-5 h-5 rounded-full object-cover" />
+                        )}
+                        <span className="text-[10px] text-navy-400">Alan:</span> {talep.randevu_alan.name}
                       </span>
                     )}
                     {talep.gorseller && talep.gorseller.length > 0 && (
@@ -376,38 +558,15 @@ export default function RandevuListesi() {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => { setSelectedTalep(talep); setShowDetailModal(true); }}
-                  >
-                    Detay
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEdit(talep)}
-                  >
-                    Düzenle
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setSelectedTalep(talep); setShowDetailModal(true); }}>Detay</Button>
+                  <Button size="sm" variant="outline" onClick={() => openEdit(talep)}>Düzenle</Button>
                   {!talep.arsivlendi && (
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => { setSelectedTalep(talep); setShowRandevuAlModal(true); }}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
+                    <Button size="sm" variant="primary" onClick={() => { setSelectedTalep(talep); setShowRandevuAlModal(true); }} className="bg-green-600 hover:bg-green-700">
                       📅 Randevu Al
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => { setSelectedTalep(talep); setShowDeleteConfirm(true); }}
-                    className="text-red-500 border-red-200 hover:bg-red-50"
-                  >
+                  <Button size="sm" variant="outline" onClick={() => { setSelectedTalep(talep); setShowDeleteConfirm(true); }} className="text-red-500 border-red-200 hover:bg-red-50">
                     🗑️
                   </Button>
                 </div>
@@ -420,66 +579,27 @@ export default function RandevuListesi() {
       {/* ===== CREATE MODAL ===== */}
       <Modal isOpen={showCreateModal} onClose={() => { setShowCreateModal(false); resetCreateForm(); }} title="Randevu Talebi Oluştur" size="xl">
         <div className="space-y-5">
-          {/* Ülke Seçimi */}
-          <div>
-            <label className="block text-sm font-bold text-navy-700 mb-2">Ülkeler *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-3 bg-navy-50 rounded-xl border border-navy-200">
-              {SCHENGEN_ULKELERI.map((ulke) => (
-                <label key={ulke} className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all text-sm ${formUlkeler.includes(ulke) ? "bg-primary-100 text-primary-700 font-medium" : "hover:bg-navy-100 text-navy-600"}`}>
-                  <input
-                    type="checkbox"
-                    checked={formUlkeler.includes(ulke)}
-                    onChange={(e) => {
-                      if (e.target.checked) setFormUlkeler([...formUlkeler, ulke]);
-                      else setFormUlkeler(formUlkeler.filter(u => u !== ulke));
-                    }}
-                    className="rounded border-navy-300 text-primary-500 focus:ring-primary-500"
-                  />
-                  {ulke}
-                </label>
-              ))}
-            </div>
-            {formUlkeler.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {formUlkeler.map(u => (
-                  <span key={u} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-700">
-                    {u}
-                    <button onClick={() => setFormUlkeler(formUlkeler.filter(x => x !== u))} className="hover:text-red-500">&times;</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          <CountrySelector selected={formUlkeler} onChange={setFormUlkeler} />
 
-          {/* Vize Tipi */}
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">Vize Tipi *</label>
             <div className="grid grid-cols-3 gap-2">
               {VIZE_TIPLERI.map((tip) => (
-                <button
-                  key={tip.value}
-                  type="button"
-                  onClick={() => setFormVizeTipi(tip.value)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${formVizeTipi === tip.value ? "bg-primary-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}
-                >
+                <button key={tip.value} type="button" onClick={() => setFormVizeTipi(tip.value)}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${formVizeTipi === tip.value ? "bg-primary-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}>
                   {tip.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Alt Kategori (Fransa + Turistik) */}
           {showAltKategori(formUlkeler, formVizeTipi) && (
             <div>
               <label className="block text-sm font-bold text-navy-700 mb-2">Vize Kategorisi</label>
               <div className="grid grid-cols-2 gap-2">
                 {ALT_KATEGORILER.map((kat) => (
-                  <button
-                    key={kat.value}
-                    type="button"
-                    onClick={() => setFormAltKategori(kat.value)}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${formAltKategori === kat.value ? "bg-amber-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}
-                  >
+                  <button key={kat.value} type="button" onClick={() => setFormAltKategori(kat.value)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${formAltKategori === kat.value ? "bg-amber-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}>
                     {kat.label}
                   </button>
                 ))}
@@ -487,42 +607,22 @@ export default function RandevuListesi() {
             </div>
           )}
 
-          {/* Dosya Adı */}
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">Dosya Adı *</label>
-            <input
-              type="text"
-              value={formDosyaAdi}
-              onChange={(e) => setFormDosyaAdi(e.target.value)}
-              placeholder="Örn: Ahmet Yılmaz - Fransa Vize"
-              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
-            />
+            <input type="text" value={formDosyaAdi} onChange={(e) => setFormDosyaAdi(e.target.value)} placeholder="Örn: Ahmet Yılmaz - Fransa Vize"
+              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
 
-          {/* İletişim */}
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">İletişim *</label>
-            <input
-              type="text"
-              value={formIletisim}
-              onChange={(e) => setFormIletisim(e.target.value)}
-              placeholder="Telefon numarası (WhatsApp mesajı bu numaraya gidecek)"
-              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
-            />
+            <input type="text" value={formIletisim} onChange={(e) => setFormIletisim(e.target.value)} placeholder="Telefon numarası (WhatsApp mesajı bu numaraya gidecek)"
+              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
 
-          {/* Görsel Yükleme */}
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">Görseller</label>
             <div className="border-2 border-dashed border-navy-200 rounded-xl p-4 text-center hover:border-primary-400 transition-colors">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => handleFileUpload(e, setFormGorseller)}
-                className="hidden"
-                id="gorsel-upload"
-              />
+              <input type="file" multiple accept="image/*" onChange={(e) => handleFileUpload(e, setFormGorseller)} className="hidden" id="gorsel-upload" />
               <label htmlFor="gorsel-upload" className="cursor-pointer">
                 <div className="text-4xl mb-2">📷</div>
                 <p className="text-sm text-navy-500">Tıklayın veya dosya sürükleyin (çoklu seçim)</p>
@@ -533,23 +633,15 @@ export default function RandevuListesi() {
                 {formGorseller.map((g, i) => (
                   <div key={i} className="relative group">
                     <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-20 object-cover rounded-lg" />
-                    <button
-                      onClick={() => setFormGorseller(formGorseller.filter((_, idx) => idx !== i))}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      &times;
-                    </button>
+                    <button onClick={() => setFormGorseller(formGorseller.filter((_, idx) => idx !== i))}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <Button
-            onClick={handleCreate}
-            disabled={formSaving || !formDosyaAdi || !formIletisim || formUlkeler.length === 0 || !formVizeTipi}
-            className="w-full"
-          >
+          <Button onClick={handleCreate} disabled={formSaving || !formDosyaAdi || !formIletisim || formUlkeler.length === 0 || !formVizeTipi} className="w-full">
             {formSaving ? "Kaydediliyor..." : "Randevu Talebi Oluştur"}
           </Button>
         </div>
@@ -566,22 +658,14 @@ export default function RandevuListesi() {
           )}
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">Randevu Tarihi *</label>
-            <input
-              type="datetime-local"
-              value={randevuTarihi}
-              onChange={(e) => setRandevuTarihi(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
-            />
+            <input type="datetime-local" value={randevuTarihi} onChange={(e) => setRandevuTarihi(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
           <p className="text-xs text-navy-400">
-            Randevu alındığında Ercan, Bahar, Davut, Yusuf ve Sırrı&apos;ya email gidecek.
-            Müşteriye WhatsApp mesajı gönderilecek.
+            Randevu alındığında Ercan, Bahar, Davut, Yusuf ve Sırrı&apos;ya email + WhatsApp gidecek.
+            Müşteriye de WhatsApp mesajı gönderilecek.
           </p>
-          <Button
-            onClick={handleRandevuAl}
-            disabled={randevuSaving || !randevuTarihi}
-            className="w-full bg-green-600 hover:bg-green-700"
-          >
+          <Button onClick={handleRandevuAl} disabled={randevuSaving || !randevuTarihi} className="w-full bg-green-600 hover:bg-green-700">
             {randevuSaving ? "Randevu alınıyor..." : "Randevuyu Onayla"}
           </Button>
         </div>
@@ -596,19 +680,8 @@ export default function RandevuListesi() {
             <p className="text-sm text-red-500 mt-1">{selectedTalep?.dosya_adi}</p>
           </div>
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => { setShowDeleteConfirm(false); setSelectedTalep(null); }}
-              className="flex-1"
-            >
-              İptal
-            </Button>
-            <Button
-              onClick={handleDelete}
-              className="flex-1 bg-red-600 hover:bg-red-700"
-            >
-              Evet, Sil
-            </Button>
+            <Button variant="outline" onClick={() => { setShowDeleteConfirm(false); setSelectedTalep(null); }} className="flex-1">İptal</Button>
+            <Button onClick={handleDelete} className="flex-1 bg-red-600 hover:bg-red-700">Evet, Sil</Button>
           </div>
         </div>
       </Modal>
@@ -621,9 +694,7 @@ export default function RandevuListesi() {
               <h3 className="text-xl font-bold text-navy-900 mb-1">{selectedTalep.dosya_adi}</h3>
               <div className="flex flex-wrap gap-2 mt-2">
                 {selectedTalep.ulkeler.map((ulke) => (
-                  <span key={ulke} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-                    🌍 {ulke}
-                  </span>
+                  <span key={ulke} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">🌍 {ulke}</span>
                 ))}
               </div>
             </div>
@@ -644,8 +715,13 @@ export default function RandevuListesi() {
                 <p className="font-medium text-navy-900">{selectedTalep.iletisim}</p>
               </div>
               <div className="bg-navy-50 rounded-xl p-4">
-                <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Oluşturan</p>
-                <p className="font-medium text-navy-900">{selectedTalep.profiles?.name || "-"}</p>
+                <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-2">Oluşturan</p>
+                <div className="flex items-center gap-2">
+                  {selectedTalep.profiles?.name && AVATAR_MAP[selectedTalep.profiles.name] && (
+                    <img src={AVATAR_MAP[selectedTalep.profiles.name]} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-navy-200" />
+                  )}
+                  <p className="font-medium text-navy-900">{selectedTalep.profiles?.name || "-"}</p>
+                </div>
               </div>
               <div className="bg-navy-50 rounded-xl p-4">
                 <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Tarih</p>
@@ -659,8 +735,13 @@ export default function RandevuListesi() {
               )}
               {selectedTalep.randevu_alan && (
                 <div className="bg-green-50 rounded-xl p-4">
-                  <p className="text-xs text-green-600 uppercase tracking-wide font-bold mb-1">Randevuyu Alan</p>
-                  <p className="font-medium text-green-700">{selectedTalep.randevu_alan.name}</p>
+                  <p className="text-xs text-green-600 uppercase tracking-wide font-bold mb-2">Randevuyu Alan</p>
+                  <div className="flex items-center gap-2">
+                    {AVATAR_MAP[selectedTalep.randevu_alan.name] && (
+                      <img src={AVATAR_MAP[selectedTalep.randevu_alan.name]} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-green-200" />
+                    )}
+                    <p className="font-medium text-green-700">{selectedTalep.randevu_alan.name}</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -671,9 +752,15 @@ export default function RandevuListesi() {
                 <p className="text-sm font-bold text-navy-700 mb-3">Görseller ({selectedTalep.gorseller.length})</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {selectedTalep.gorseller.map((g, i) => (
-                    <a key={i} href={g} target="_blank" rel="noopener noreferrer">
-                      <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-40 object-cover rounded-xl border border-navy-200 hover:shadow-lg transition-shadow cursor-pointer" />
-                    </a>
+                    <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
+                      <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-40 object-cover rounded-xl border border-navy-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-xl transition-all flex items-center justify-center">
+                        <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                      <span className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-md">Görsel {i + 1}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -685,48 +772,14 @@ export default function RandevuListesi() {
       {/* ===== EDIT MODAL ===== */}
       <Modal isOpen={showEditModal} onClose={() => { setShowEditModal(false); setSelectedTalep(null); }} title="Randevu Talebi Düzenle" size="xl">
         <div className="space-y-5">
-          {/* Ülke Seçimi */}
-          <div>
-            <label className="block text-sm font-bold text-navy-700 mb-2">Ülkeler *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-3 bg-navy-50 rounded-xl border border-navy-200">
-              {SCHENGEN_ULKELERI.map((ulke) => (
-                <label key={ulke} className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all text-sm ${editUlkeler.includes(ulke) ? "bg-primary-100 text-primary-700 font-medium" : "hover:bg-navy-100 text-navy-600"}`}>
-                  <input
-                    type="checkbox"
-                    checked={editUlkeler.includes(ulke)}
-                    onChange={(e) => {
-                      if (e.target.checked) setEditUlkeler([...editUlkeler, ulke]);
-                      else setEditUlkeler(editUlkeler.filter(u => u !== ulke));
-                    }}
-                    className="rounded border-navy-300 text-primary-500 focus:ring-primary-500"
-                  />
-                  {ulke}
-                </label>
-              ))}
-            </div>
-            {editUlkeler.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {editUlkeler.map(u => (
-                  <span key={u} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-700">
-                    {u}
-                    <button onClick={() => setEditUlkeler(editUlkeler.filter(x => x !== u))} className="hover:text-red-500">&times;</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          <CountrySelector selected={editUlkeler} onChange={setEditUlkeler} />
 
-          {/* Vize Tipi */}
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">Vize Tipi *</label>
             <div className="grid grid-cols-3 gap-2">
               {VIZE_TIPLERI.map((tip) => (
-                <button
-                  key={tip.value}
-                  type="button"
-                  onClick={() => setEditVizeTipi(tip.value)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${editVizeTipi === tip.value ? "bg-primary-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}
-                >
+                <button key={tip.value} type="button" onClick={() => setEditVizeTipi(tip.value)}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${editVizeTipi === tip.value ? "bg-primary-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}>
                   {tip.label}
                 </button>
               ))}
@@ -738,12 +791,8 @@ export default function RandevuListesi() {
               <label className="block text-sm font-bold text-navy-700 mb-2">Vize Kategorisi</label>
               <div className="grid grid-cols-2 gap-2">
                 {ALT_KATEGORILER.map((kat) => (
-                  <button
-                    key={kat.value}
-                    type="button"
-                    onClick={() => setEditAltKategori(kat.value)}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${editAltKategori === kat.value ? "bg-amber-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}
-                  >
+                  <button key={kat.value} type="button" onClick={() => setEditAltKategori(kat.value)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${editAltKategori === kat.value ? "bg-amber-500 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}>
                     {kat.label}
                   </button>
                 ))}
@@ -753,35 +802,20 @@ export default function RandevuListesi() {
 
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">Dosya Adı *</label>
-            <input
-              type="text"
-              value={editDosyaAdi}
-              onChange={(e) => setEditDosyaAdi(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
-            />
+            <input type="text" value={editDosyaAdi} onChange={(e) => setEditDosyaAdi(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
 
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">İletişim *</label>
-            <input
-              type="text"
-              value={editIletisim}
-              onChange={(e) => setEditIletisim(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all"
-            />
+            <input type="text" value={editIletisim} onChange={(e) => setEditIletisim(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
 
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">Görseller</label>
             <div className="border-2 border-dashed border-navy-200 rounded-xl p-4 text-center hover:border-primary-400 transition-colors">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => handleFileUpload(e, setEditGorseller)}
-                className="hidden"
-                id="edit-gorsel-upload"
-              />
+              <input type="file" multiple accept="image/*" onChange={(e) => handleFileUpload(e, setEditGorseller)} className="hidden" id="edit-gorsel-upload" />
               <label htmlFor="edit-gorsel-upload" className="cursor-pointer">
                 <div className="text-4xl mb-2">📷</div>
                 <p className="text-sm text-navy-500">Yeni görsel eklemek için tıklayın</p>
@@ -792,23 +826,15 @@ export default function RandevuListesi() {
                 {editGorseller.map((g, i) => (
                   <div key={i} className="relative group">
                     <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-20 object-cover rounded-lg" />
-                    <button
-                      onClick={() => setEditGorseller(editGorseller.filter((_, idx) => idx !== i))}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      &times;
-                    </button>
+                    <button onClick={() => setEditGorseller(editGorseller.filter((_, idx) => idx !== i))}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <Button
-            onClick={handleEdit}
-            disabled={editSaving || !editDosyaAdi || !editIletisim || editUlkeler.length === 0 || !editVizeTipi}
-            className="w-full"
-          >
+          <Button onClick={handleEdit} disabled={editSaving || !editDosyaAdi || !editIletisim || editUlkeler.length === 0 || !editVizeTipi} className="w-full">
             {editSaving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
           </Button>
         </div>
