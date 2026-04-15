@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         messageText += `    🌍 ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
       });
     }
-    messageText += `🦊 _Fox Turizm_`;
+    messageText += `_Fox Turizm_`;
 
     // WhatsApp bağlantı kontrolü
     let statusData: any = {};

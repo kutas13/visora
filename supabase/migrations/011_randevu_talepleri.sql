@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.randevu_talepleri (
   gorseller TEXT[] DEFAULT '{}', -- base64 veya URL
   randevu_tarihi TIMESTAMPTZ,
   randevu_alan_id UUID REFERENCES public.profiles(id),
+  randevu_dosyalari TEXT[] DEFAULT '{}',
   arsivlendi BOOLEAN DEFAULT FALSE,
   created_by UUID REFERENCES public.profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -201,6 +201,7 @@ export default function RandevuListesi() {
 
   // Randevu al
   const [randevuTarihi, setRandevuTarihi] = useState("");
+  const [randevuDosyalari, setRandevuDosyalari] = useState<string[]>([]);
   const [randevuSaving, setRandevuSaving] = useState(false);
 
   // Edit form
@@ -289,6 +290,26 @@ export default function RandevuListesi() {
     }
   };
 
+  const sendWpMsg = async (phone: string, message: string) => {
+    try {
+      await fetch("/api/whatsapp/send-direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, message }),
+      });
+    } catch { /* sessiz */ }
+  };
+
+  const sendWpImage = async (phone: string, image: string, caption?: string) => {
+    try {
+      await fetch("/api/whatsapp/send-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, image, caption: caption || "" }),
+      });
+    } catch { /* sessiz */ }
+  };
+
   const handleRandevuAl = async () => {
     if (!selectedTalep || !randevuTarihi || !currentUser) return;
     setRandevuSaving(true);
@@ -299,6 +320,7 @@ export default function RandevuListesi() {
         .update({
           randevu_tarihi: randevuTarihi,
           randevu_alan_id: currentUser.id,
+          randevu_dosyalari: randevuDosyalari,
           arsivlendi: true,
           updated_at: new Date().toISOString(),
         })
@@ -315,7 +337,7 @@ export default function RandevuListesi() {
           day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
         });
 
-        // 1) Email
+        // Email
         try {
           await fetch("/api/randevu-email", {
             method: "POST",
@@ -330,7 +352,39 @@ export default function RandevuListesi() {
           });
         } catch { /* sessiz */ }
 
-        // 2) WhatsApp müşteriye (güzel format)
+        // Hedef kişileri belirle: müşteri + davut + oluşturan + alan
+        const musteriPhone = normalizePhone(selectedTalep.iletisim);
+        const davutPhone = "+905435680874";
+        const olusturanName = selectedTalep.profiles?.name || "";
+        const alanName = currentUser.name;
+        const ekipPhones = new Set<string>();
+        ekipPhones.add(davutPhone);
+        for (const wp of WP_NUMARALARI) {
+          if (wp.name === olusturanName || wp.name === alanName) {
+            ekipPhones.add("+" + wp.phone);
+          }
+        }
+
+        // 1) Pasaport görselleri müşteriye gönder
+        const pasaportlar = selectedTalep.gorseller || [];
+        for (const gorsel of pasaportlar) {
+          await sendWpImage(musteriPhone, gorsel);
+          await new Promise(r => setTimeout(r, 1500));
+        }
+
+        // 2) "Üsteki pasaportlara randevu alınmıştır" mesajı
+        if (pasaportlar.length > 0) {
+          await sendWpMsg(musteriPhone, `Üsteki pasaportlara randevu alınmıştır. ✅`);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+
+        // 3) Randevu mektubu görselleri müşteriye gönder
+        for (const dosya of randevuDosyalari) {
+          await sendWpImage(musteriPhone, dosya, "Randevu Mektubunuz");
+          await new Promise(r => setTimeout(r, 1500));
+        }
+
+        // 4) Müşteriye güzel mesaj
         const musteriMsg = [
           `Sayın Müşterimiz,`,
           ``,
@@ -341,7 +395,6 @@ export default function RandevuListesi() {
           `📅 Randevu Tarihi: *${randevuStr}*`,
           `🌍 Ülke: *${ulkelerStr}*`,
           `📋 Vize Tipi: *${vizeTipiLabel}*`,
-          `📁 Dosya: *${selectedTalep.dosya_adi}*`,
           ``,
           `Randevu gününde gerekli evraklarınızla birlikte hazır olmanızı rica ederiz.`,
           ``,
@@ -354,39 +407,26 @@ export default function RandevuListesi() {
           staffPhone ? `📞 ${staffPhone}` : ``,
         ].filter(Boolean).join("\n");
 
-        try {
-          await fetch("/api/whatsapp/send-direct", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              phone: normalizePhone(selectedTalep.iletisim),
-              message: musteriMsg,
-            }),
-          });
-        } catch { /* sessiz */ }
+        await sendWpMsg(musteriPhone, musteriMsg);
 
-        // 3) WhatsApp ekip üyelerine
+        // 5) Ekip mesajı (Davut + oluşturan + alan)
         const ekipMsg =
           `📋 *RANDEVU ALINDI*\n\n` +
-          `📁 Dosya: *${selectedTalep.dosya_adi}*\n` +
+          `👤 Müşteri: *${selectedTalep.dosya_adi}*\n` +
           `🌍 Ülke: *${ulkelerStr}*\n` +
           `📋 Vize Tipi: *${vizeTipiLabel}*\n` +
           `📅 Randevu: *${randevuStr}*\n` +
           `👤 Alan: *${currentUser.name}*\n\n` +
-          `🦊 _Fox Turizm Vize Yönetim Sistemi_`;
+          `_Fox Turizm_`;
 
-        for (const kisi of WP_NUMARALARI) {
-          try {
-            await fetch("/api/whatsapp/send-direct", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ phone: "+" + kisi.phone, message: ekipMsg }),
-            });
-          } catch { /* sessiz */ }
+        for (const phone of ekipPhones) {
+          await sendWpMsg(phone, ekipMsg);
+          await new Promise(r => setTimeout(r, 1000));
         }
 
         setShowRandevuAlModal(false);
         setRandevuTarihi("");
+        setRandevuDosyalari([]);
         setSelectedTalep(null);
         loadData();
       }
@@ -691,7 +731,7 @@ export default function RandevuListesi() {
       </Modal>
 
       {/* ===== RANDEVU AL MODAL ===== */}
-      <Modal isOpen={showRandevuAlModal} onClose={() => { setShowRandevuAlModal(false); setRandevuTarihi(""); setSelectedTalep(null); }} title="Randevu Al" size="sm">
+      <Modal isOpen={showRandevuAlModal} onClose={() => { setShowRandevuAlModal(false); setRandevuTarihi(""); setRandevuDosyalari([]); setSelectedTalep(null); }} title="Randevu Al" size="md">
         <div className="space-y-4">
           {selectedTalep && (
             <div className="bg-navy-50 rounded-xl p-4">
@@ -704,9 +744,34 @@ export default function RandevuListesi() {
             <input type="datetime-local" value={randevuTarihi} onChange={(e) => setRandevuTarihi(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
+          <div>
+            <label className="block text-sm font-bold text-navy-700 mb-2">Randevu Mektubu / Dosya</label>
+            <div className="border-2 border-dashed border-navy-200 rounded-xl p-3 text-center hover:border-green-400 transition-colors">
+              <input type="file" multiple accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, setRandevuDosyalari)} className="hidden" id="randevu-dosya-upload" />
+              <label htmlFor="randevu-dosya-upload" className="cursor-pointer">
+                <div className="text-3xl mb-1">📎</div>
+                <p className="text-xs text-navy-500">PDF veya görsel yükleyin (çoklu seçim)</p>
+              </label>
+            </div>
+            {randevuDosyalari.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 mt-2">
+                {randevuDosyalari.map((g, i) => (
+                  <div key={i} className="relative group">
+                    {g.startsWith("data:application/pdf") ? (
+                      <div className="w-full h-16 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-xs font-medium">PDF {i + 1}</div>
+                    ) : (
+                      <img src={g} alt={`Dosya ${i + 1}`} className="w-full h-16 object-cover rounded-lg" />
+                    )}
+                    <button onClick={() => setRandevuDosyalari(randevuDosyalari.filter((_, idx) => idx !== i))}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <p className="text-xs text-navy-400">
-            Randevu alındığında Ercan, Bahar, Davut, Yusuf ve Sırrı&apos;ya email + WhatsApp gidecek.
-            Müşteriye de WhatsApp mesajı gönderilecek.
+            Pasaport görselleri + randevu mektubu müşteriye WhatsApp ile gönderilecek.
+            Davut, oluşturan ve alan kişiye bildirim gidecek.
           </p>
           <Button onClick={handleRandevuAl} disabled={randevuSaving || !randevuTarihi} className="w-full bg-green-600 hover:bg-green-700">
             {randevuSaving ? "Randevu alınıyor..." : "Randevuyu Onayla"}
@@ -789,10 +854,31 @@ export default function RandevuListesi() {
               )}
             </div>
 
-            {/* Görseller */}
+            {/* Randevu Dosyaları */}
+            {selectedTalep.randevu_dosyalari && selectedTalep.randevu_dosyalari.length > 0 && (
+              <div>
+                <p className="text-sm font-bold text-green-700 mb-3">📎 Randevu Mektubu ({selectedTalep.randevu_dosyalari.length})</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {selectedTalep.randevu_dosyalari.map((g, i) => (
+                    <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
+                      {g.startsWith("data:application/pdf") ? (
+                        <div className="w-full h-32 bg-red-50 rounded-xl border border-red-200 flex flex-col items-center justify-center text-red-500">
+                          <span className="text-3xl mb-1">📄</span>
+                          <span className="text-xs font-medium">PDF {i + 1}</span>
+                        </div>
+                      ) : (
+                        <img src={g} alt={`Randevu Dosya ${i + 1}`} className="w-full h-32 object-cover rounded-xl border border-green-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pasaport Görselleri */}
             {selectedTalep.gorseller && selectedTalep.gorseller.length > 0 && (
               <div>
-                <p className="text-sm font-bold text-navy-700 mb-3">Görseller ({selectedTalep.gorseller.length})</p>
+                <p className="text-sm font-bold text-navy-700 mb-3">Pasaport Görselleri ({selectedTalep.gorseller.length})</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {selectedTalep.gorseller.map((g, i) => (
                     <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>

@@ -301,7 +301,7 @@ async function processEmails(request: NextRequest) {
                   ? `⏰ Son Kayıt: *${formatDateTimeTr(parsed.sonKayitTarihi)}*\n`
                   : "") +
                 `📧 Hesap: *${account.email}*\n\n` +
-                `_Fox Turizm Vize Yönetim Sistemi_`;
+                `_Fox Turizm_`;
 
               const sent = await sendWhatsApp(whatsappTo, whatsappMsg, baseUrl);
 

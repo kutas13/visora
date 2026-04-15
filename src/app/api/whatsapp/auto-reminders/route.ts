@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
           messageText += `    🌍 ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
         });
       }
-      messageText += `🦊 _Fox Turizm_`;
+      messageText += `_Fox Turizm_`;
 
     } else if (type === "vize_bitis_customers") {
       // Müşterilere direkt vize bitiş mesajı (60 gün kala)
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
 📞 Bilgi ve randevu için:
 ${personelHitap} — ${personelTelefon}
 
-🦊 *Fox Turizm* Vize Hizmetleri`;
+*Fox Turizm* Vize Hizmetleri`;
 
         // Telefon numarasını WhatsApp formatına çevir (+90 ile başlamalı)
         const whatsappPhone = file.musteri_telefon.startsWith("90") 
@@ -285,7 +285,7 @@ ${personelHitap} — ${personelTelefon}
           messageText += `    🌍 ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
         });
       }
-      messageText += `🦊 _Fox Turizm_`;
+      messageText += `_Fox Turizm_`;
     }
 
     // WhatsApp mesajını çoklu alıcıya gönder

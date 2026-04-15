@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         `📅 Randevu: *${randevuStr}*\n` +
         `👨‍💼 Personel: *${staffName}*\n\n` +
         `⏳ Randevuya *3 gün* kaldı.\n\n` +
-        `🦊 _Fox Turizm Vize Yönetim Sistemi_`;
+        `_Fox Turizm_`;
 
       const sent = await sendWhatsApp(whatsappTo, message, baseUrl);
       if (sent) sentCount++;

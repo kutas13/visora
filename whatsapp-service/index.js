@@ -204,7 +204,7 @@ async function checkAppointments() {
         `📅 Randevu: *${randevuStr}*\n` +
         `👨‍💼 Çalışan: *${staffName}*\n\n` +
         `⏰ Randevuya *${daysText}* kaldı.\n\n` +
-        `_Fox Turizm Vize Yönetim Sistemi_`;
+        `_Fox Turizm_`;
 
       try {
         await sendMessage(NOTIFY_NUMBER, message);

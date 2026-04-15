@@ -189,6 +189,7 @@ export interface RandevuTalebi {
   gorseller: string[];
   randevu_tarihi: string | null;
   randevu_alan_id: string | null;
+  randevu_dosyalari: string[];
   arsivlendi: boolean;
   created_by: string | null;
   created_at: string;
@@ -401,6 +402,7 @@ export interface Database {
           gorseller?: string[];
           randevu_tarihi?: string | null;
           randevu_alan_id?: string | null;
+          randevu_dosyalari?: string[];
           arsivlendi?: boolean;
           created_by?: string | null;
           created_at?: string;
