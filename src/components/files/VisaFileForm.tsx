@@ -959,54 +959,67 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
                   </div>
                 )}
 
+                {(() => {
+                  const base = parseFloat(ucret) || 0;
+                  const dav = showDavetiyeUcreti && davetiyeUcreti ? (parseFloat(davetiyeUcreti) || 0) : 0;
+                  const davInMain = dav > 0 && davetiyeUcretiCurrency !== ucretCurrency
+                    ? (exchangeRates[davetiyeUcretiCurrency] && exchangeRates[ucretCurrency]
+                      ? (dav * (davetiyeUcretiCurrency === "TL" ? 1 : exchangeRates[davetiyeUcretiCurrency]) / (ucretCurrency === "TL" ? 1 : exchangeRates[ucretCurrency]))
+                      : dav)
+                    : dav;
+                  const total = Math.round((base + davInMain) * 100) / 100;
+                  const sym = ({TL:"₺",EUR:"€",USD:"$"} as any);
+                  return (
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => {
-                    const tl = Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]);
+                    const tl = Math.round(total * exchangeRates[ucretCurrency]);
                     setPesinEntries([{ amount: String(tl), currency: "TL" }]);
                   }} className="rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-2.5 text-left transition-all hover:border-emerald-400 hover:shadow-md active:scale-[0.98]">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-500 text-white text-xs font-bold">₺</span>
                       <span className="text-xs font-bold text-emerald-800">TL Aldım</span>
                     </div>
-                    <p className="text-sm font-black text-emerald-700 ml-8">{Math.round(parseFloat(ucret) * exchangeRates[ucretCurrency]).toLocaleString("tr-TR")} ₺</p>
+                    <p className="text-sm font-black text-emerald-700 ml-8">{Math.round(total * exchangeRates[ucretCurrency]).toLocaleString("tr-TR")} ₺</p>
                   </button>
 
                   <button type="button" onClick={() => {
-                    setPesinEntries([{ amount: ucret, currency: ucretCurrency }]);
+                    setPesinEntries([{ amount: String(total), currency: ucretCurrency }]);
                   }} className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-2.5 text-left transition-all hover:border-blue-400 hover:shadow-md active:scale-[0.98]">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500 text-white text-xs font-bold">{({TL:"₺",EUR:"€",USD:"$"} as any)[ucretCurrency]}</span>
+                      <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-500 text-white text-xs font-bold">{sym[ucretCurrency]}</span>
                       <span className="text-xs font-bold text-blue-800">{ucretCurrency} Aldım</span>
                     </div>
-                    <p className="text-sm font-black text-blue-700 ml-8">{parseFloat(ucret).toLocaleString("tr-TR")} {({TL:"₺",EUR:"€",USD:"$"} as any)[ucretCurrency]}</p>
+                    <p className="text-sm font-black text-blue-700 ml-8">{total.toLocaleString("tr-TR")} {sym[ucretCurrency]}</p>
                   </button>
 
                   {ucretCurrency === "USD" && exchangeRates.EUR > 0 && (
                     <button type="button" onClick={() => {
-                      const eur = Math.round(parseFloat(ucret) * exchangeRates.USD / exchangeRates.EUR);
+                      const eur = Math.round(total * exchangeRates.USD / exchangeRates.EUR);
                       setPesinEntries([{ amount: String(eur), currency: "EUR" }]);
                     }} className="rounded-xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-violet-100 p-2.5 text-left transition-all hover:border-violet-400 hover:shadow-md active:scale-[0.98]">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-violet-500 text-white text-xs font-bold">€</span>
                         <span className="text-xs font-bold text-violet-800">EUR Aldım</span>
                       </div>
-                      <p className="text-sm font-black text-violet-700 ml-8">{Math.round(parseFloat(ucret) * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR")} €</p>
+                      <p className="text-sm font-black text-violet-700 ml-8">{Math.round(total * exchangeRates.USD / exchangeRates.EUR).toLocaleString("tr-TR")} €</p>
                     </button>
                   )}
 
                   {ucretCurrency === "EUR" && exchangeRates.USD > 0 && (
                     <button type="button" onClick={() => {
-                      const usd = Math.round(parseFloat(ucret) * exchangeRates.EUR / exchangeRates.USD);
+                      const usd = Math.round(total * exchangeRates.EUR / exchangeRates.USD);
                       setPesinEntries([{ amount: String(usd), currency: "USD" }]);
                     }} className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-2.5 text-left transition-all hover:border-amber-400 hover:shadow-md active:scale-[0.98]">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-500 text-white text-xs font-bold">$</span>
                         <span className="text-xs font-bold text-amber-800">USD Aldım</span>
                       </div>
-                      <p className="text-sm font-black text-amber-700 ml-8">{Math.round(parseFloat(ucret) * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR")} $</p>
+                      <p className="text-sm font-black text-amber-700 ml-8">{Math.round(total * exchangeRates.EUR / exchangeRates.USD).toLocaleString("tr-TR")} $</p>
                     </button>
                   )}
                 </div>
+                  );
+                })()}
               </div>
             )}
 
