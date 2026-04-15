@@ -452,6 +452,10 @@ export default function RandevuListesi() {
 
         const ekipPhoneList = Array.from(ekipPhones);
         for (const phone of ekipPhoneList) {
+          for (const dosya of randevuDosyalari) {
+            await sendWpImage(phone, dosya, `Randevu Mektubu - ${selectedTalep.dosya_adi}`);
+            await new Promise(r => setTimeout(r, 1500));
+          }
           await sendWpMsg(phone, ekipMsg);
           await new Promise(r => setTimeout(r, 1000));
         }

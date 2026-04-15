@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "WhatsApp servisi erişilemedi" }, { status: 503 });
     }
 
-    // base64 data URL'den raw base64'e çevir
+    // base64 data URL'den raw base64 + mimetype çıkar
     let rawBase64 = image;
     let mtype = mimetype || "image/jpeg";
     const match = image.match(/^data:(.+);base64,(.+)$/);
@@ -31,16 +31,38 @@ export async function POST(request: NextRequest) {
       rawBase64 = match[2];
     }
 
-    const res = await fetch(`${serviceUrl}/send-image`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: phone, image: rawBase64, mimetype: mtype, caption: caption || "" }),
-      signal: AbortSignal.timeout(30000),
-    });
+    const isPdf = mtype === "application/pdf";
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return NextResponse.json({ error: data.error || "Görsel gönderilemedi" }, { status: 500 });
+    if (isPdf) {
+      // PDF → /send-document endpoint
+      const res = await fetch(`${serviceUrl}/send-document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: phone,
+          document: rawBase64,
+          mimetype: mtype,
+          filename: caption ? `${caption}.pdf` : "Randevu_Mektubu.pdf",
+          caption: caption || "",
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return NextResponse.json({ error: data.error || "PDF gönderilemedi" }, { status: 500 });
+      }
+    } else {
+      // Görsel → /send-image endpoint
+      const res = await fetch(`${serviceUrl}/send-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: phone, image: rawBase64, mimetype: mtype, caption: caption || "" }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return NextResponse.json({ error: data.error || "Görsel gönderilemedi" }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ success: true });
