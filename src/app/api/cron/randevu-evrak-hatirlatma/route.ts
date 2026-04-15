@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 
       const mesaj =
         `Sayın Müşterimiz,\n\n` +
-        `*${talep.dosya_adi}* dosyanız için *${formatTrDate(randevuTarihi)}* tarihinde randevunuz bulunmaktadır.\n\n` +
+        `*${formatTrDate(randevuTarihi)}* tarihinde randevunuz bulunmaktadır.\n\n` +
         `Evraklarınızı *${formatTrDate(evrakBaslangic)}* tarihinden itibaren hazırlamaya başlamanız gerekmektedir.\n\n` +
         `Evraklarınızın en geç *${formatTrDate(teslimTarih)}* tarihine kadar ofisimizde olması gerekmektedir.\n\n` +
         `Gerekli evrak listesi aşağıda gönderilecektir.\n\n` +
