@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, Button, Badge } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
@@ -106,6 +106,11 @@ function normalizePhone(raw: string) {
 
 // ─── Fullscreen Image Viewer ────────────────────────────────────────────
 function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
+  const [zoom, setZoom] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const dragging = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+
   const handleDownload = () => {
     const a = document.createElement("a");
     a.href = src;
@@ -114,14 +119,45 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
   };
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", keyHandler);
     document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = "unset"; };
+    return () => { document.removeEventListener("keydown", keyHandler); document.body.style.overflow = "unset"; };
   }, [onClose]);
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.stopPropagation();
+    setZoom(prev => {
+      const next = e.deltaY < 0 ? prev * 1.15 : prev / 1.15;
+      const clamped = Math.min(Math.max(next, 0.2), 10);
+      if (clamped <= 1) setPos({ x: 0, y: 0 });
+      return clamped;
+    });
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (zoom <= 1) return;
+    e.stopPropagation();
+    dragging.current = true;
+    lastPos.current = { x: e.clientX, y: e.clientY };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [zoom]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    e.stopPropagation();
+    const dx = e.clientX - lastPos.current.x;
+    const dy = e.clientY - lastPos.current.y;
+    lastPos.current = { x: e.clientX, y: e.clientY };
+    setPos(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+  }, []);
+
+  const handlePointerUp = useCallback(() => { dragging.current = false; }, []);
+
+  const resetZoom = useCallback(() => { setZoom(1); setPos({ x: 0, y: 0 }); }, []);
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center" onClick={() => { if (zoom <= 1) onClose(); }}>
       {/* Download */}
       <button
         onClick={(e) => { e.stopPropagation(); handleDownload(); }}
@@ -132,6 +168,18 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
       </button>
+      {/* Zoom info + reset */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+        <span className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg text-white text-sm font-medium">
+          {Math.round(zoom * 100)}%
+        </span>
+        {zoom !== 1 && (
+          <button onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg text-white text-sm transition-colors">
+            Sıfırla
+          </button>
+        )}
+      </div>
       {/* Close */}
       <button
         onClick={(e) => { e.stopPropagation(); onClose(); }}
@@ -146,8 +194,15 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
       <img
         src={src}
         alt="Görsel"
-        className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl"
+        className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl select-none"
+        style={{ transform: `scale(${zoom}) translate(${pos.x / zoom}px, ${pos.y / zoom}px)`, cursor: zoom > 1 ? "grab" : "zoom-in", transition: dragging.current ? "none" : "transform 0.15s ease-out" }}
         onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => { e.stopPropagation(); zoom === 1 ? setZoom(2.5) : resetZoom(); }}
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        draggable={false}
       />
     </div>
   );
