@@ -70,6 +70,12 @@ export default function StaffDashboard() {
         return;
       }
 
+      const { data: profileCheck } = await supabase.from("profiles").select("name").eq("id", user.id).single();
+      if (profileCheck?.name === "ZAFER") {
+        router.replace("/app/randevu-listesi");
+        return;
+      }
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);

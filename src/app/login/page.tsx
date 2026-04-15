@@ -191,17 +191,16 @@ export default function LoginPage() {
       if (data.user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, name")
           .eq("id", data.user.id)
           .single();
-
-        console.log("Login - User role:", profile?.role, "User ID:", data.user.id);
 
         if (profile?.role === "admin") {
           router.push("/admin/dashboard");
         } else if (profile?.role === "muhasebe") {
-          console.log("Muhasebe rotasına yönlendiriliyor...");
           router.push("/muhasebe");
+        } else if (profile?.name === "ZAFER") {
+          router.push("/app/randevu-listesi");
         } else {
           router.push("/app");
         }
@@ -714,17 +713,17 @@ export default function LoginPage() {
               {/* Sağ - Avatar */}
               <div className="flex-shrink-0 flex flex-col items-center pt-2">
                 {USER_AVATARS[selectedUser.name] ? (
-                  <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-xl ring-4 ring-primary-200">
+                  <div className="w-36 h-44 rounded-2xl overflow-hidden shadow-xl ring-4 ring-primary-200 bg-white">
                     <Image
                       src={USER_AVATARS[selectedUser.name]}
                       alt={selectedUser.name}
-                      width={112}
-                      height={112}
-                      className="w-full h-full object-cover"
+                      width={144}
+                      height={176}
+                      className="w-full h-full object-contain"
                     />
                   </div>
                 ) : (
-                  <div className="w-28 h-28 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-xl ring-4 ring-primary-200">
+                  <div className="w-36 h-44 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-xl ring-4 ring-primary-200">
                     <span className="text-white font-bold text-4xl">{selectedUser.name.charAt(0)}</span>
                   </div>
                 )}
