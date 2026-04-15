@@ -127,11 +127,13 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.stopPropagation();
+    const steps = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 7, 10];
     setZoom(prev => {
-      const next = e.deltaY < 0 ? prev * 1.15 : prev / 1.15;
-      const clamped = Math.min(Math.max(next, 0.2), 10);
-      if (clamped <= 1) setPos({ x: 0, y: 0 });
-      return clamped;
+      const curIdx = steps.reduce((best, s, i) => Math.abs(s - prev) < Math.abs(steps[best] - prev) ? i : best, 0);
+      const nextIdx = e.deltaY < 0 ? Math.min(curIdx + 1, steps.length - 1) : Math.max(curIdx - 1, 0);
+      const next = steps[nextIdx];
+      if (next <= 1) setPos({ x: 0, y: 0 });
+      return next;
     });
   }, []);
 
