@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button, Input, Card, Modal, Badge } from "@/components/ui";
-import { STAFF_USERS, MUHASEBE_USER } from "@/lib/constants";
+import { STAFF_USERS, MUHASEBE_USER, ZAFER_USER } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile } from "@/lib/supabase/types";
 
@@ -602,6 +602,25 @@ export default function LoginPage() {
                     <p className="text-xs text-amber-600">Muhasebe</p>
                   </div>
                   <svg className="w-5 h-5 text-navy-400 group-hover:text-amber-500 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Zafer Girişi */}
+              <div className="pt-3 border-t border-navy-200">
+                <button
+                  onClick={() => handleUserSelect(ZAFER_USER as any)}
+                  className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-teal-50 to-teal-100 hover:from-teal-100 hover:to-teal-200 border-2 border-teal-200 hover:border-teal-400 rounded-xl transition-all duration-200 group"
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
+                    <span className="text-white font-bold text-lg">Z</span>
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="font-bold text-navy-900">{ZAFER_USER.name}</p>
+                    <p className="text-xs text-teal-600">Randevu Takip</p>
+                  </div>
+                  <svg className="w-5 h-5 text-navy-400 group-hover:text-teal-500 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>

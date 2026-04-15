@@ -29,8 +29,16 @@ export const FEHMI_USER = {
   hitap: "Fehmi Bey"
 };
 
+export const ZAFER_USER = {
+  id: "zafer",
+  name: "ZAFER",
+  email: "zafer@foxturizm.com",
+  phone: "0536 343 44 44",
+  hitap: "Zafer Bey"
+};
+
 // Tüm kullanıcılar
-export const ALL_USERS = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER];
+export const ALL_USERS = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER, ZAFER_USER];
 
 // Email'den kullanıcı bul
 export function getUserByEmail(email: string) {

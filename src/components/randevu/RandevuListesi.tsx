@@ -6,7 +6,7 @@ import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
 import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER } from "@/lib/constants";
 import { uploadMultipleToStorage } from "@/lib/supabase/storage";
-import type { RandevuTalebi } from "@/lib/supabase/types";
+import type { RandevuTalebi, HesapBilgileri } from "@/lib/supabase/types";
 
 const SCHENGEN_ULKELERI = [
   "Fransa", "Hollanda", "Bulgaristan", "İtalya",
@@ -76,6 +76,7 @@ const WP_NUMARALARI = [
   { name: "ERCAN", phone: "905055623301" },
   { name: "YUSUF", phone: "905058937071" },
   { name: "SIRRI", phone: "905078015033" },
+  { name: "ZAFER", phone: "905363434444" },
 ];
 
 interface RandevuRow extends RandevuTalebi {
@@ -205,6 +206,122 @@ function CountrySelector({
   );
 }
 
+// ─── Account Fields for Spain/Italy ─────────────────────────────────────
+function HesapAlanlari({
+  ulke,
+  hesapBilgileri,
+  onChange,
+  gorseller,
+}: {
+  ulke: "İspanya" | "İtalya";
+  hesapBilgileri: HesapBilgileri | undefined;
+  onChange: (val: HesapBilgileri) => void;
+  gorseller?: string[];
+}) {
+  const info = hesapBilgileri || { hesap_var: false };
+  const isItalya = ulke === "İtalya";
+
+  return (
+    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4 space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-lg">{isItalya ? "🇮🇹" : "🇪🇸"}</span>
+        <p className="font-bold text-navy-800 text-sm">{ulke} Hesap Bilgileri</p>
+      </div>
+
+      <div>
+        <p className="text-sm font-medium text-navy-700 mb-2">Hesap açtınız mı?</p>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => onChange({ ...info, hesap_var: true })}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${info.hesap_var ? "bg-green-600 text-white shadow-lg" : "bg-white text-navy-600 border border-navy-200 hover:bg-navy-50"}`}>
+            Evet
+          </button>
+          <button type="button" onClick={() => onChange({ hesap_var: false })}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${!info.hesap_var ? "bg-red-500 text-white shadow-lg" : "bg-white text-navy-600 border border-navy-200 hover:bg-navy-50"}`}>
+            Hayır
+          </button>
+        </div>
+      </div>
+
+      {!info.hesap_var && (
+        <div className="bg-yellow-100 border border-yellow-300 rounded-xl p-3 flex items-start gap-2">
+          <span className="text-xl mt-0.5">⚠️</span>
+          <div>
+            <p className="font-bold text-yellow-800 text-sm">{ulke} hesabı henüz açılmamış!</p>
+            <p className="text-yellow-700 text-xs mt-0.5">Kayıt sonrası oluşturan kişiye 3 günde bir hatırlatma gönderilecektir.</p>
+          </div>
+        </div>
+      )}
+
+      {info.hesap_var && !isItalya && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-bold text-navy-600 mb-1">E-posta</label>
+            <input type="email" value={info.email || ""} onChange={(e) => onChange({ ...info, email: e.target.value })}
+              placeholder="ornek@email.com"
+              className="w-full px-3 py-2 rounded-lg border border-navy-200 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-200 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-navy-600 mb-1">Şifre</label>
+            <input type="text" value={info.sifre || ""} onChange={(e) => onChange({ ...info, sifre: e.target.value })}
+              placeholder="Hesap şifresi"
+              className="w-full px-3 py-2 rounded-lg border border-navy-200 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-200 outline-none" />
+          </div>
+        </div>
+      )}
+
+      {info.hesap_var && isItalya && gorseller && gorseller.length > 0 && (
+        <div className="space-y-3">
+          {gorseller.map((g, i) => {
+            const gorselBilgi = info.gorsel_bilgileri?.[i] || {};
+            const updateGorselBilgi = (field: string, val: string) => {
+              const newBilgiler = [...(info.gorsel_bilgileri || [])];
+              while (newBilgiler.length <= i) newBilgiler.push({});
+              newBilgiler[i] = { ...newBilgiler[i], [field]: val };
+              onChange({ ...info, gorsel_bilgileri: newBilgiler });
+            };
+            return (
+              <div key={i} className="bg-white/80 rounded-lg p-3 border border-amber-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <img src={g} alt={`Pasaport ${i + 1}`} className="w-10 h-10 rounded object-cover border" />
+                  <p className="text-xs font-bold text-navy-700">Pasaport {i + 1} - İtalya Hesap Bilgileri</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-navy-500 mb-0.5">Hesap Maili</label>
+                    <input type="email" value={gorselBilgi.email || ""} onChange={(e) => updateGorselBilgi("email", e.target.value)}
+                      placeholder="E-posta" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-navy-500 mb-0.5">Şifre</label>
+                    <input type="text" value={gorselBilgi.sifre || ""} onChange={(e) => updateGorselBilgi("sifre", e.target.value)}
+                      placeholder="Şifre" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-navy-500 mb-0.5">IT Numarası</label>
+                    <input type="text" value={gorselBilgi.it_numarasi || ""} onChange={(e) => updateGorselBilgi("it_numarasi", e.target.value)}
+                      placeholder="IT numarası" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-navy-500 mb-0.5">Telefon</label>
+                    <input type="text" value={gorselBilgi.telefon || ""} onChange={(e) => updateGorselBilgi("telefon", e.target.value)}
+                      placeholder="Hesap telefonu" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {info.hesap_var && isItalya && (!gorseller || gorseller.length === 0) && (
+        <div className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+          Görsel yükledikten sonra her görsel için hesap bilgilerini girebilirsiniz.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────
 export default function RandevuListesi() {
   const [talepler, setTalepler] = useState<RandevuRow[]>([]);
@@ -234,6 +351,10 @@ export default function RandevuListesi() {
   const [formGorseller, setFormGorseller] = useState<string[]>([]);
   const [formSaving, setFormSaving] = useState(false);
 
+  // Spain/Italy account fields
+  const [formHesapBilgileri, setFormHesapBilgileri] = useState<Record<string, HesapBilgileri>>({});
+  const [editHesapBilgileri, setEditHesapBilgileri] = useState<Record<string, HesapBilgileri>>({});
+
   // Randevu al
   const [randevuTarihi, setRandevuTarihi] = useState("");
   const [randevuDosyalari, setRandevuDosyalari] = useState<string[]>([]);
@@ -251,6 +372,11 @@ export default function RandevuListesi() {
 
   const showAltKategori = (ulkeler: string[], vizeTipi: string) =>
     ulkeler.includes("Fransa") && vizeTipi === "turistik";
+
+  const needsHesap = (ulkeler: string[]) => ({
+    ispanya: ulkeler.includes("İspanya"),
+    italya: ulkeler.includes("İtalya"),
+  });
 
   const loadData = useCallback(async () => {
     const supabase = createClient();
@@ -270,7 +396,7 @@ export default function RandevuListesi() {
 
     const { data, error } = await supabase
       .from("randevu_talepleri")
-      .select("id, ulkeler, vize_tipi, alt_kategori, dosya_adi, iletisim, randevu_tarihi, randevu_alan_id, arsivlendi, created_by, created_at, updated_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
+      .select("id, ulkeler, vize_tipi, alt_kategori, dosya_adi, iletisim, randevu_tarihi, randevu_alan_id, hesap_bilgileri, arsivlendi, created_by, created_at, updated_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -294,6 +420,7 @@ export default function RandevuListesi() {
   const resetCreateForm = () => {
     setFormUlkeler([]); setFormVizeTipi(""); setFormAltKategori("");
     setFormDosyaAdi(""); setFormIletisim(""); setFormGorseller([]);
+    setFormHesapBilgileri({});
   };
 
   const handleFileUpload = (
@@ -320,6 +447,8 @@ export default function RandevuListesi() {
         ? await uploadMultipleToStorage(formGorseller, "randevu-pasaport")
         : [];
 
+      const hesapData = Object.keys(formHesapBilgileri).length > 0 ? formHesapBilgileri : null;
+
       const supabase = createClient();
       const { error } = await supabase.from("randevu_talepleri").insert({
         ulkeler: formUlkeler,
@@ -328,9 +457,27 @@ export default function RandevuListesi() {
         dosya_adi: formDosyaAdi,
         iletisim: formIletisim,
         gorseller: gorselUrls,
+        hesap_bilgileri: hesapData,
         created_by: currentUser?.id || null,
       });
       if (!error) {
+        // Send WP notification to Davut and Zafer
+        const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === formVizeTipi)?.label || formVizeTipi;
+        const ulkelerStr = formUlkeler.join(", ");
+        const wpMsg =
+          `📋 *Yeni Randevu Talebi*\n\n` +
+          `👤 Dosya: *${formDosyaAdi}*\n` +
+          `🌍 Ülke: *${ulkelerStr}*\n` +
+          `📋 Vize Tipi: *${vizeTipiLabel}*\n` +
+          `👤 Oluşturan: *${currentUser?.name || "-"}*\n\n` +
+          `_Fox Turizm Randevu Takip Sistemi_`;
+
+        const davutPhone = "+905435680874";
+        const zaferPhone = "+905363434444";
+        sendWpMsg(davutPhone, wpMsg).catch(() => {});
+        await new Promise(r => setTimeout(r, 1000));
+        sendWpMsg(zaferPhone, wpMsg).catch(() => {});
+
         setShowCreateModal(false);
         resetCreateForm();
         loadData();
@@ -406,13 +553,15 @@ export default function RandevuListesi() {
           });
         } catch { /* sessiz */ }
 
-        // Hedef kişileri belirle: müşteri + davut + oluşturan + alan
+        // Hedef kişileri belirle: müşteri + davut + zafer + oluşturan + alan
         const musteriPhone = normalizePhone(selectedTalep.iletisim);
         const davutPhone = "+905435680874";
+        const zaferPhone = "+905363434444";
         const olusturanName = selectedTalep.profiles?.name || "";
         const alanName = currentUser.name;
         const ekipPhones = new Set<string>();
         ekipPhones.add(davutPhone);
+        ekipPhones.add(zaferPhone);
         for (const wp of WP_NUMARALARI) {
           if (wp.name === olusturanName || wp.name === alanName) {
             ekipPhones.add("+" + wp.phone);
@@ -513,6 +662,7 @@ export default function RandevuListesi() {
     setEditDosyaAdi(talep.dosya_adi);
     setEditIletisim(talep.iletisim);
     setEditGorseller([]);
+    setEditHesapBilgileri((talep.hesap_bilgileri as Record<string, HesapBilgileri>) || {});
     setShowEditModal(true);
     const detail = await loadTalepDetail(talep.id);
     if (detail) setEditGorseller(detail.gorseller || []);
@@ -529,6 +679,7 @@ export default function RandevuListesi() {
         : [];
       const allGorseller = [...existingUrls, ...uploadedUrls];
 
+      const hesapData = Object.keys(editHesapBilgileri).length > 0 ? editHesapBilgileri : null;
       const supabase = createClient();
       const { error } = await supabase
         .from("randevu_talepleri")
@@ -539,6 +690,7 @@ export default function RandevuListesi() {
           dosya_adi: editDosyaAdi,
           iletisim: editIletisim,
           gorseller: allGorseller,
+          hesap_bilgileri: hesapData,
           updated_at: new Date().toISOString(),
         })
         .eq("id", selectedTalep.id);
@@ -669,6 +821,11 @@ export default function RandevuListesi() {
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <h3 className="font-bold text-navy-900 text-lg">{talep.dosya_adi}</h3>
                     {talep.arsivlendi && <Badge variant="success" size="sm">Randevu Alındı</Badge>}
+                    {!talep.arsivlendi && talep.hesap_bilgileri && Object.entries(talep.hesap_bilgileri as Record<string, HesapBilgileri>).some(([, v]) => !v.hesap_var) && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300">
+                        ⚠️ Hesap Açılmamış
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {talep.ulkeler.map((ulke) => (
@@ -802,6 +959,23 @@ export default function RandevuListesi() {
               </div>
             )}
           </div>
+
+          {needsHesap(formUlkeler).ispanya && (
+            <HesapAlanlari
+              ulke="İspanya"
+              hesapBilgileri={formHesapBilgileri["İspanya"]}
+              onChange={(val) => setFormHesapBilgileri(prev => ({ ...prev, "İspanya": val }))}
+            />
+          )}
+
+          {needsHesap(formUlkeler).italya && (
+            <HesapAlanlari
+              ulke="İtalya"
+              hesapBilgileri={formHesapBilgileri["İtalya"]}
+              onChange={(val) => setFormHesapBilgileri(prev => ({ ...prev, "İtalya": val }))}
+              gorseller={formGorseller}
+            />
+          )}
 
           <Button onClick={handleCreate} disabled={formSaving || !formDosyaAdi || !formIletisim || formUlkeler.length === 0 || !formVizeTipi} className="w-full">
             {formSaving ? "Kaydediliyor..." : "Randevu Talebi Oluştur"}
@@ -964,6 +1138,44 @@ export default function RandevuListesi() {
                 )}
               </div>
 
+              {/* Hesap Bilgileri */}
+              {selectedTalep.hesap_bilgileri && Object.keys(selectedTalep.hesap_bilgileri).length > 0 && (
+                <div className="space-y-3">
+                  {Object.entries(selectedTalep.hesap_bilgileri as Record<string, HesapBilgileri>).map(([ulke, info]) => (
+                    <div key={ulke} className={`rounded-xl p-4 border shadow-sm ${info.hesap_var ? "bg-green-50/80 border-green-200/60" : "bg-yellow-50/80 border-yellow-200/60"}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">{ulke === "İtalya" ? "🇮🇹" : "🇪🇸"}</span>
+                        <p className="text-sm font-bold text-navy-800">{ulke} Hesap Bilgileri</p>
+                        <span className={`ml-auto px-2 py-0.5 rounded-full text-xs font-medium ${info.hesap_var ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+                          {info.hesap_var ? "✅ Hesap Açık" : "⚠️ Hesap Açılmamış"}
+                        </span>
+                      </div>
+                      {info.hesap_var && ulke === "İspanya" && (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-navy-400 text-xs">E-posta:</span><br/><span className="font-medium">{info.email || "-"}</span></div>
+                          <div><span className="text-navy-400 text-xs">Şifre:</span><br/><span className="font-medium">{info.sifre || "-"}</span></div>
+                        </div>
+                      )}
+                      {info.hesap_var && ulke === "İtalya" && info.gorsel_bilgileri && (
+                        <div className="space-y-2 mt-2">
+                          {info.gorsel_bilgileri.map((gb, i) => (
+                            <div key={i} className="bg-white/60 rounded-lg p-2 border border-amber-100 text-xs">
+                              <p className="font-bold text-navy-600 mb-1">Pasaport {i + 1}</p>
+                              <div className="grid grid-cols-2 gap-1">
+                                <span><span className="text-navy-400">E-posta:</span> {gb.email || "-"}</span>
+                                <span><span className="text-navy-400">Şifre:</span> {gb.sifre || "-"}</span>
+                                <span><span className="text-navy-400">IT No:</span> {gb.it_numarasi || "-"}</span>
+                                <span><span className="text-navy-400">Telefon:</span> {gb.telefon || "-"}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {detailLoading && (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1081,6 +1293,23 @@ export default function RandevuListesi() {
               </div>
             )}
           </div>
+
+          {needsHesap(editUlkeler).ispanya && (
+            <HesapAlanlari
+              ulke="İspanya"
+              hesapBilgileri={editHesapBilgileri["İspanya"]}
+              onChange={(val) => setEditHesapBilgileri(prev => ({ ...prev, "İspanya": val }))}
+            />
+          )}
+
+          {needsHesap(editUlkeler).italya && (
+            <HesapAlanlari
+              ulke="İtalya"
+              hesapBilgileri={editHesapBilgileri["İtalya"]}
+              onChange={(val) => setEditHesapBilgileri(prev => ({ ...prev, "İtalya": val }))}
+              gorseller={editGorseller}
+            />
+          )}
 
           <Button onClick={handleEdit} disabled={editSaving || !editDosyaAdi || !editIletisim || editUlkeler.length === 0 || !editVizeTipi} className="w-full">
             {editSaving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}

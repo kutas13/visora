@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import SidebarAiPanel from "./SidebarAiPanel";
+
+const ZAFER_ALLOWED_HREFS = ["/app/randevu-listesi", "/app/randevu-raporlari"];
 
 const menuItems = [
   {
@@ -123,10 +127,34 @@ const menuItems = [
       </svg>
     ),
   },
+  {
+    href: "/app/randevu-raporlari",
+    label: "Randevu Raporları",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function StaffSidebar() {
   const pathname = usePathname();
+  const [isZafer, setIsZafer] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from("profiles").select("name").eq("id", user.id).single().then(({ data }) => {
+        if (data?.name === "ZAFER") setIsZafer(true);
+      });
+    });
+  }, []);
+
+  const visibleItems = isZafer
+    ? menuItems.filter(item => ZAFER_ALLOWED_HREFS.includes(item.href))
+    : menuItems;
 
   return (
     <aside className="h-full w-72 bg-gradient-to-b from-navy-900 to-navy-800 shadow-2xl flex flex-col">
@@ -146,7 +174,7 @@ export default function StaffSidebar() {
       {/* Menü */}
       <nav className="p-3 flex-shrink-0 overflow-y-auto max-h-[calc(100vh-380px)]">
         <ul className="space-y-0.5">
-          {menuItems.map((item) => {
+          {visibleItems.map((item) => {
             const isActive = item.href === "/app" 
               ? pathname === "/app" 
               : pathname.startsWith(item.href);

@@ -179,6 +179,20 @@ export interface Notification {
 export type RandevuVizeTipi = "turistik" | "ticari" | "ogrenci" | "konferans" | "aile" | "arkadas";
 export type RandevuAltKategori = "ilk_vize" | "multi_vize";
 
+export interface HesapBilgileri {
+  hesap_var: boolean;
+  email?: string;
+  sifre?: string;
+  it_numarasi?: string;
+  telefon?: string;
+  gorsel_bilgileri?: Array<{
+    email?: string;
+    sifre?: string;
+    it_numarasi?: string;
+    telefon?: string;
+  }>;
+}
+
 export interface RandevuTalebi {
   id: string;
   ulkeler: string[];
@@ -190,6 +204,8 @@ export interface RandevuTalebi {
   randevu_tarihi: string | null;
   randevu_alan_id: string | null;
   randevu_dosyalari: string[];
+  hesap_bilgileri: Record<string, HesapBilgileri> | null;
+  son_hesap_hatirlatma: string | null;
   arsivlendi: boolean;
   created_by: string | null;
   created_at: string;

@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/daily-randevu?secret=fox-turizm-cron-secret-2024",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/randevu-hesap-hatirlatma?secret=fox-turizm-cron-secret-2024",
+      "schedule": "0 9 * * *"
     }
   ]
 }
