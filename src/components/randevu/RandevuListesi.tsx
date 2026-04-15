@@ -621,6 +621,64 @@ export default function RandevuListesi() {
           await new Promise(r => setTimeout(r, 1000));
         }
 
+        // 6) Randevu tarihi 20 gün içindeyse hemen evrak hatırlatma gönder
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const rTarih = new Date(randevuTarihi);
+        rTarih.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((rTarih.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 20 && diffDays >= 0 && musteriPhone) {
+          try {
+            const evrakBaslangic = new Date(rTarih);
+            evrakBaslangic.setDate(evrakBaslangic.getDate() - 15);
+            const teslimTarih = new Date(rTarih);
+            teslimTarih.setDate(teslimTarih.getDate() - 3);
+            const fmtTr = (d: Date) => d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+            const evrakMsg =
+              `Sayın Müşterimiz,\n\n` +
+              `*${fmtTr(rTarih)}* tarihinde randevunuz bulunmaktadır.\n\n` +
+              `Evraklarınızı *${fmtTr(evrakBaslangic)}* tarihinden itibaren hazırlamaya başlamanız gerekmektedir.\n\n` +
+              `Evraklarınızın en geç *${fmtTr(teslimTarih)}* tarihine kadar ofisimizde olması gerekmektedir.\n\n` +
+              `Gerekli evrak listesi aşağıda gönderilecektir.\n\n` +
+              `Fox Turizm Randevu Takip Sistemi`;
+            await new Promise(r => setTimeout(r, 2000));
+            await sendWpMsg(musteriPhone, evrakMsg);
+            await new Promise(r => setTimeout(r, 2000));
+
+            const ULKE_PDF: Record<string, string> = {
+              "Fransa": "fransa.pdf", "Hollanda": "hollanda.pdf", "Bulgaristan": "bulgaristan.pdf",
+              "İtalya": "italya.pdf", "Almanya": "almanya.pdf", "İspanya": "ispanya.pdf",
+              "Avusturya": "avusturya.pdf", "Belçika": "belcika.pdf", "Portekiz": "portekiz.pdf",
+              "Yunanistan": "yunanistan.pdf", "İsviçre": "isvicre.pdf", "Polonya": "polonya.pdf",
+              "Çekya": "cekya.pdf", "Macaristan": "macaristan.pdf", "Danimarka": "danimarka.pdf",
+              "İsveç": "isvec.pdf", "Norveç": "norvec.pdf", "Finlandiya": "finlandiya.pdf",
+              "Slovakya": "slovakya.pdf", "Hırvatistan": "hirvatistan.pdf", "Malta": "malta.pdf",
+            };
+            const evrakUlkeler = randevuUlke ? [randevuUlke] : selectedTalep.ulkeler;
+            const siteOrigin = window.location.origin;
+            for (const u of evrakUlkeler) {
+              const pdfName = ULKE_PDF[u];
+              if (!pdfName) continue;
+              await sendWpImage(musteriPhone, `${siteOrigin}/evrak-pdfs/${pdfName}`, `${u} - Gerekli Evrak Listesi`);
+              await new Promise(r => setTimeout(r, 2000));
+            }
+
+            await sendWpImage(musteriPhone, `${siteOrigin}/fox-adres.png`, "Adresimiz");
+            await new Promise(r => setTimeout(r, 2000));
+
+            await sendWpMsg(musteriPhone,
+              `*İletişim Bilgilerimiz:*\n\n` +
+              `Ercan Bey: 0505 562 33 01\n` +
+              `Bahar Hanım: 0505 562 32 79\n\n` +
+              `Herhangi bir sorunuz olursa yukarıdaki numaralardan bize ulaşabilirsiniz.\n\n` +
+              `Fox Turizm`
+            );
+
+            await supabase.from("randevu_talepleri").update({ evrak_hatirlatma_gonderildi: true }).eq("id", selectedTalep.id);
+          } catch { /* evrak hatırlatma gönderilemedi - cron halledecek */ }
+        }
+
         setShowRandevuAlModal(false);
         setRandevuTarihi("");
         setRandevuDosyalari([]);
