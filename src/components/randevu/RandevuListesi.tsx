@@ -419,7 +419,8 @@ export default function RandevuListesi() {
           `👤 Alan: *${currentUser.name}*\n\n` +
           `_Fox Turizm_`;
 
-        for (const phone of ekipPhones) {
+        const ekipPhoneList = Array.from(ekipPhones);
+        for (const phone of ekipPhoneList) {
           await sendWpMsg(phone, ekipMsg);
           await new Promise(r => setTimeout(r, 1000));
         }
