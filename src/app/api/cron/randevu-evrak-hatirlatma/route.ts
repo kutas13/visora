@@ -120,13 +120,16 @@ export async function POST(request: NextRequest) {
       const randevuUlke = talep.randevu_ulke || (talep.ulkeler?.length === 1 ? talep.ulkeler[0] : null);
       const ulkeler: string[] = randevuUlke ? [randevuUlke] : (talep.ulkeler || []);
 
-      const evrakSonTarih = new Date(randevuTarihi);
-      evrakSonTarih.setDate(evrakSonTarih.getDate() - 15);
+      const evrakBaslangic = new Date(randevuTarihi);
+      evrakBaslangic.setDate(evrakBaslangic.getDate() - 15);
+      const teslimTarih = new Date(randevuTarihi);
+      teslimTarih.setDate(teslimTarih.getDate() - 3);
 
       const mesaj =
         `Sayın Müşterimiz,\n\n` +
         `*${talep.dosya_adi}* dosyanız için *${formatTrDate(randevuTarihi)}* tarihinde randevunuz bulunmaktadır.\n\n` +
-        `Evraklarınızı en geç *${formatTrDate(evrakSonTarih)}* tarihine kadar hazırlamanız gerekmektedir.\n\n` +
+        `Evraklarınızı *${formatTrDate(evrakBaslangic)}* tarihinden itibaren hazırlamaya başlamanız gerekmektedir.\n\n` +
+        `Evraklarınızın en geç *${formatTrDate(teslimTarih)}* tarihine kadar ofisimizde olması gerekmektedir.\n\n` +
         `Gerekli evrak listesi aşağıda gönderilecektir.\n\n` +
         `Fox Turizm Randevu Takip Sistemi`;
 
