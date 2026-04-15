@@ -464,7 +464,7 @@ export default function RandevuListesi() {
         <div>
           <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
             <span className="text-3xl">📋</span>
-            Randevu Listesi
+            Randevu Alınacak
           </h1>
           <p className="text-navy-500 mt-1">
             {filteredTalepler.length} {showArchived ? "arşivlenmiş" : "aktif"} randevu talebi
