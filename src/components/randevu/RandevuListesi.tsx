@@ -233,6 +233,7 @@ export default function RandevuListesi() {
   // Randevu al
   const [randevuTarihi, setRandevuTarihi] = useState("");
   const [randevuDosyalari, setRandevuDosyalari] = useState<string[]>([]);
+  const [randevuUlke, setRandevuUlke] = useState("");
   const [randevuSaving, setRandevuSaving] = useState(false);
 
   // Edit form
@@ -362,7 +363,7 @@ export default function RandevuListesi() {
         const staffInfo = allStaff.find(s => s.name.toUpperCase() === currentUser.name.toUpperCase());
         const staffHitap = staffInfo?.hitap || currentUser.name;
         const staffPhone = staffInfo?.phone || "";
-        const ulkelerStr = selectedTalep.ulkeler.join(", ");
+        const ulkelerStr = randevuUlke || selectedTalep.ulkeler.join(", ");
         const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === selectedTalep.vize_tipi)?.label || selectedTalep.vize_tipi;
         const randevuStr = new Date(randevuTarihi).toLocaleDateString("tr-TR", {
           day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -463,6 +464,7 @@ export default function RandevuListesi() {
         setShowRandevuAlModal(false);
         setRandevuTarihi("");
         setRandevuDosyalari([]);
+        setRandevuUlke("");
         setSelectedTalep(null);
         loadData();
       }
@@ -681,7 +683,7 @@ export default function RandevuListesi() {
                   <Button size="sm" variant="outline" onClick={() => { setSelectedTalep(talep); setShowDetailModal(true); }}>Detay</Button>
                   <Button size="sm" variant="outline" onClick={() => openEdit(talep)}>Düzenle</Button>
                   {!talep.arsivlendi && (
-                    <Button size="sm" variant="primary" onClick={() => { setSelectedTalep(talep); setShowRandevuAlModal(true); }} className="bg-green-600 hover:bg-green-700">
+                    <Button size="sm" variant="primary" onClick={() => { setSelectedTalep(talep); setRandevuUlke(talep.ulkeler.length === 1 ? talep.ulkeler[0] : ""); setShowRandevuAlModal(true); }} className="bg-green-600 hover:bg-green-700">
                       📅 Randevu Al
                     </Button>
                   )}
@@ -767,12 +769,25 @@ export default function RandevuListesi() {
       </Modal>
 
       {/* ===== RANDEVU AL MODAL ===== */}
-      <Modal isOpen={showRandevuAlModal} onClose={() => { setShowRandevuAlModal(false); setRandevuTarihi(""); setRandevuDosyalari([]); setSelectedTalep(null); }} title="Randevu Al" size="md">
+      <Modal isOpen={showRandevuAlModal} onClose={() => { setShowRandevuAlModal(false); setRandevuTarihi(""); setRandevuDosyalari([]); setRandevuUlke(""); setSelectedTalep(null); }} title="Randevu Al" size="md">
         <div className="space-y-4">
           {selectedTalep && (
             <div className="bg-navy-50 rounded-xl p-4">
               <p className="font-bold text-navy-900">{selectedTalep.dosya_adi}</p>
               <p className="text-sm text-navy-500">{selectedTalep.ulkeler.join(", ")}</p>
+            </div>
+          )}
+          {selectedTalep && selectedTalep.ulkeler.length > 1 && (
+            <div>
+              <label className="block text-sm font-bold text-navy-700 mb-2">Hangi ülkeye randevu aldınız? *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {selectedTalep.ulkeler.map((ulke) => (
+                  <button key={ulke} type="button" onClick={() => setRandevuUlke(ulke)}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${randevuUlke === ulke ? "bg-green-600 text-white shadow-lg" : "bg-navy-50 text-navy-600 hover:bg-navy-100 border border-navy-200"}`}>
+                    🌍 {ulke}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <div>
@@ -809,7 +824,7 @@ export default function RandevuListesi() {
             Pasaport görselleri + randevu mektubu müşteriye WhatsApp ile gönderilecek.
             Davut, oluşturan ve alan kişiye bildirim gidecek.
           </p>
-          <Button onClick={handleRandevuAl} disabled={randevuSaving || !randevuTarihi} className="w-full bg-green-600 hover:bg-green-700">
+          <Button onClick={handleRandevuAl} disabled={randevuSaving || !randevuTarihi || (!!selectedTalep && selectedTalep.ulkeler.length > 1 && !randevuUlke)} className="w-full bg-green-600 hover:bg-green-700">
             {randevuSaving ? "Randevu alınıyor..." : "Randevuyu Onayla"}
           </Button>
         </div>
@@ -835,115 +850,120 @@ export default function RandevuListesi() {
         {selectedTalep && (() => {
           const firstUlke = selectedTalep.ulkeler[0] || "";
           const flagStyle = ULKE_RENKLERI[firstUlke];
-          const headerBg = flagStyle ? flagStyle.bg : "linear-gradient(135deg, #e0e7ff, #dbeafe)";
-          const headerText = flagStyle ? flagStyle.text : "text-navy-900";
+          const flagBg = flagStyle ? flagStyle.bg : "linear-gradient(135deg, #667eea, #764ba2)";
           return (
-          <div className="space-y-5">
-            <div className="rounded-xl p-5 relative overflow-hidden" style={{ background: headerBg }}>
-              <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]" />
-              <div className="relative z-10">
-                <h3 className={`text-xl font-bold mb-1 ${headerText} drop-shadow-md`}>{selectedTalep.dosya_adi}</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
+          <div className="relative -m-6 overflow-hidden">
+            {/* Full flag background */}
+            <div className="absolute inset-0" style={{ background: flagBg }} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-white/95" />
+            <div className="absolute inset-0 backdrop-blur-[2px]" style={{ background: "linear-gradient(to bottom, transparent 0%, transparent 15%, rgba(255,255,255,0.3) 35%, rgba(255,255,255,0.85) 55%, rgba(255,255,255,0.97) 75%, white 100%)" }} />
+
+            <div className="relative z-10 p-6 space-y-5">
+              {/* Header */}
+              <div className="pt-2 pb-4">
+                <h3 className="text-2xl font-extrabold text-white drop-shadow-lg mb-3">{selectedTalep.dosya_adi}</h3>
+                <div className="flex flex-wrap gap-2">
                   {selectedTalep.ulkeler.map((ulke) => {
                     const ulkeFlag = ULKE_RENKLERI[ulke];
                     return (
-                      <span key={ulke} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-white/90 text-navy-800 shadow-sm backdrop-blur-sm">
-                        {ulkeFlag && <span className="w-4 h-3 rounded-sm inline-block border border-white/50 flex-shrink-0" style={{ background: ulkeFlag.bg }} />}
+                      <span key={ulke} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-bold bg-white/90 text-navy-800 shadow-md backdrop-blur-md border border-white/50">
+                        {ulkeFlag && <span className="w-5 h-3.5 rounded-sm inline-block border border-gray-200 flex-shrink-0" style={{ background: ulkeFlag.bg }} />}
                         {ulke}
                       </span>
                     );
                   })}
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-navy-50 rounded-xl p-4">
-                <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Vize Tipi</p>
-                <p className="font-medium text-navy-900">{VIZE_TIPLERI.find(v => v.value === selectedTalep.vize_tipi)?.label}</p>
-              </div>
-              {selectedTalep.alt_kategori && (
-                <div className="bg-navy-50 rounded-xl p-4">
-                  <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Kategori</p>
-                  <p className="font-medium text-navy-900">{ALT_KATEGORILER.find(a => a.value === selectedTalep.alt_kategori)?.label}</p>
+              {/* Info Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
+                  <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Vize Tipi</p>
+                  <p className="font-semibold text-navy-900">{VIZE_TIPLERI.find(v => v.value === selectedTalep.vize_tipi)?.label}</p>
                 </div>
-              )}
-              <div className="bg-navy-50 rounded-xl p-4">
-                <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">İletişim</p>
-                <p className="font-medium text-navy-900">{selectedTalep.iletisim}</p>
-              </div>
-              <div className="bg-navy-50 rounded-xl p-4">
-                <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-2">Oluşturan</p>
-                <div className="flex items-center gap-2">
-                  {selectedTalep.profiles?.name && AVATAR_MAP[selectedTalep.profiles.name] && (
-                    <img src={AVATAR_MAP[selectedTalep.profiles.name]} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-navy-200" />
-                  )}
-                  <p className="font-medium text-navy-900">{selectedTalep.profiles?.name || "-"}</p>
+                {selectedTalep.alt_kategori && (
+                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
+                    <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Kategori</p>
+                    <p className="font-semibold text-navy-900">{ALT_KATEGORILER.find(a => a.value === selectedTalep.alt_kategori)?.label}</p>
+                  </div>
+                )}
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
+                  <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">İletişim</p>
+                  <p className="font-semibold text-navy-900">{selectedTalep.iletisim}</p>
                 </div>
-              </div>
-              <div className="bg-navy-50 rounded-xl p-4">
-                <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Tarih</p>
-                <p className="font-medium text-navy-900">{formatDateTime(selectedTalep.created_at)}</p>
-              </div>
-              {selectedTalep.randevu_tarihi && (
-                <div className="bg-green-50 rounded-xl p-4">
-                  <p className="text-xs text-green-600 uppercase tracking-wide font-bold mb-1">Randevu Tarihi</p>
-                  <p className="font-medium text-green-700">{formatDateTime(selectedTalep.randevu_tarihi)}</p>
-                </div>
-              )}
-              {selectedTalep.randevu_alan && (
-                <div className="bg-green-50 rounded-xl p-4">
-                  <p className="text-xs text-green-600 uppercase tracking-wide font-bold mb-2">Randevuyu Alan</p>
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
+                  <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-2">Oluşturan</p>
                   <div className="flex items-center gap-2">
-                    {AVATAR_MAP[selectedTalep.randevu_alan.name] && (
-                      <img src={AVATAR_MAP[selectedTalep.randevu_alan.name]} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-green-200" />
+                    {selectedTalep.profiles?.name && AVATAR_MAP[selectedTalep.profiles.name] && (
+                      <img src={AVATAR_MAP[selectedTalep.profiles.name]} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm" />
                     )}
-                    <p className="font-medium text-green-700">{selectedTalep.randevu_alan.name}</p>
+                    <p className="font-semibold text-navy-900">{selectedTalep.profiles?.name || "-"}</p>
+                  </div>
+                </div>
+                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
+                  <p className="text-xs text-navy-400 uppercase tracking-wide font-bold mb-1">Oluşturma Tarihi</p>
+                  <p className="font-semibold text-navy-900">{formatDateTime(selectedTalep.created_at)}</p>
+                </div>
+                {selectedTalep.randevu_tarihi && (
+                  <div className="bg-green-50/90 backdrop-blur-sm rounded-xl p-4 border border-green-200/60 shadow-sm">
+                    <p className="text-xs text-green-600 uppercase tracking-wide font-bold mb-1">Randevu Tarihi</p>
+                    <p className="font-semibold text-green-700">{formatDateTime(selectedTalep.randevu_tarihi)}</p>
+                  </div>
+                )}
+                {selectedTalep.randevu_alan && (
+                  <div className="bg-green-50/90 backdrop-blur-sm rounded-xl p-4 border border-green-200/60 shadow-sm">
+                    <p className="text-xs text-green-600 uppercase tracking-wide font-bold mb-2">Randevuyu Alan</p>
+                    <div className="flex items-center gap-2">
+                      {AVATAR_MAP[selectedTalep.randevu_alan.name] && (
+                        <img src={AVATAR_MAP[selectedTalep.randevu_alan.name]} alt="" className="w-8 h-8 rounded-full object-cover border-2 border-green-200 shadow-sm" />
+                      )}
+                      <p className="font-semibold text-green-700">{selectedTalep.randevu_alan.name}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Randevu Dosyaları */}
+              {selectedTalep.randevu_dosyalari && selectedTalep.randevu_dosyalari.length > 0 && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
+                  <p className="text-sm font-bold text-green-700 mb-3">📎 Randevu Mektubu ({selectedTalep.randevu_dosyalari.length})</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {selectedTalep.randevu_dosyalari.map((g, i) => (
+                      <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
+                        {g.startsWith("data:application/pdf") ? (
+                          <div className="w-full h-32 bg-red-50 rounded-xl border border-red-200 flex flex-col items-center justify-center text-red-500">
+                            <span className="text-3xl mb-1">📄</span>
+                            <span className="text-xs font-medium">PDF {i + 1}</span>
+                          </div>
+                        ) : (
+                          <img src={g} alt={`Randevu Dosya ${i + 1}`} className="w-full h-32 object-cover rounded-xl border border-green-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pasaport Görselleri */}
+              {selectedTalep.gorseller && selectedTalep.gorseller.length > 0 && (
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
+                  <p className="text-sm font-bold text-navy-700 mb-3">Pasaport Görselleri ({selectedTalep.gorseller.length})</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {selectedTalep.gorseller.map((g, i) => (
+                      <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
+                        <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-40 object-cover rounded-xl border border-navy-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-xl transition-all flex items-center justify-center">
+                          <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                          </svg>
+                        </div>
+                        <span className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-md">Görsel {i + 1}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Randevu Dosyaları */}
-            {selectedTalep.randevu_dosyalari && selectedTalep.randevu_dosyalari.length > 0 && (
-              <div>
-                <p className="text-sm font-bold text-green-700 mb-3">📎 Randevu Mektubu ({selectedTalep.randevu_dosyalari.length})</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {selectedTalep.randevu_dosyalari.map((g, i) => (
-                    <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
-                      {g.startsWith("data:application/pdf") ? (
-                        <div className="w-full h-32 bg-red-50 rounded-xl border border-red-200 flex flex-col items-center justify-center text-red-500">
-                          <span className="text-3xl mb-1">📄</span>
-                          <span className="text-xs font-medium">PDF {i + 1}</span>
-                        </div>
-                      ) : (
-                        <img src={g} alt={`Randevu Dosya ${i + 1}`} className="w-full h-32 object-cover rounded-xl border border-green-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Pasaport Görselleri */}
-            {selectedTalep.gorseller && selectedTalep.gorseller.length > 0 && (
-              <div>
-                <p className="text-sm font-bold text-navy-700 mb-3">Pasaport Görselleri ({selectedTalep.gorseller.length})</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {selectedTalep.gorseller.map((g, i) => (
-                    <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
-                      <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-40 object-cover rounded-xl border border-navy-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-xl transition-all flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                        </svg>
-                      </div>
-                      <span className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-md">Görsel {i + 1}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
           );
         })()}
