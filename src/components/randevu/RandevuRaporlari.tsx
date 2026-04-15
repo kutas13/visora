@@ -9,6 +9,7 @@ interface RandevuRow {
   dosya_adi: string;
   ulkeler: string[];
   vize_tipi: string;
+  gorseller: string[];
   randevu_tarihi: string | null;
   randevu_alan_id: string | null;
   arsivlendi: boolean;
@@ -20,9 +21,9 @@ interface RandevuRow {
 
 interface UserStat {
   name: string;
-  talepCount: number;
-  randevuCount: number;
-  randevular: { dosya_adi: string; ulke: string; tarih: string }[];
+  talepPasaport: number;
+  randevuPasaport: number;
+  randevular: { dosya_adi: string; ulke: string; tarih: string; pasaportSayisi: number }[];
 }
 
 interface UlkeStat {
@@ -35,6 +36,8 @@ const VIZE_TIPLERI: Record<string, string> = {
   ticari: "Ticari",
   ogrenci: "Öğrenci",
   konferans: "Konferans",
+  kulturel: "Kültürel",
+  sportif: "Sportif",
   aile: "Aile",
   arkadas: "Arkadaş",
 };
@@ -43,6 +46,10 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", {
     day: "2-digit", month: "long", year: "numeric",
   });
+}
+
+function pasaportSayisi(t: RandevuRow): number {
+  return t.gorseller?.length || 1;
 }
 
 export default function RandevuRaporlari() {
@@ -54,7 +61,7 @@ export default function RandevuRaporlari() {
     const supabase = createClient();
     const { data } = await supabase
       .from("randevu_talepleri")
-      .select("id, dosya_adi, ulkeler, vize_tipi, randevu_tarihi, randevu_alan_id, arsivlendi, created_by, created_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
+      .select("id, dosya_adi, ulkeler, vize_tipi, gorseller, randevu_tarihi, randevu_alan_id, arsivlendi, created_by, created_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
       .order("created_at", { ascending: false });
 
     if (data) setTalepler(data as unknown as RandevuRow[]);
@@ -67,61 +74,56 @@ export default function RandevuRaporlari() {
     if (dateRange === "all") return true;
     const d = new Date(t.created_at);
     const now = new Date();
-    if (dateRange === "week") {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return d >= weekAgo;
-    }
-    if (dateRange === "month") {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      return d >= monthAgo;
-    }
+    if (dateRange === "week") return d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    if (dateRange === "month") return d >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     return true;
   });
 
-  const totalTalep = filtered.length;
-  const totalRandevu = filtered.filter(t => t.arsivlendi && t.randevu_tarihi).length;
+  const totalPasaport = filtered.reduce((sum, t) => sum + pasaportSayisi(t), 0);
+  const randevuAlinan = filtered.filter(t => t.arsivlendi && t.randevu_tarihi);
+  const totalRandevuPasaport = randevuAlinan.reduce((sum, t) => sum + pasaportSayisi(t), 0);
+  const bekleyenler = filtered.filter(t => !t.arsivlendi || !t.randevu_tarihi);
+  const totalBekleyenPasaport = bekleyenler.reduce((sum, t) => sum + pasaportSayisi(t), 0);
 
-  // Average time from request to booking (in days)
   const randevuSureleri = filtered
     .filter(t => t.randevu_tarihi && t.created_at)
-    .map(t => {
-      const created = new Date(t.created_at).getTime();
-      const booked = new Date(t.randevu_tarihi!).getTime();
-      return Math.max(0, (booked - created) / (1000 * 60 * 60 * 24));
-    });
+    .map(t => Math.max(0, (new Date(t.randevu_tarihi!).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24)));
   const avgSure = randevuSureleri.length > 0
     ? (randevuSureleri.reduce((a, b) => a + b, 0) / randevuSureleri.length).toFixed(1)
     : "—";
 
-  // Per-user stats
+  // Per-user stats (pasaport bazlı)
   const userStats: Record<string, UserStat> = {};
   for (const t of filtered) {
     const creatorName = t.profiles?.name || "Bilinmiyor";
     if (!userStats[creatorName]) {
-      userStats[creatorName] = { name: creatorName, talepCount: 0, randevuCount: 0, randevular: [] };
+      userStats[creatorName] = { name: creatorName, talepPasaport: 0, randevuPasaport: 0, randevular: [] };
     }
-    userStats[creatorName].talepCount++;
+    userStats[creatorName].talepPasaport += pasaportSayisi(t);
   }
   for (const t of filtered) {
     if (!t.randevu_alan || !t.randevu_tarihi) continue;
     const bookerName = t.randevu_alan.name;
     if (!userStats[bookerName]) {
-      userStats[bookerName] = { name: bookerName, talepCount: 0, randevuCount: 0, randevular: [] };
+      userStats[bookerName] = { name: bookerName, talepPasaport: 0, randevuPasaport: 0, randevular: [] };
     }
-    userStats[bookerName].randevuCount++;
+    const pCount = pasaportSayisi(t);
+    userStats[bookerName].randevuPasaport += pCount;
     userStats[bookerName].randevular.push({
       dosya_adi: t.dosya_adi,
       ulke: t.ulkeler.join(", "),
       tarih: t.randevu_tarihi,
+      pasaportSayisi: pCount,
     });
   }
-  const sortedUsers = Object.values(userStats).sort((a, b) => (b.talepCount + b.randevuCount) - (a.talepCount + a.randevuCount));
+  const sortedUsers = Object.values(userStats).sort((a, b) => (b.talepPasaport + b.randevuPasaport) - (a.talepPasaport + a.randevuPasaport));
 
-  // Per-country stats
+  // Per-country stats (pasaport bazlı)
   const ulkeMap: Record<string, number> = {};
-  for (const t of filtered.filter(t => t.arsivlendi && t.randevu_tarihi)) {
+  for (const t of randevuAlinan) {
+    const pCount = pasaportSayisi(t);
     for (const u of t.ulkeler) {
-      ulkeMap[u] = (ulkeMap[u] || 0) + 1;
+      ulkeMap[u] = (ulkeMap[u] || 0) + pCount;
     }
   }
   const ulkeStats: UlkeStat[] = Object.entries(ulkeMap)
@@ -147,7 +149,7 @@ export default function RandevuRaporlari() {
             <span className="text-3xl">📊</span>
             Randevu Raporları
           </h1>
-          <p className="text-navy-500 mt-1">Randevu talebi ve alım istatistikleri</p>
+          <p className="text-navy-500 mt-1">Pasaport bazlı randevu istatistikleri</p>
         </div>
         <div className="flex gap-2">
           {(["all", "month", "week"] as const).map((range) => (
@@ -167,18 +169,24 @@ export default function RandevuRaporlari() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="p-5 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg">
-          <p className="text-xs text-blue-600 uppercase font-bold tracking-wide">Toplam Talep</p>
-          <p className="text-3xl font-extrabold text-blue-800 mt-1">{totalTalep}</p>
+          <p className="text-xs text-blue-600 uppercase font-bold tracking-wide">Toplam Dosya</p>
+          <p className="text-3xl font-extrabold text-blue-800 mt-1">{filtered.length}</p>
+        </Card>
+        <Card className="p-5 bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 shadow-lg">
+          <p className="text-xs text-indigo-600 uppercase font-bold tracking-wide">Toplam Pasaport</p>
+          <p className="text-3xl font-extrabold text-indigo-800 mt-1">{totalPasaport}</p>
         </Card>
         <Card className="p-5 bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-lg">
           <p className="text-xs text-green-600 uppercase font-bold tracking-wide">Alınan Randevu</p>
-          <p className="text-3xl font-extrabold text-green-800 mt-1">{totalRandevu}</p>
+          <p className="text-3xl font-extrabold text-green-800 mt-1">{totalRandevuPasaport}</p>
+          <p className="text-xs text-green-500 mt-0.5">{randevuAlinan.length} dosya</p>
         </Card>
         <Card className="p-5 bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 shadow-lg">
           <p className="text-xs text-amber-600 uppercase font-bold tracking-wide">Bekleyen</p>
-          <p className="text-3xl font-extrabold text-amber-800 mt-1">{totalTalep - totalRandevu}</p>
+          <p className="text-3xl font-extrabold text-amber-800 mt-1">{totalBekleyenPasaport}</p>
+          <p className="text-xs text-amber-500 mt-0.5">{bekleyenler.length} dosya</p>
         </Card>
         <Card className="p-5 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg">
           <p className="text-xs text-purple-600 uppercase font-bold tracking-wide">Ort. Süre (gün)</p>
@@ -191,7 +199,7 @@ export default function RandevuRaporlari() {
         {/* User Stats */}
         <Card className="p-5 shadow-lg">
           <h2 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
-            <span className="text-xl">👥</span> Kullanıcı Bazlı İstatistikler
+            <span className="text-xl">👥</span> Kullanıcı Bazlı (Pasaport)
           </h2>
           <div className="space-y-2">
             {sortedUsers.map((user) => (
@@ -207,13 +215,13 @@ export default function RandevuRaporlari() {
                     <div className="text-left">
                       <p className="font-bold text-navy-800 text-sm">{user.name}</p>
                       <p className="text-xs text-navy-400">
-                        {user.talepCount} talep oluşturdu • {user.randevuCount} randevu aldı
+                        {user.talepPasaport} pasaport talep • {user.randevuPasaport} pasaport randevu aldı
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{user.talepCount}</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{user.randevuCount}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{user.talepPasaport}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">{user.randevuPasaport}</span>
                     <svg className={`w-4 h-4 text-navy-400 transition-transform ${expandedUser === user.name ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -226,6 +234,8 @@ export default function RandevuRaporlari() {
                         <span className="font-medium">{r.dosya_adi}</span>
                         <span className="text-navy-400">•</span>
                         <span className="text-blue-600">🌍 {r.ulke}</span>
+                        <span className="text-navy-400">•</span>
+                        <span className="text-indigo-600">🛂 {r.pasaportSayisi} pasaport</span>
                         <span className="text-navy-400">•</span>
                         <span className="text-green-600">📅 {formatDate(r.tarih)}</span>
                       </div>
@@ -243,7 +253,7 @@ export default function RandevuRaporlari() {
         {/* Country Stats */}
         <Card className="p-5 shadow-lg">
           <h2 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
-            <span className="text-xl">🌍</span> En Çok Randevu Alınan Ülkeler
+            <span className="text-xl">🌍</span> En Çok Randevu Alınan Ülkeler (Pasaport)
           </h2>
           <div className="space-y-3">
             {ulkeStats.map((stat, i) => {
@@ -255,7 +265,7 @@ export default function RandevuRaporlari() {
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-bold text-navy-800">{stat.ulke}</span>
-                      <span className="text-sm font-extrabold text-primary-600">{stat.count}</span>
+                      <span className="text-sm font-extrabold text-primary-600">{stat.count} pasaport</span>
                     </div>
                     <div className="w-full h-2.5 bg-navy-100 rounded-full overflow-hidden">
                       <div
@@ -286,6 +296,7 @@ export default function RandevuRaporlari() {
                 <th className="text-left py-2 px-3 font-bold text-navy-500 text-xs uppercase">Dosya</th>
                 <th className="text-left py-2 px-3 font-bold text-navy-500 text-xs uppercase">Ülke</th>
                 <th className="text-left py-2 px-3 font-bold text-navy-500 text-xs uppercase">Vize Tipi</th>
+                <th className="text-left py-2 px-3 font-bold text-navy-500 text-xs uppercase">Pasaport</th>
                 <th className="text-left py-2 px-3 font-bold text-navy-500 text-xs uppercase">Randevu Tarihi</th>
                 <th className="text-left py-2 px-3 font-bold text-navy-500 text-xs uppercase">Oluşturan</th>
                 <th className="text-left py-2 px-3 font-bold text-navy-500 text-xs uppercase">Alan</th>
@@ -306,6 +317,9 @@ export default function RandevuRaporlari() {
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-navy-600">{VIZE_TIPLERI[t.vize_tipi] || t.vize_tipi}</td>
+                    <td className="py-2.5 px-3">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">{pasaportSayisi(t)}</span>
+                    </td>
                     <td className="py-2.5 px-3 text-green-600 font-medium">{t.randevu_tarihi ? formatDate(t.randevu_tarihi) : "-"}</td>
                     <td className="py-2.5 px-3 text-navy-600">{t.profiles?.name || "-"}</td>
                     <td className="py-2.5 px-3 text-navy-600">{t.randevu_alan?.name || "-"}</td>

@@ -22,6 +22,8 @@ const VIZE_TIPLERI = [
   { value: "ticari", label: "Ticari" },
   { value: "ogrenci", label: "Öğrenci" },
   { value: "konferans", label: "Konferans" },
+  { value: "kulturel", label: "Kültürel" },
+  { value: "sportif", label: "Sportif" },
   { value: "aile", label: "Aile" },
   { value: "arkadas", label: "Arkadaş" },
 ];
