@@ -337,6 +337,7 @@ export default function RandevuListesi() {
   const [formDosyaAdi, setFormDosyaAdi] = useState("");
   const [formIletisim, setFormIletisim] = useState("");
   const [formGorseller, setFormGorseller] = useState<string[]>([]);
+  const [formNot, setFormNot] = useState("");
   const [formSaving, setFormSaving] = useState(false);
 
   // Spain/Italy account fields
@@ -355,6 +356,7 @@ export default function RandevuListesi() {
   const [editAltKategori, setEditAltKategori] = useState("");
   const [editDosyaAdi, setEditDosyaAdi] = useState("");
   const [editIletisim, setEditIletisim] = useState("");
+  const [editNot, setEditNot] = useState("");
   const [editGorseller, setEditGorseller] = useState<string[]>([]);
   const [editSaving, setEditSaving] = useState(false);
 
@@ -384,7 +386,7 @@ export default function RandevuListesi() {
 
     const { data, error } = await supabase
       .from("randevu_talepleri")
-      .select("id, ulkeler, vize_tipi, alt_kategori, dosya_adi, iletisim, randevu_tarihi, randevu_alan_id, hesap_bilgileri, arsivlendi, created_by, created_at, updated_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
+      .select("id, ulkeler, vize_tipi, alt_kategori, dosya_adi, iletisim, randevu_tarihi, randevu_alan_id, hesap_bilgileri, notlar, arsivlendi, created_by, created_at, updated_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -408,7 +410,7 @@ export default function RandevuListesi() {
   const resetCreateForm = () => {
     setFormUlkeler([]); setFormVizeTipi(""); setFormAltKategori("");
     setFormDosyaAdi(""); setFormIletisim(""); setFormGorseller([]);
-    setFormHesapBilgileri({});
+    setFormNot(""); setFormHesapBilgileri({});
   };
 
   const handleFileUpload = (
@@ -446,10 +448,10 @@ export default function RandevuListesi() {
         iletisim: formIletisim,
         gorseller: gorselUrls,
         hesap_bilgileri: hesapData,
+        notlar: formNot.trim() || null,
         created_by: currentUser?.id || null,
       });
       if (!error) {
-        // Send WP notification to Davut and Zafer
         const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === formVizeTipi)?.label || formVizeTipi;
         const ulkelerStr = formUlkeler.join(", ");
         const wpMsg =
@@ -457,6 +459,7 @@ export default function RandevuListesi() {
           `👤 Dosya: *${formDosyaAdi}*\n` +
           `🌍 Ülke: *${ulkelerStr}*\n` +
           `📋 Vize Tipi: *${vizeTipiLabel}*\n` +
+          (formNot.trim() ? `📝 Not: ${formNot.trim()}\n` : ``) +
           `👤 Oluşturan: *${currentUser?.name || "-"}*\n\n` +
           `_Fox Turizm Randevu Takip Sistemi_`;
 
@@ -465,6 +468,15 @@ export default function RandevuListesi() {
         sendWpMsg(davutPhone, wpMsg).catch(() => {});
         await new Promise(r => setTimeout(r, 1000));
         sendWpMsg(zaferPhone, wpMsg).catch(() => {});
+
+        // Oluşturana da mesaj gönder
+        if (currentUser?.name) {
+          const olusturanWp = WP_NUMARALARI.find(w => w.name === currentUser.name);
+          if (olusturanWp && olusturanWp.phone !== "905435680874" && olusturanWp.phone !== "905363434444") {
+            await new Promise(r => setTimeout(r, 1000));
+            sendWpMsg("+" + olusturanWp.phone, wpMsg).catch(() => {});
+          }
+        }
 
         setShowCreateModal(false);
         resetCreateForm();
@@ -707,6 +719,7 @@ export default function RandevuListesi() {
     setEditAltKategori(talep.alt_kategori || "");
     setEditDosyaAdi(talep.dosya_adi);
     setEditIletisim(talep.iletisim);
+    setEditNot(talep.notlar || "");
     setEditGorseller([]);
     setEditHesapBilgileri((talep.hesap_bilgileri as Record<string, HesapBilgileri>) || {});
     setShowEditModal(true);
@@ -735,6 +748,7 @@ export default function RandevuListesi() {
           alt_kategori: showAltKategori(editUlkeler, editVizeTipi) ? (editAltKategori || null) : null,
           dosya_adi: editDosyaAdi,
           iletisim: editIletisim,
+          notlar: editNot.trim() || null,
           gorseller: allGorseller,
           hesap_bilgileri: hesapData,
           updated_at: new Date().toISOString(),
@@ -1006,6 +1020,17 @@ export default function RandevuListesi() {
             )}
           </div>
 
+          <div>
+            <label className="block text-sm font-bold text-navy-700 mb-2">Not (Opsiyonel)</label>
+            <textarea
+              value={formNot}
+              onChange={(e) => setFormNot(e.target.value)}
+              placeholder="Varsa eklemek istediğiniz notları yazın..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-navy-200 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none resize-none"
+            />
+          </div>
+
           {needsHesap(formUlkeler).ispanya && (
             <HesapAlanlari
               ulke="İspanya"
@@ -1185,6 +1210,14 @@ export default function RandevuListesi() {
                 )}
               </div>
 
+              {/* Not */}
+              {selectedTalep.notlar && (
+                <div className="bg-amber-50/80 backdrop-blur-sm rounded-xl p-4 border border-amber-200/60 shadow-sm">
+                  <p className="text-xs text-amber-600 uppercase tracking-wide font-bold mb-2">📝 Not</p>
+                  <p className="text-sm text-navy-800 whitespace-pre-wrap">{selectedTalep.notlar}</p>
+                </div>
+              )}
+
               {/* Hesap Bilgileri */}
               {selectedTalep.hesap_bilgileri && Object.keys(selectedTalep.hesap_bilgileri).length > 0 && (
                 <div className="space-y-3">
@@ -1311,6 +1344,17 @@ export default function RandevuListesi() {
             <label className="block text-sm font-bold text-navy-700 mb-2">İletişim *</label>
             <input type="text" value={editIletisim} onChange={(e) => setEditIletisim(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-navy-700 mb-2">Not (Opsiyonel)</label>
+            <textarea
+              value={editNot}
+              onChange={(e) => setEditNot(e.target.value)}
+              placeholder="Varsa eklemek istediğiniz notları yazın..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-navy-200 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none resize-none"
+            />
           </div>
 
           <div>

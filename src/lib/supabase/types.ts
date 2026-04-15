@@ -207,6 +207,7 @@ export interface RandevuTalebi {
   hesap_bilgileri: Record<string, HesapBilgileri> | null;
   son_hesap_hatirlatma: string | null;
   evrak_hatirlatma_gonderildi: boolean;
+  notlar: string | null;
   arsivlendi: boolean;
   created_by: string | null;
   created_at: string;
