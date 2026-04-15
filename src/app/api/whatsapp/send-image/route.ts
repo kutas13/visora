@@ -22,19 +22,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "WhatsApp servisi erişilemedi" }, { status: 503 });
     }
 
-    // base64 data URL'den raw base64 + mimetype çıkar
-    let rawBase64 = image;
-    let mtype = mimetype || "image/jpeg";
-    const match = image.match(/^data:(.+);base64,(.+)$/);
-    if (match) {
-      mtype = match[1];
-      rawBase64 = match[2];
+    let rawBase64: string;
+    let mtype: string;
+
+    if (image.startsWith("http://") || image.startsWith("https://")) {
+      // Storage URL → fetch and convert to base64
+      const imgRes = await fetch(image, { signal: AbortSignal.timeout(30000) });
+      if (!imgRes.ok) {
+        return NextResponse.json({ error: "Görsel URL'den indirilemedi" }, { status: 500 });
+      }
+      const contentType = imgRes.headers.get("content-type") || mimetype || "image/jpeg";
+      const arrayBuffer = await imgRes.arrayBuffer();
+      rawBase64 = Buffer.from(arrayBuffer).toString("base64");
+      mtype = contentType;
+    } else if (image.startsWith("data:")) {
+      // data URL → extract base64 + mimetype
+      const match = image.match(/^data:(.+);base64,(.+)$/);
+      if (match) {
+        mtype = match[1];
+        rawBase64 = match[2];
+      } else {
+        return NextResponse.json({ error: "Geçersiz data URL" }, { status: 400 });
+      }
+    } else {
+      // Raw base64
+      rawBase64 = image;
+      mtype = mimetype || "image/jpeg";
     }
 
     const isPdf = mtype === "application/pdf";
 
     if (isPdf) {
-      // PDF → /send-document endpoint
       const res = await fetch(`${serviceUrl}/send-document`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,7 +70,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: data.error || "PDF gönderilemedi" }, { status: 500 });
       }
     } else {
-      // Görsel → /send-image endpoint
       const res = await fetch(`${serviceUrl}/send-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

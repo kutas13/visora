@@ -5,6 +5,7 @@ import { Card, Button, Badge } from "@/components/ui";
 import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
 import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER } from "@/lib/constants";
+import { uploadMultipleToStorage } from "@/lib/supabase/storage";
 import type { RandevuTalebi } from "@/lib/supabase/types";
 
 const SCHENGEN_ULKELERI = [
@@ -220,6 +221,9 @@ export default function RandevuListesi() {
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterUlke, setFilterUlke] = useState("");
+  const [detailGorseller, setDetailGorseller] = useState<string[]>([]);
+  const [detailDosyalar, setDetailDosyalar] = useState<string[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Create form
   const [formUlkeler, setFormUlkeler] = useState<string[]>([]);
@@ -266,7 +270,7 @@ export default function RandevuListesi() {
 
     const { data, error } = await supabase
       .from("randevu_talepleri")
-      .select("*, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
+      .select("id, ulkeler, vize_tipi, alt_kategori, dosya_adi, iletisim, randevu_tarihi, randevu_alan_id, arsivlendi, created_by, created_at, updated_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -276,6 +280,16 @@ export default function RandevuListesi() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const loadTalepDetail = useCallback(async (id: string) => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("randevu_talepleri")
+      .select("gorseller, randevu_dosyalari")
+      .eq("id", id)
+      .single();
+    return data as { gorseller: string[] | null; randevu_dosyalari: string[] | null } | null;
+  }, []);
 
   const resetCreateForm = () => {
     setFormUlkeler([]); setFormVizeTipi(""); setFormAltKategori("");
@@ -302,6 +316,10 @@ export default function RandevuListesi() {
     if (!formDosyaAdi || !formIletisim || formUlkeler.length === 0 || !formVizeTipi) return;
     setFormSaving(true);
     try {
+      const gorselUrls = formGorseller.length > 0
+        ? await uploadMultipleToStorage(formGorseller, "randevu-pasaport")
+        : [];
+
       const supabase = createClient();
       const { error } = await supabase.from("randevu_talepleri").insert({
         ulkeler: formUlkeler,
@@ -309,7 +327,7 @@ export default function RandevuListesi() {
         alt_kategori: showAltKategori(formUlkeler, formVizeTipi) ? (formAltKategori || null) : null,
         dosya_adi: formDosyaAdi,
         iletisim: formIletisim,
-        gorseller: formGorseller,
+        gorseller: gorselUrls,
         created_by: currentUser?.id || null,
       });
       if (!error) {
@@ -346,13 +364,17 @@ export default function RandevuListesi() {
     if (!selectedTalep || !randevuTarihi || !currentUser) return;
     setRandevuSaving(true);
     try {
+      const dosyaUrls = randevuDosyalari.length > 0
+        ? await uploadMultipleToStorage(randevuDosyalari, "randevu-mektubu")
+        : [];
+
       const supabase = createClient();
       const { error } = await supabase
         .from("randevu_talepleri")
         .update({
           randevu_tarihi: randevuTarihi,
           randevu_alan_id: currentUser.id,
-          randevu_dosyalari: randevuDosyalari,
+          randevu_dosyalari: dosyaUrls,
           arsivlendi: true,
           updated_at: new Date().toISOString(),
         })
@@ -397,8 +419,9 @@ export default function RandevuListesi() {
           }
         }
 
-        // 1) Pasaport görselleri müşteriye gönder
-        const pasaportlar = selectedTalep.gorseller || [];
+        // 1) Pasaport görselleri müşteriye gönder - lazy load
+        const detail = await loadTalepDetail(selectedTalep.id);
+        const pasaportlar = detail?.gorseller || [];
         for (const gorsel of pasaportlar) {
           await sendWpImage(musteriPhone, gorsel);
           await new Promise(r => setTimeout(r, 1500));
@@ -411,7 +434,7 @@ export default function RandevuListesi() {
         }
 
         // 3) Randevu mektubu görselleri müşteriye gönder
-        for (const dosya of randevuDosyalari) {
+        for (const dosya of dosyaUrls) {
           await sendWpImage(musteriPhone, dosya, "Randevu Mektubunuz");
           await new Promise(r => setTimeout(r, 1500));
         }
@@ -453,7 +476,7 @@ export default function RandevuListesi() {
 
         const ekipPhoneList = Array.from(ekipPhones);
         for (const phone of ekipPhoneList) {
-          for (const dosya of randevuDosyalari) {
+          for (const dosya of dosyaUrls) {
             await sendWpImage(phone, dosya, `Randevu Mektubu - ${selectedTalep.dosya_adi}`);
             await new Promise(r => setTimeout(r, 1500));
           }
@@ -482,21 +505,30 @@ export default function RandevuListesi() {
     loadData();
   };
 
-  const openEdit = (talep: RandevuRow) => {
+  const openEdit = async (talep: RandevuRow) => {
     setSelectedTalep(talep);
     setEditUlkeler(talep.ulkeler);
     setEditVizeTipi(talep.vize_tipi);
     setEditAltKategori(talep.alt_kategori || "");
     setEditDosyaAdi(talep.dosya_adi);
     setEditIletisim(talep.iletisim);
-    setEditGorseller(talep.gorseller || []);
+    setEditGorseller([]);
     setShowEditModal(true);
+    const detail = await loadTalepDetail(talep.id);
+    if (detail) setEditGorseller(detail.gorseller || []);
   };
 
   const handleEdit = async () => {
     if (!selectedTalep || !editDosyaAdi || !editIletisim || editUlkeler.length === 0 || !editVizeTipi) return;
     setEditSaving(true);
     try {
+      const newGorseller = editGorseller.filter(g => g.startsWith("data:"));
+      const existingUrls = editGorseller.filter(g => !g.startsWith("data:"));
+      const uploadedUrls = newGorseller.length > 0
+        ? await uploadMultipleToStorage(newGorseller, "randevu-pasaport")
+        : [];
+      const allGorseller = [...existingUrls, ...uploadedUrls];
+
       const supabase = createClient();
       const { error } = await supabase
         .from("randevu_talepleri")
@@ -506,7 +538,7 @@ export default function RandevuListesi() {
           alt_kategori: showAltKategori(editUlkeler, editVizeTipi) ? (editAltKategori || null) : null,
           dosya_adi: editDosyaAdi,
           iletisim: editIletisim,
-          gorseller: editGorseller,
+          gorseller: allGorseller,
           updated_at: new Date().toISOString(),
         })
         .eq("id", selectedTalep.id);
@@ -673,14 +705,23 @@ export default function RandevuListesi() {
                         <span className="text-[10px] text-navy-400">Alan:</span> {talep.randevu_alan.name}
                       </span>
                     )}
-                    {talep.gorseller && talep.gorseller.length > 0 && (
-                      <span className="flex items-center gap-1">🖼️ {talep.gorseller.length} görsel</span>
-                    )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <Button size="sm" variant="outline" onClick={() => { setSelectedTalep(talep); setShowDetailModal(true); }}>Detay</Button>
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    setSelectedTalep(talep);
+                    setDetailGorseller([]);
+                    setDetailDosyalar([]);
+                    setShowDetailModal(true);
+                    setDetailLoading(true);
+                    const detail = await loadTalepDetail(talep.id);
+                    if (detail) {
+                      setDetailGorseller(detail.gorseller || []);
+                      setDetailDosyalar(detail.randevu_dosyalari || []);
+                    }
+                    setDetailLoading(false);
+                  }}>Detay</Button>
                   <Button size="sm" variant="outline" onClick={() => openEdit(talep)}>Düzenle</Button>
                   {!talep.arsivlendi && (
                     <Button size="sm" variant="primary" onClick={() => { setSelectedTalep(talep); setRandevuUlke(talep.ulkeler.length === 1 ? talep.ulkeler[0] : ""); setShowRandevuAlModal(true); }} className="bg-green-600 hover:bg-green-700">
@@ -923,20 +964,27 @@ export default function RandevuListesi() {
                 )}
               </div>
 
+              {detailLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="ml-3 text-sm text-navy-600 font-medium">Görseller yükleniyor...</span>
+                </div>
+              )}
+
               {/* Randevu Dosyaları */}
-              {selectedTalep.randevu_dosyalari && selectedTalep.randevu_dosyalari.length > 0 && (
+              {!detailLoading && detailDosyalar.length > 0 && (
                 <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
-                  <p className="text-sm font-bold text-green-700 mb-3">📎 Randevu Mektubu ({selectedTalep.randevu_dosyalari.length})</p>
+                  <p className="text-sm font-bold text-green-700 mb-3">📎 Randevu Mektubu ({detailDosyalar.length})</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {selectedTalep.randevu_dosyalari.map((g, i) => (
-                      <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
-                        {g.startsWith("data:application/pdf") ? (
+                    {detailDosyalar.map((g, i) => (
+                      <div key={i} className="relative cursor-pointer group" onClick={() => g.includes("application/pdf") ? window.open(g, "_blank") : setViewerImage(g)}>
+                        {g.includes("application/pdf") || g.endsWith(".pdf") ? (
                           <div className="w-full h-32 bg-red-50 rounded-xl border border-red-200 flex flex-col items-center justify-center text-red-500">
                             <span className="text-3xl mb-1">📄</span>
                             <span className="text-xs font-medium">PDF {i + 1}</span>
                           </div>
                         ) : (
-                          <img src={g} alt={`Randevu Dosya ${i + 1}`} className="w-full h-32 object-cover rounded-xl border border-green-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
+                          <img src={g} alt={`Randevu Dosya ${i + 1}`} className="w-full h-32 object-cover rounded-xl border border-green-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" loading="lazy" />
                         )}
                       </div>
                     ))}
@@ -945,13 +993,13 @@ export default function RandevuListesi() {
               )}
 
               {/* Pasaport Görselleri */}
-              {selectedTalep.gorseller && selectedTalep.gorseller.length > 0 && (
+              {!detailLoading && detailGorseller.length > 0 && (
                 <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
-                  <p className="text-sm font-bold text-navy-700 mb-3">Pasaport Görselleri ({selectedTalep.gorseller.length})</p>
+                  <p className="text-sm font-bold text-navy-700 mb-3">Pasaport Görselleri ({detailGorseller.length})</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {selectedTalep.gorseller.map((g, i) => (
+                    {detailGorseller.map((g, i) => (
                       <div key={i} className="relative cursor-pointer group" onClick={() => setViewerImage(g)}>
-                        <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-40 object-cover rounded-xl border border-navy-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" />
+                        <img src={g} alt={`Görsel ${i + 1}`} className="w-full h-40 object-cover rounded-xl border border-navy-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" loading="lazy" />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-xl transition-all flex items-center justify-center">
                           <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />

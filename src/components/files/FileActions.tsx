@@ -5,6 +5,7 @@ import { Button, Modal, Input, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileStatusChanged } from "@/lib/notifications";
 import { STAFF_USERS, ADMIN_USER } from "@/lib/constants";
+import { uploadBase64ToStorage } from "@/lib/supabase/storage";
 import type { VisaFile, VizeSonucu } from "@/lib/supabase/types";
 
 interface FileActionsProps {
@@ -216,14 +217,15 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
       const userName = profile?.name || "Kullanıcı";
 
-      let gorselBase64: string | null = null;
+      let gorselUrl: string | null = null;
       if (vizeGorselFile) {
-        gorselBase64 = await new Promise<string>((resolve, reject) => {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = reject;
           reader.readAsDataURL(vizeGorselFile);
         });
+        gorselUrl = await uploadBase64ToStorage(dataUrl, "vize-gorseli", `${file.id}-${Date.now()}`);
       }
 
       const timestamp = new Date().toISOString();
@@ -235,7 +237,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         vize_bitis_tarihi: sonuc === "vize_onay" ? vizeBitisTarihi : null,
         musteri_telefon: musteriTelefon.trim() || null,
         arsiv_mi: true,
-        ...(gorselBase64 ? { vize_gorseli: gorselBase64 } : {}),
+        ...(gorselUrl ? { vize_gorseli: gorselUrl } : {}),
       };
 
       const { error } = await supabase.from("visa_files").update(updateData).eq("id", file.id);
@@ -314,12 +316,12 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
           console.log("WhatsApp müşteri sonuç:", wpRes.status, wpData);
 
           if (wpRes.ok) {
-            if (gorselBase64) {
+            if (gorselUrl) {
               try {
                 await fetch("/api/whatsapp/send-image", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ phone, imageBase64: gorselBase64, caption: `${file.musteri_ad} - ${file.hedef_ulke} Vizesi` }),
+                  body: JSON.stringify({ phone, image: gorselUrl, caption: `${file.musteri_ad} - ${file.hedef_ulke} Vizesi` }),
                 });
               } catch (imgErr) {
                 console.error("WhatsApp görsel gönderilemedi:", imgErr);
