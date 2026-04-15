@@ -253,24 +253,7 @@ function HesapAlanlari({
         </div>
       )}
 
-      {info.hesap_var && !isItalya && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-navy-600 mb-1">E-posta</label>
-            <input type="email" value={info.email || ""} onChange={(e) => onChange({ ...info, email: e.target.value })}
-              placeholder="ornek@email.com"
-              className="w-full px-3 py-2 rounded-lg border border-navy-200 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-200 outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-navy-600 mb-1">Şifre</label>
-            <input type="text" value={info.sifre || ""} onChange={(e) => onChange({ ...info, sifre: e.target.value })}
-              placeholder="Hesap şifresi"
-              className="w-full px-3 py-2 rounded-lg border border-navy-200 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-200 outline-none" />
-          </div>
-        </div>
-      )}
-
-      {info.hesap_var && isItalya && gorseller && gorseller.length > 0 && (
+      {info.hesap_var && gorseller && gorseller.length > 0 && (
         <div className="space-y-3">
           {gorseller.map((g, i) => {
             const gorselBilgi = info.gorsel_bilgileri?.[i] || {};
@@ -284,7 +267,7 @@ function HesapAlanlari({
               <div key={i} className="bg-white/80 rounded-lg p-3 border border-amber-200">
                 <div className="flex items-center gap-2 mb-2">
                   <img src={g} alt={`Pasaport ${i + 1}`} className="w-10 h-10 rounded object-cover border" />
-                  <p className="text-xs font-bold text-navy-700">Pasaport {i + 1} - İtalya Hesap Bilgileri</p>
+                  <p className="text-xs font-bold text-navy-700">Pasaport {i + 1} - {ulke} Hesap Bilgileri</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -297,16 +280,20 @@ function HesapAlanlari({
                     <input type="text" value={gorselBilgi.sifre || ""} onChange={(e) => updateGorselBilgi("sifre", e.target.value)}
                       placeholder="Şifre" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-navy-500 mb-0.5">IT Numarası</label>
-                    <input type="text" value={gorselBilgi.it_numarasi || ""} onChange={(e) => updateGorselBilgi("it_numarasi", e.target.value)}
-                      placeholder="IT numarası" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-navy-500 mb-0.5">Telefon</label>
-                    <input type="text" value={gorselBilgi.telefon || ""} onChange={(e) => updateGorselBilgi("telefon", e.target.value)}
-                      placeholder="Hesap telefonu" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
-                  </div>
+                  {isItalya && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-navy-500 mb-0.5">IT Numarası</label>
+                        <input type="text" value={gorselBilgi.it_numarasi || ""} onChange={(e) => updateGorselBilgi("it_numarasi", e.target.value)}
+                          placeholder="IT numarası" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-navy-500 mb-0.5">Telefon</label>
+                        <input type="text" value={gorselBilgi.telefon || ""} onChange={(e) => updateGorselBilgi("telefon", e.target.value)}
+                          placeholder="Hesap telefonu" className="w-full px-2 py-1.5 rounded-lg border border-navy-200 text-xs focus:border-primary-500 outline-none" />
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -314,7 +301,7 @@ function HesapAlanlari({
         </div>
       )}
 
-      {info.hesap_var && isItalya && (!gorseller || gorseller.length === 0) && (
+      {info.hesap_var && (!gorseller || gorseller.length === 0) && (
         <div className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
           Görsel yükledikten sonra her görsel için hesap bilgilerini girebilirsiniz.
         </div>
@@ -966,6 +953,7 @@ export default function RandevuListesi() {
               ulke="İspanya"
               hesapBilgileri={formHesapBilgileri["İspanya"]}
               onChange={(val) => setFormHesapBilgileri(prev => ({ ...prev, "İspanya": val }))}
+              gorseller={formGorseller}
             />
           )}
 
@@ -1151,13 +1139,7 @@ export default function RandevuListesi() {
                           {info.hesap_var ? "✅ Hesap Açık" : "⚠️ Hesap Açılmamış"}
                         </span>
                       </div>
-                      {info.hesap_var && ulke === "İspanya" && (
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-navy-400 text-xs">E-posta:</span><br/><span className="font-medium">{info.email || "-"}</span></div>
-                          <div><span className="text-navy-400 text-xs">Şifre:</span><br/><span className="font-medium">{info.sifre || "-"}</span></div>
-                        </div>
-                      )}
-                      {info.hesap_var && ulke === "İtalya" && info.gorsel_bilgileri && (
+                      {info.hesap_var && info.gorsel_bilgileri && (
                         <div className="space-y-2 mt-2">
                           {info.gorsel_bilgileri.map((gb, i) => (
                             <div key={i} className="bg-white/60 rounded-lg p-2 border border-amber-100 text-xs">
@@ -1165,8 +1147,8 @@ export default function RandevuListesi() {
                               <div className="grid grid-cols-2 gap-1">
                                 <span><span className="text-navy-400">E-posta:</span> {gb.email || "-"}</span>
                                 <span><span className="text-navy-400">Şifre:</span> {gb.sifre || "-"}</span>
-                                <span><span className="text-navy-400">IT No:</span> {gb.it_numarasi || "-"}</span>
-                                <span><span className="text-navy-400">Telefon:</span> {gb.telefon || "-"}</span>
+                                {ulke === "İtalya" && <span><span className="text-navy-400">IT No:</span> {gb.it_numarasi || "-"}</span>}
+                                {ulke === "İtalya" && <span><span className="text-navy-400">Telefon:</span> {gb.telefon || "-"}</span>}
                               </div>
                             </div>
                           ))}
@@ -1300,6 +1282,7 @@ export default function RandevuListesi() {
               ulke="İspanya"
               hesapBilgileri={editHesapBilgileri["İspanya"]}
               onChange={(val) => setEditHesapBilgileri(prev => ({ ...prev, "İspanya": val }))}
+              gorseller={editGorseller}
             />
           )}
 
