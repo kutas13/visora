@@ -12,7 +12,7 @@ const USER_AVATARS: Record<string, string> = {
   DAVUT: "/davut-avatar.png",
   SIRRI: "/sirri-avatar.png",
   ZAFER: "/zafer-avatar.png",
-  ERCAN: "/ercan-avatar.jpg",
+  ERCAN: "/ercan-avatar.png",
   BAHAR: "/bahar-avatar.jpg",
 };
 

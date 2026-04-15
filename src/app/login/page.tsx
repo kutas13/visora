@@ -14,7 +14,7 @@ const USER_AVATARS: Record<string, string> = {
   YUSUF: "/yusuf-avatar.png",
   DAVUT: "/davut-avatar.png",
   SIRRI: "/sirri-avatar.png",
-  ERCAN: "/ercan-avatar.jpg",
+  ERCAN: "/ercan-avatar.png",
   BAHAR: "/bahar-avatar.jpg",
   ZAFER: "/zafer-avatar.png",
 };
@@ -641,92 +641,94 @@ export default function LoginPage() {
             </div>
           ) : (
             /* Şifre Girişi */
-            <div className="space-y-5">
-              {/* Seçili Kullanıcı */}
-              <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-4 border border-primary-200">
-                <p className="text-sm text-primary-600 mb-1">{"Seçili Kullanıcı"}</p>
-                <div className="flex items-center gap-3">
-                  {USER_AVATARS[selectedUser.name] ? (
-                    <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md ring-2 ring-primary-200">
-                      <Image
-                        src={USER_AVATARS[selectedUser.name]}
-                        alt={selectedUser.name}
-                        width={40}
-                        height={40}
-                        className="w-full h-full object-cover"
+            <div className="flex gap-5 items-start">
+              {/* Sol - Form */}
+              <div className="flex-1 space-y-4">
+                <p className="text-sm font-medium text-navy-500">Hoş geldiniz</p>
+                <h2 className="text-xl font-bold text-navy-900">{selectedUser.name}</h2>
+
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="relative">
+                    <Input
+                      label="Şifre"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Şifrenizi girin"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-9 text-navy-400 hover:text-navy-600 transition-colors"
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-navy-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
                       />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md">
-                      <span className="text-white font-bold">{selectedUser.name.charAt(0)}</span>
-                    </div>
-                  )}
-                  <p className="font-bold text-navy-900 text-lg">{selectedUser.name}</p>
-                </div>
+                      <span className="text-sm text-navy-600">Beni Hatırla</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(true)}
+                      className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
+                    >
+                      Şifre Değiştir
+                    </button>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button type="button" variant="outline" onClick={handleBack} className="flex-1">
+                      ← Geri
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={isLoading}>
+                      {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
+                    </Button>
+                  </div>
+                </form>
               </div>
 
-              {error && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="relative">
-                  <Input
-                    label="Şifre"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Şifrenizi girin"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-9 text-navy-400 hover:text-navy-600 transition-colors"
-                  >
-                    {showPassword ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded border-navy-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+              {/* Sağ - Avatar */}
+              <div className="flex-shrink-0 flex flex-col items-center pt-2">
+                {USER_AVATARS[selectedUser.name] ? (
+                  <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-xl ring-4 ring-primary-200">
+                    <Image
+                      src={USER_AVATARS[selectedUser.name]}
+                      alt={selectedUser.name}
+                      width={112}
+                      height={112}
+                      className="w-full h-full object-cover"
                     />
-                    <span className="text-sm text-navy-600">Beni Hatırla</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotModal(true)}
-                    className="text-sm text-primary-600 hover:text-primary-700 hover:underline"
-                  >
-                    Şifre Değiştir
-                  </button>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <Button type="button" variant="outline" onClick={handleBack} className="flex-1">
-                    ← Geri
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={isLoading}>
-                    {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
-                  </Button>
-                </div>
-              </form>
+                  </div>
+                ) : (
+                  <div className="w-28 h-28 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-xl ring-4 ring-primary-200">
+                    <span className="text-white font-bold text-4xl">{selectedUser.name.charAt(0)}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </Card>
@@ -734,7 +736,7 @@ export default function LoginPage() {
         {/* Yuna Form Butonu */}
         <div className="order-3 lg:col-span-2 flex justify-center">
           <a
-            href="https://foxvize.info/"
+            href="https://foxvize.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"

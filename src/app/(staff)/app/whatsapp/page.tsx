@@ -7,7 +7,7 @@ import { Card } from "@/components/ui";
 const USER_AVATARS: Record<string, string> = {
   DAVUT: "/davut-avatar.png",
   BAHAR: "/bahar-avatar.jpg",
-  ERCAN: "/ercan-avatar.jpg",
+  ERCAN: "/ercan-avatar.png",
   YUSUF: "/yusuf-avatar.png",
   SIRRI: "/sirri-avatar.png",
   ZAFER: "/zafer-avatar.png",

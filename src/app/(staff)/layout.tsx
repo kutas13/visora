@@ -19,6 +19,8 @@ const pageTitles: Record<string, string> = {
   "/app/bildirimler": "Bildirimler",
   "/app/whatsapp": "WhatsApp Bildirimler",
   "/app/gunluk-rapor": "Günlük Rapor",
+  "/app/randevu-listesi": "Randevu Alınacak",
+  "/app/randevu-raporlari": "Randevu Raporları",
 };
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
@@ -55,6 +57,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
       if (profileData) {
         setProfile(profileData);
+        if (profileData.name === "ZAFER" && window.location.pathname === "/app") {
+          router.replace("/app/randevu-listesi");
+        }
       }
     }
 

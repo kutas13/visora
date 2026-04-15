@@ -22,7 +22,7 @@ interface GroupWithStats extends Group {
 }
 
 const USER_AVATARS: Record<string, string> = {
-  YUSUF: "/yusuf-avatar.png", DAVUT: "/davut-avatar.png", SIRRI: "/sirri-avatar.png", ZAFER: "/zafer-avatar.png", ERCAN: "/ercan-avatar.jpg", BAHAR: "/bahar-avatar.jpg",
+  YUSUF: "/yusuf-avatar.png", DAVUT: "/davut-avatar.png", SIRRI: "/sirri-avatar.png", ZAFER: "/zafer-avatar.png", ERCAN: "/ercan-avatar.png", BAHAR: "/bahar-avatar.jpg",
 };
 
 function StaffAvatar({ name, size = 24 }: { name: string; size?: number }) {

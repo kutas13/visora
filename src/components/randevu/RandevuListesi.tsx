@@ -65,7 +65,7 @@ const ULKE_RENKLERI: Record<string, { bg: string; text: string }> = {
 const AVATAR_MAP: Record<string, string> = {
   DAVUT: "/davut-avatar.png",
   BAHAR: "/bahar-avatar.jpg",
-  ERCAN: "/ercan-avatar.jpg",
+  ERCAN: "/ercan-avatar.png",
   YUSUF: "/yusuf-avatar.png",
   SIRRI: "/sirri-avatar.png",
   ZAFER: "/zafer-avatar.png",
