@@ -125,13 +125,17 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
     return () => { document.removeEventListener("keydown", keyHandler); document.body.style.overflow = "unset"; };
   }, [onClose]);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.stopPropagation();
-    const steps = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 7, 10];
+  const ZOOM_STEPS = [1, 1.5, 2, 2.5, 3, 4];
+  const zoomIn = useCallback(() => {
     setZoom(prev => {
-      const curIdx = steps.reduce((best, s, i) => Math.abs(s - prev) < Math.abs(steps[best] - prev) ? i : best, 0);
-      const nextIdx = e.deltaY < 0 ? Math.min(curIdx + 1, steps.length - 1) : Math.max(curIdx - 1, 0);
-      const next = steps[nextIdx];
+      const idx = ZOOM_STEPS.findIndex(s => s > prev);
+      return idx >= 0 ? ZOOM_STEPS[idx] : prev;
+    });
+  }, []);
+  const zoomOut = useCallback(() => {
+    setZoom(prev => {
+      const idx = [...ZOOM_STEPS].reverse().findIndex(s => s < prev);
+      const next = idx >= 0 ? [...ZOOM_STEPS].reverse()[idx] : ZOOM_STEPS[0];
       if (next <= 1) setPos({ x: 0, y: 0 });
       return next;
     });
@@ -170,16 +174,16 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
       </button>
-      {/* Zoom info + reset */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
-        <span className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-lg text-white text-sm font-medium">
-          {Math.round(zoom * 100)}%
-        </span>
+      {/* Zoom controls */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-2xl px-2 py-1.5">
+        <button onClick={(e) => { e.stopPropagation(); zoomOut(); }} disabled={zoom <= 1}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-lg font-bold">−</button>
+        <span className="px-3 min-w-[60px] text-center text-white text-sm font-medium">{Math.round(zoom * 100)}%</span>
+        <button onClick={(e) => { e.stopPropagation(); zoomIn(); }} disabled={zoom >= 4}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/15 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-lg font-bold">+</button>
         {zoom !== 1 && (
           <button onClick={(e) => { e.stopPropagation(); resetZoom(); }}
-            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-lg text-white text-sm transition-colors">
-            Sıfırla
-          </button>
+            className="ml-1 px-3 py-1.5 rounded-xl text-white text-xs hover:bg-white/15 transition-colors">Sıfırla</button>
         )}
       </div>
       {/* Close */}
@@ -200,7 +204,6 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
         style={{ transform: `scale(${zoom}) translate(${pos.x / zoom}px, ${pos.y / zoom}px)`, cursor: zoom > 1 ? "grab" : "zoom-in", transition: dragging.current ? "none" : "transform 0.15s ease-out" }}
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => { e.stopPropagation(); zoom === 1 ? setZoom(2.5) : resetZoom(); }}
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
