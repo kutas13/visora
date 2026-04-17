@@ -51,3 +51,10 @@ body {
 .table-row-hover {
   @apply transition-colors hover:bg-navy-50;
 }
+
+/* Gate curtain shake animation */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
+  20%, 40%, 60%, 80% { transform: translateX(6px); }
+}

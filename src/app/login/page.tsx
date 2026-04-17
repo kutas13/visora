@@ -37,6 +37,14 @@ function getStatusInfo(file: VisaFile) {
 export default function LoginPage() {
   const router = useRouter();
   
+  // Gate/Curtain state
+  const [gateVisible, setGateVisible] = useState(true);
+  const [gatePassword, setGatePassword] = useState("");
+  const [gateError, setGateError] = useState(false);
+  const [gateClosing, setGateClosing] = useState(false);
+  const [gateClosed, setGateClosed] = useState(false);
+  const gateInputRef = useRef<HTMLInputElement>(null);
+
   // Login state
   const [selectedUser, setSelectedUser] = useState<SelectedUser>(null);
   const [password, setPassword] = useState("");
@@ -55,6 +63,29 @@ export default function LoginPage() {
 
   // Remember me state
   const [rememberMe, setRememberMe] = useState(false);
+
+  // Gate auto-focus
+  useEffect(() => {
+    if (gateVisible && !gateClosed && gateInputRef.current) {
+      gateInputRef.current.focus();
+    }
+  }, [gateVisible, gateClosed]);
+
+  const handleGateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (gatePassword === "4750") {
+      setGateError(false);
+      setGateClosing(true);
+      setTimeout(() => {
+        setGateClosed(true);
+        setGateVisible(false);
+      }, 700);
+    } else {
+      setGateError(true);
+      setGatePassword("");
+      gateInputRef.current?.focus();
+    }
+  };
 
   // Passport query state
   const [passportNo, setPassportNo] = useState("");
@@ -306,7 +337,87 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Gate Curtain Overlay */}
+      {gateVisible && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center transition-transform duration-700 ease-in-out ${
+            gateClosing ? "-translate-y-full" : "translate-y-0"
+          }`}
+          style={{
+            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%)",
+          }}
+        >
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute w-72 h-72 rounded-full bg-white/[0.03] -top-20 -left-10" />
+            <div className="absolute w-96 h-96 rounded-full bg-white/[0.02] top-1/3 -right-20" />
+            <div className="absolute w-56 h-56 rounded-full bg-amber-500/[0.04] bottom-10 left-1/4" />
+            <div className="absolute w-40 h-40 rounded-full bg-white/[0.03] top-10 right-1/3" />
+          </div>
+
+          <div className="relative z-10 flex flex-col items-center gap-6 px-6">
+            <div className="w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-amber-500/30">
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-white mb-2">Fox Turizm</h1>
+              <p className="text-slate-400 text-sm">Erişim için şifreyi girin</p>
+            </div>
+
+            <form onSubmit={handleGateSubmit} className="w-72 space-y-4">
+              <div className="relative">
+                <input
+                  ref={gateInputRef}
+                  type="password"
+                  value={gatePassword}
+                  onChange={(e) => {
+                    setGatePassword(e.target.value);
+                    setGateError(false);
+                  }}
+                  placeholder="Şifre"
+                  maxLength={10}
+                  className={`w-full px-5 py-3.5 bg-white/10 backdrop-blur-sm border-2 rounded-xl text-white text-center text-xl tracking-[0.3em] placeholder:text-slate-500 placeholder:tracking-normal placeholder:text-base focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all ${
+                    gateError
+                      ? "border-red-500 animate-[shake_0.5s_ease-in-out]"
+                      : "border-white/20 focus:border-amber-400"
+                  }`}
+                />
+              </div>
+
+              {gateError && (
+                <p className="text-red-400 text-sm text-center animate-pulse">
+                  Hatalı şifre, tekrar deneyin
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={!gatePassword}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg hover:shadow-amber-500/25 transition-all duration-200 active:scale-[0.98]"
+              >
+                Giriş
+              </button>
+            </form>
+
+            <div className="flex gap-1 mt-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
+                    i < gatePassword.length
+                      ? "bg-amber-400 scale-110"
+                      : "bg-slate-600"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Sol - Pasaport Sorgulama */}
         <Card className="p-6 order-2 lg:order-1 max-h-[85vh] overflow-y-auto" variant="elevated">
