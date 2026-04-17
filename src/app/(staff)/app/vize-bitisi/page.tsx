@@ -85,68 +85,66 @@ export default function VizeBitisiPage() {
   return (
     <div className="space-y-6">
       {/* Sayfa Başlığı */}
-      <div>
-        <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-          <span className="text-3xl">🛂</span>
-          Vize Bitişi Takibi
-        </h1>
-        <p className="text-navy-500 mt-1">Onaylanmış vizelerin bitiş tarihlerini takip edin, süresi dolmak üzere olan dosyaları görün ve tekrar başvuru oluşturun</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg shadow-rose-500/25">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">Vize Bitişi Takibi</h1>
+          <p className="text-slate-500 text-sm">Onaylanmış vizelerin bitiş tarihlerini takip edin, süresi dolmak üzere olan dosyaları görün ve tekrar başvuru oluşturun</p>
+        </div>
       </div>
 
       {/* Özet Kartlar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-          <div className="p-5 bg-gradient-to-r from-red-500 to-red-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">30 Gün İçinde</p>
-                <p className="text-4xl font-bold mt-1">{stats.critical}</p>
-                <p className="text-white/60 text-xs mt-1">Kritik Seviye</p>
-              </div>
-              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-4xl">🚨</span>
-              </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">KRİTİK</span>
           </div>
-        </Card>
-        <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-          <div className="p-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">30-60 Gün</p>
-                <p className="text-4xl font-bold mt-1">{stats.warning}</p>
-                <p className="text-white/60 text-xs mt-1">Dikkat Seviyesi</p>
-              </div>
-              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-4xl">⚠️</span>
-              </div>
+          <p className="text-2xl font-bold text-slate-900">{stats.critical}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">30 gün içinde biten</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-amber-500 uppercase tracking-wide">DİKKAT</span>
           </div>
-        </Card>
-        <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-          <div className="p-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">Toplam Aktif</p>
-                <p className="text-4xl font-bold mt-1">{stats.total}</p>
-                <p className="text-white/60 text-xs mt-1">Geçerli Vize</p>
-              </div>
-              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-4xl">✓</span>
-              </div>
+          <p className="text-2xl font-bold text-slate-900">{stats.warning}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">30-60 gün arası</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wide">AKTİF</span>
           </div>
-        </Card>
+          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Toplam geçerli vize</p>
+        </div>
       </div>
 
       {/* Filtre */}
-      <div className="bg-navy-100 p-1 rounded-xl inline-flex gap-1">
+      <div className="bg-slate-100 p-1 rounded-xl inline-flex gap-1">
         <button
           onClick={() => setFilter("all")}
           className={`px-6 py-3 font-medium rounded-lg transition-all ${
             filter === "all" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-white text-slate-800 shadow-sm" 
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           Tümü
@@ -155,8 +153,8 @@ export default function VizeBitisiPage() {
           onClick={() => setFilter("30")}
           className={`px-6 py-3 font-medium rounded-lg transition-all ${
             filter === "30" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-white text-slate-800 shadow-sm" 
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           30 Günden Az
@@ -165,8 +163,8 @@ export default function VizeBitisiPage() {
           onClick={() => setFilter("60")}
           className={`px-6 py-3 font-medium rounded-lg transition-all ${
             filter === "60" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-white text-slate-800 shadow-sm" 
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           60 Günden Az
@@ -174,12 +172,11 @@ export default function VizeBitisiPage() {
       </div>
 
       {/* Liste */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <span className="text-xl">📋</span>
+      <Card className="overflow-hidden border border-slate-200 shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+          <h3 className="text-slate-700 font-semibold flex items-center gap-2">
             Vize Listesi
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{filteredFiles.length}</span>
+            <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-sm">{filteredFiles.length}</span>
           </h3>
         </div>
         <div className="p-6">
@@ -188,8 +185,8 @@ export default function VizeBitisiPage() {
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-4xl">✓</span>
               </div>
-              <h3 className="text-lg font-bold text-navy-900 mb-2">Harika!</h3>
-              <p className="text-navy-500">Bu filtreye uyan vize bulunamadı</p>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Harika!</h3>
+              <p className="text-slate-500">Bu filtreye uyan vize bulunamadı</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -216,15 +213,15 @@ export default function VizeBitisiPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-bold text-navy-900 text-lg">{file.musteri_ad}</p>
+                        <p className="font-bold text-slate-800 text-lg">{file.musteri_ad}</p>
                         {file.daysRemaining <= 10 && (
                           <Badge variant="error" size="sm" className="animate-pulse">ACİL</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-navy-500">{file.hedef_ulke} • {file.pasaport_no}</p>
+                      <p className="text-sm text-slate-500">{file.hedef_ulke} • {file.pasaport_no}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-navy-700">Bitiş: {formatDate(file.vize_bitis_tarihi!)}</p>
+                      <p className="text-sm font-semibold text-slate-700">Bitiş: {formatDate(file.vize_bitis_tarihi!)}</p>
                       <Badge variant="success" size="sm" className="mt-1">Vize Onay</Badge>
                       <div className="flex flex-wrap gap-2 mt-3">
                         <Button 

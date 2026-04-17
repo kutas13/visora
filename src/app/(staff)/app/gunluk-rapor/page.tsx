@@ -600,13 +600,24 @@ export default function GunlukRaporPage() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-5">
+    <div className="space-y-5">
+      {/* Başlık */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">Günlük Rapor</h1>
+          <p className="text-slate-500 text-sm">Günlük satış raporunuzu oluşturun ve muhasebeye gönderin</p>
+        </div>
+      </div>
+
       {/* Tab Seçimi */}
-      <div className="flex items-center gap-1 bg-white rounded-xl p-1 border border-gray-200 w-fit">
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
         <button
           onClick={() => setActiveTab("rapor")}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === "rapor" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"
+            activeTab === "rapor" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
           }`}
         >
           Yeni Rapor
@@ -614,13 +625,13 @@ export default function GunlukRaporPage() {
         <button
           onClick={() => setActiveTab("gecmis")}
           className={`px-5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-            activeTab === "gecmis" ? "bg-indigo-600 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"
+            activeTab === "gecmis" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
           }`}
         >
           Geçmiş Raporlarım
           {pastReports.length > 0 && (
             <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-              activeTab === "gecmis" ? "bg-white/20" : "bg-gray-100"
+              activeTab === "gecmis" ? "bg-slate-100 text-slate-600" : "bg-slate-200 text-slate-500"
             }`}>{pastReports.length}</span>
           )}
         </button>

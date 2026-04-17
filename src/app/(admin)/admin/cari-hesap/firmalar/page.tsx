@@ -78,12 +78,17 @@ export default function AdminFirmaCariPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <button onClick={() => router.back()} className="w-9 h-9 rounded-lg bg-navy-100 hover:bg-navy-200 flex items-center justify-center transition-colors">
-          <svg className="w-4 h-4 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        <button onClick={() => router.back()} className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
+          </svg>
+        </div>
         <div>
-          <h1 className="text-xl font-bold text-navy-900">Firma Cari Hesapları</h1>
-          <p className="text-navy-500 text-sm">Şirket bazında vize işlemleri</p>
+          <h1 className="text-xl font-bold text-slate-800">Firma Cari Hesapları</h1>
+          <p className="text-slate-500 text-sm">Şirket bazında vize işlemleri</p>
         </div>
       </div>
 
@@ -95,15 +100,15 @@ export default function AdminFirmaCariPage() {
             placeholder="Firma ara..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2.5 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
           />
 
-          <div className="bg-white rounded-xl border border-navy-200 divide-y divide-navy-100 overflow-hidden">
-            <div className="px-4 py-2.5 bg-navy-50">
-              <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide">Firmalar ({filteredCompanies.length})</p>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100 overflow-hidden">
+            <div className="px-4 py-2.5 bg-slate-50">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Firmalar ({filteredCompanies.length})</p>
             </div>
             {filteredCompanies.length === 0 ? (
-              <p className="text-center text-navy-400 text-sm py-8">
+              <p className="text-center text-slate-400 text-sm py-8">
                 {search.trim() ? "Firma bulunamadı" : "Henüz firma cari işlemi yok"}
               </p>
             ) : (
@@ -114,15 +119,15 @@ export default function AdminFirmaCariPage() {
                     key={company.id}
                     onClick={() => setSelectedCompany(isActive ? null : company.id)}
                     className={`w-full text-left px-4 py-3 transition-colors ${
-                      isActive ? "bg-primary-50" : "hover:bg-navy-50"
+                      isActive ? "bg-primary-50" : "hover:bg-slate-50"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isActive ? "text-primary-700" : "text-navy-900"}`}>{company.firma_adi}</p>
-                        <p className="text-xs text-navy-400 mt-0.5">{company.files.length} işlem</p>
+                        <p className={`text-sm font-semibold truncate ${isActive ? "text-primary-700" : "text-slate-800"}`}>{company.firma_adi}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{company.files.length} işlem</p>
                       </div>
-                      <div className="text-right text-xs text-navy-500 space-y-0.5">
+                      <div className="text-right text-xs text-slate-500 space-y-0.5">
                         {company.totalTL > 0 && <p>₺{fmt(company.totalTL)}</p>}
                         {company.totalEUR > 0 && <p>€{fmt(company.totalEUR)}</p>}
                         {company.totalUSD > 0 && <p>${fmt(company.totalUSD)}</p>}
@@ -138,17 +143,17 @@ export default function AdminFirmaCariPage() {
         {/* Sağ Panel - Detay */}
         <div className="lg:col-span-2">
           {!selectedData ? (
-            <div className="bg-white rounded-xl border border-navy-200 p-10 text-center">
-              <svg className="w-12 h-12 text-navy-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 text-center">
+              <svg className="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
               </svg>
-              <p className="text-navy-500 text-sm">Soldaki listeden bir firma seçin</p>
+              <p className="text-slate-500 text-sm">Soldaki listeden bir firma seçin</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-navy-100">
-                <h2 className="text-lg font-bold text-navy-900">{selectedData.firma_adi}</h2>
-                <p className="text-sm text-navy-500">{selectedData.files.length} işlem</p>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800">{selectedData.firma_adi}</h2>
+                <p className="text-sm text-slate-500">{selectedData.files.length} işlem</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3 p-4">
@@ -166,23 +171,23 @@ export default function AdminFirmaCariPage() {
 
               <div className="px-4 pb-4">
                 {selectedData.files.length === 0 ? (
-                  <p className="text-center text-navy-400 text-sm py-6">Bu firmaya ait işlem bulunamadı</p>
+                  <p className="text-center text-slate-400 text-sm py-6">Bu firmaya ait işlem bulunamadı</p>
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-navy-100">
-                        <th className="text-left py-2.5 px-3 text-navy-500 font-medium">Müşteri</th>
-                        <th className="text-left py-2.5 px-3 text-navy-500 font-medium">Ülke</th>
-                        <th className="text-right py-2.5 px-3 text-navy-500 font-medium">Ücret</th>
-                        <th className="text-center py-2.5 px-3 text-navy-500 font-medium">Fatura</th>
-                        <th className="text-right py-2.5 px-3 text-navy-500 font-medium">Personel</th>
+                      <tr className="bg-slate-50">
+                        <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Müşteri</th>
+                        <th className="text-left py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ülke</th>
+                        <th className="text-right py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ücret</th>
+                        <th className="text-center py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fatura</th>
+                        <th className="text-right py-2.5 px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Personel</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedData.files.map((file) => (
-                        <tr key={file.id} className="border-b border-navy-50 hover:bg-navy-50/50">
-                          <td className="py-2.5 px-3 font-medium text-navy-900">{file.musteri_ad}</td>
-                          <td className="py-2.5 px-3 text-navy-600">{file.hedef_ulke}</td>
+                        <tr key={file.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                          <td className="py-2.5 px-3 font-medium text-slate-800">{file.musteri_ad}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{file.hedef_ulke}</td>
                           <td className="py-2.5 px-3 text-right font-semibold">
                             {Number(file.ucret).toLocaleString("tr-TR")} {file.ucret_currency === "TL" ? "₺" : file.ucret_currency === "EUR" ? "€" : "$"}
                           </td>
@@ -191,7 +196,7 @@ export default function AdminFirmaCariPage() {
                               {file.fatura_tipi === "isimli" ? "İsimli" : "İsimsiz"}
                             </Badge>
                           </td>
-                          <td className="py-2.5 px-3 text-right text-navy-500">{file.profiles?.name || "-"}</td>
+                          <td className="py-2.5 px-3 text-right text-slate-500">{file.profiles?.name || "-"}</td>
                         </tr>
                       ))}
                     </tbody>

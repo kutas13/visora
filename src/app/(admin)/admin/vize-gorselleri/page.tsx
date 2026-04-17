@@ -88,20 +88,20 @@ export default function AdminVizeGorselleriPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-[1200px]">
+    <div className="space-y-5">
       {/* Başlık */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-500/20">
-            <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          </div>
-          Vize Görselleri
-        </h1>
-        <p className="text-sm text-slate-500 mt-1 ml-[46px]">Tüm personellerin onaylanan vize görsellerini görüntüleyin</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">Vize Görselleri</h1>
+          <p className="text-slate-500 text-sm">Tüm personellerin onaylanan vize görsellerini görüntüleyin</p>
+        </div>
       </div>
 
       {/* Filtreler */}
-      <div className="bg-white rounded-xl border border-slate-100 p-4 flex flex-wrap items-center gap-3">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input
@@ -109,14 +109,14 @@ export default function AdminVizeGorselleriPage() {
             placeholder="Müşteri adı veya pasaport no..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-all"
+            className="w-full pl-10 pr-4 h-9 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
           />
         </div>
-        <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-all min-w-[140px]">
+        <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)} className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all min-w-[140px]">
           <option value="all">Tüm Ülkeler</option>
           {countries.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={filterStaff} onChange={e => setFilterStaff(e.target.value)} className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-all min-w-[140px]">
+        <select value={filterStaff} onChange={e => setFilterStaff(e.target.value)} className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all min-w-[140px]">
           <option value="all">Tüm Personel</option>
           {staffNames.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -125,7 +125,7 @@ export default function AdminVizeGorselleriPage() {
 
       {/* Galeri */}
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-100 p-16 text-center">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
           <div className="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
@@ -135,7 +135,7 @@ export default function AdminVizeGorselleriPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map(file => (
-            <div key={file.id} className="group bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-200">
+            <div key={file.id} className="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg hover:border-slate-300 transition-all duration-200">
               <div className="relative aspect-[3/4] bg-slate-50 cursor-pointer overflow-hidden" onClick={() => setLightbox(file)}>
                 <img src={file.vize_gorseli!} alt={`${file.musteri_ad} - ${file.hedef_ulke}`} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">

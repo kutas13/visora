@@ -188,12 +188,12 @@ export default function StaffAtamalarPage() {
 
   if (!staffEmail) {
     return (
-      <div className="bg-white rounded-2xl border border-navy-100 shadow-sm p-16 text-center">
-        <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
-          <svg className="w-10 h-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
+        <div className="w-16 h-16 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-5">
+          <svg className="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
         </div>
-        <h3 className="text-lg font-bold text-navy-900 mb-1.5">Email Hesabı Bulunamadı</h3>
-        <p className="text-navy-400 text-sm">
+        <h3 className="text-lg font-bold text-slate-800 mb-1.5">Email Hesabı Bulunamadı</h3>
+        <p className="text-slate-400 text-sm">
           {staffName
             ? `"${staffName}" için eşleşen email hesabı bulunamadı.`
             : "Kullanıcı profili yüklenemedi."}
@@ -206,77 +206,67 @@ export default function StaffAtamalarPage() {
 
   return (
     <div className="space-y-5">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4f46e5] via-[#7c3aed] to-[#9333ea] p-7 text-white shadow-2xl">
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/[0.07] rounded-full blur-2xl" />
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/[0.05] rounded-full blur-3xl translate-y-1/2 -translate-x-1/4" />
-
-        <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white/15 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">iDATA Atamalarım</h1>
-                <p className="text-sm text-white/60 mt-0.5">{staffEmail}</p>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="flex items-center gap-3">
-              {yeniCount > 0 && (
-                <div className="bg-amber-400/20 backdrop-blur border border-amber-300/30 rounded-xl px-4 py-2.5 text-center min-w-[70px]">
-                  <p className="text-2xl font-black text-amber-200">{yeniCount}</p>
-                  <p className="text-[10px] text-amber-300/80 font-medium uppercase tracking-wider">Yeni</p>
-                </div>
-              )}
-              <div className="bg-white/10 backdrop-blur border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-[70px]">
-                <p className="text-2xl font-black">{randevuAlindiCount}</p>
-                <p className="text-[10px] text-white/50 font-medium uppercase tracking-wider">Alındı</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur border border-white/10 rounded-xl px-4 py-2.5 text-center min-w-[70px]">
-                <p className="text-2xl font-black">{toplam}</p>
-                <p className="text-[10px] text-white/50 font-medium uppercase tracking-wider">Toplam</p>
-              </div>
-            </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           </div>
-
-          {/* Countdown Bar + Button */}
-          <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="flex-1 bg-white/[0.08] backdrop-blur rounded-xl border border-white/10 px-4 py-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${checking ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
-                  <span className="text-xs text-white/70 font-medium">
-                    {checking ? "Kontrol ediliyor..." : "Sonraki otomatik kontrol"}
-                  </span>
-                </div>
-                <span className="text-sm font-mono font-bold text-white/90">{formatCountdown(countdown)}</span>
-              </div>
-              <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full transition-all duration-1000 ease-linear"
-                  style={{ width: `${countdownPct}%` }}
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleCheckEmails(false)}
-              disabled={checking}
-              className="flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur border border-white/20 text-white font-semibold px-5 py-3 rounded-xl transition-all duration-200 disabled:opacity-50 whitespace-nowrap"
-            >
-              {checking ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              )}
-              Şimdi Kontrol Et
-            </button>
-
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">iDATA Atamalarım</h1>
+            <p className="text-slate-500 text-sm">{staffEmail}</p>
           </div>
         </div>
+        <div className="flex items-center gap-3">
+          {yeniCount > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-center min-w-[70px]">
+              <p className="text-2xl font-black text-amber-600">{yeniCount}</p>
+              <p className="text-[10px] text-amber-500 font-medium uppercase tracking-wider">Yeni</p>
+            </div>
+          )}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center min-w-[70px]">
+            <p className="text-2xl font-black text-slate-700">{randevuAlindiCount}</p>
+            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Alındı</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-center min-w-[70px]">
+            <p className="text-2xl font-black text-slate-700">{toplam}</p>
+            <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Toplam</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Countdown Bar + Button */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${checking ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
+              <span className="text-xs text-slate-500 font-medium">
+                {checking ? "Kontrol ediliyor..." : "Sonraki otomatik kontrol"}
+              </span>
+            </div>
+            <span className="text-sm font-mono font-bold text-slate-700">{formatCountdown(countdown)}</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-violet-400 to-violet-500 rounded-full transition-all duration-1000 ease-linear"
+              style={{ width: `${countdownPct}%` }}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={() => handleCheckEmails(false)}
+          disabled={checking}
+          className="flex items-center justify-center gap-2 bg-violet-500 hover:bg-violet-600 text-white font-semibold px-5 py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 whitespace-nowrap text-sm"
+        >
+          {checking ? (
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          )}
+          Şimdi Kontrol Et
+        </button>
       </div>
 
       {/* Check Result */}
@@ -296,36 +286,36 @@ export default function StaffAtamalarPage() {
       )}
 
       {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative">
-          <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input type="text" placeholder="İsim veya PNR ara..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 pr-3 py-2 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white w-full sm:w-56" />
+          <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input type="text" placeholder="İsim veya PNR ara..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 pl-9 pr-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all w-full sm:w-56" />
         </div>
-      </div>
-      <div className="flex gap-1.5 bg-white border border-navy-200 rounded-xl p-1 shadow-sm w-fit">
-        {durumOptions.map((o) => (
-          <button
-            key={o.value}
-            onClick={() => setFilterDurum(o.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              filterDurum === o.value
-                ? "bg-violet-500 text-white shadow-md"
-                : "text-navy-500 hover:bg-navy-50"
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
+        <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+          {durumOptions.map((o) => (
+            <button
+              key={o.value}
+              onClick={() => setFilterDurum(o.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                filterDurum === o.value
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Assignment Cards */}
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-navy-100 shadow-sm p-16 text-center">
-          <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <svg className="w-10 h-10 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
+          <div className="w-16 h-16 bg-violet-50 rounded-xl flex items-center justify-center mx-auto mb-5">
+            <svg className="w-8 h-8 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
           </div>
-          <h3 className="text-lg font-bold text-navy-900 mb-1.5">Atama Bulunamadı</h3>
-          <p className="text-navy-400 text-sm">Henüz iDATA ataması yok veya filtrelere uygun kayıt bulunamadı.</p>
+          <h3 className="text-lg font-bold text-slate-800 mb-1.5">Atama Bulunamadı</h3>
+          <p className="text-slate-400 text-sm">Henüz iDATA ataması yok veya filtrelere uygun kayıt bulunamadı.</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -339,97 +329,81 @@ export default function StaffAtamalarPage() {
             return (
               <div
                 key={a.id}
-                className={`group bg-white rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden ${
-                  isNew ? "border-amber-200/80" : isRandevuGeldi ? "border-blue-200/80" : isDone ? "border-emerald-200/80" : isCancelled ? "border-red-200/80" : "border-navy-200/80"
+                className={`group bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${
+                  isNew ? "border-amber-200" : isRandevuGeldi ? "border-blue-200" : isDone ? "border-emerald-200" : isCancelled ? "border-red-200" : "border-slate-200"
                 }`}
               >
-                {/* Color accent bar */}
-                <div className={`h-1 ${
-                  isNew ? "bg-gradient-to-r from-amber-400 to-orange-400" :
-                  isRandevuGeldi ? "bg-gradient-to-r from-blue-400 to-indigo-400" :
-                  isDone ? "bg-gradient-to-r from-emerald-400 to-teal-400" :
-                  isCancelled ? "bg-gradient-to-r from-red-400 to-rose-400" :
-                  "bg-gradient-to-r from-navy-300 to-navy-400"
+                <div className={`h-0.5 ${
+                  isNew ? "bg-amber-400" :
+                  isRandevuGeldi ? "bg-blue-400" :
+                  isDone ? "bg-emerald-400" :
+                  isCancelled ? "bg-red-400" :
+                  "bg-slate-300"
                 }`} />
 
                 <div className="p-5">
-                  {/* Top Row - Modern */}
-                  <div className="flex items-start justify-between gap-4 mb-5">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white text-lg shadow-xl ring-2 ring-white ${
-                        isNew ? "bg-gradient-to-br from-amber-400 to-orange-500" :
-                        isRandevuGeldi ? "bg-gradient-to-br from-blue-400 to-indigo-500" :
-                        isDone ? "bg-gradient-to-br from-emerald-400 to-teal-500" :
-                        isCancelled ? "bg-gradient-to-br from-red-400 to-rose-500" :
-                        "bg-gradient-to-br from-navy-400 to-navy-600"
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm ${
+                        isNew ? "bg-amber-500" :
+                        isRandevuGeldi ? "bg-blue-500" :
+                        isDone ? "bg-emerald-500" :
+                        isCancelled ? "bg-red-500" :
+                        "bg-slate-500"
                       }`}>
                         {a.musteri_ad.charAt(0)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-navy-900 text-lg leading-tight">{a.musteri_ad}</h4>
+                        <h4 className="font-bold text-slate-800 text-base leading-tight">{a.musteri_ad}</h4>
                         <div className="flex items-center gap-2 mt-1">
-                          <code className="text-xs font-mono bg-gradient-to-r from-violet-50 to-indigo-50 text-violet-700 px-2 py-0.5 rounded-md border border-violet-100">{a.pnr}</code>
+                          <code className="text-xs font-mono bg-slate-50 text-violet-700 px-2 py-0.5 rounded-md border border-slate-200">{a.pnr}</code>
                           {remaining && (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                               remaining.urgent ? "bg-red-100 text-red-700 animate-pulse" : "bg-blue-50 text-blue-600"
                             }`}>
-                              ⏱ {remaining.text}
+                              {remaining.text}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${
-                      isNew ? "bg-gradient-to-r from-amber-400 to-orange-400 text-white" :
-                      isRandevuGeldi ? "bg-gradient-to-r from-blue-400 to-indigo-400 text-white" :
-                      isDone ? "bg-gradient-to-r from-emerald-400 to-teal-400 text-white" :
-                      isCancelled ? "bg-gradient-to-r from-red-400 to-rose-400 text-white" :
-                      "bg-navy-200 text-navy-600"
+                    <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
+                      isNew ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                      isRandevuGeldi ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                      isDone ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                      isCancelled ? "bg-red-50 text-red-700 border border-red-200" :
+                      "bg-slate-100 text-slate-600 border border-slate-200"
                     }`}>
-                      {isNew ? "🔔 Yeni Atama" : isRandevuGeldi ? "📅 Randevu Geldi" : isDone ? "✅ Onaylandı" : isCancelled ? "❌ İptal" : "⏰ Süresi Doldu"}
+                      {isNew ? "Yeni Atama" : isRandevuGeldi ? "Randevu Geldi" : isDone ? "Onaylandı" : isCancelled ? "İptal" : "Süresi Doldu"}
                     </span>
                   </div>
 
-                  {/* Info Cards - Modern glassmorphism */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-                    <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-xl p-3.5 border border-violet-100">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="text-base">🌍</span>
-                        <p className="text-[10px] text-violet-500 uppercase font-bold tracking-wider">Ülke / Amaç</p>
-                      </div>
-                      <p className="text-sm font-bold text-navy-900">{a.ulke_amac || "Belirtilmemiş"}</p>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-1">Ülke / Amaç</p>
+                      <p className="text-sm font-semibold text-slate-800">{a.ulke_amac || "Belirtilmemiş"}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-sky-50 to-blue-50 rounded-xl p-3.5 border border-sky-100">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="text-base">🏢</span>
-                        <p className="text-[10px] text-sky-500 uppercase font-bold tracking-wider">Ofis</p>
-                      </div>
-                      <p className="text-sm font-bold text-navy-900">{a.ofis || "Belirtilmemiş"}</p>
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-1">Ofis</p>
+                      <p className="text-sm font-semibold text-slate-800">{a.ofis || "Belirtilmemiş"}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-3.5 border border-emerald-100">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="text-base">📅</span>
-                        <p className="text-[10px] text-emerald-500 uppercase font-bold tracking-wider">Randevu Aralığı</p>
-                      </div>
-                      <p className="text-sm font-bold text-navy-900">
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-1">Randevu Aralığı</p>
+                      <p className="text-sm font-semibold text-slate-800">
                         {a.randevu_baslangic && a.randevu_bitis
                           ? `${formatDate(a.randevu_baslangic)} - ${formatDate(a.randevu_bitis)}`
                           : "Belirtilmemiş"}
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-xl p-3.5 border border-rose-100">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="text-base">⏰</span>
-                        <p className="text-[10px] text-rose-500 uppercase font-bold tracking-wider">Son Kayıt</p>
-                      </div>
-                      <p className="text-sm font-bold text-navy-900">{formatDateTime(a.son_kayit_tarihi) || "Belirtilmemiş"}</p>
+                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                      <p className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider mb-1">Son Kayıt</p>
+                      <p className="text-sm font-semibold text-slate-800">{formatDateTime(a.son_kayit_tarihi) || "Belirtilmemiş"}</p>
                     </div>
                   </div>
 
-                  {/* Footer - Modern */}
-                  <div className="flex items-center justify-between pt-4 border-t border-navy-100">
-                    <span className="text-xs text-navy-400 flex items-center gap-1.5">
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <span className="text-xs text-slate-400 flex items-center gap-1.5">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       {formatDateTime(a.created_at)}
                     </span>
@@ -438,13 +412,13 @@ export default function StaffAtamalarPage() {
                         <>
                           <button
                             onClick={() => handleUpdateDurum(a.id, "randevu_alindi")}
-                            className="text-xs font-bold px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
+                            className="text-xs font-semibold px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all"
                           >
-                            ✓ Randevu Onaylandı
+                            Randevu Onaylandı
                           </button>
                           <button
                             onClick={() => handleUpdateDurum(a.id, "iptal")}
-                            className="text-xs font-bold px-4 py-2 text-red-600 hover:bg-red-50 border-2 border-red-200 rounded-xl transition-all"
+                            className="text-xs font-semibold px-4 py-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-all"
                           >
                             İptal
                           </button>
@@ -453,9 +427,9 @@ export default function StaffAtamalarPage() {
                       {(isDone || isCancelled) && (
                         <button
                           onClick={() => handleUpdateDurum(a.id, "yeni")}
-                          className="text-xs font-medium px-3 py-2 text-navy-500 hover:bg-navy-50 border border-navy-200 rounded-xl transition-all"
+                          className="text-xs font-medium px-3 py-2 text-slate-500 hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
                         >
-                          ↩ Geri Al
+                          Geri Al
                         </button>
                       )}
                     </div>

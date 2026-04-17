@@ -159,127 +159,140 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-800 via-navy-900 to-navy-950 p-8 text-white shadow-2xl">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-primary-500/20 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-56 h-56 bg-primary-500/10 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl" />
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <p className="text-navy-300 text-sm font-medium mb-1">{timeGreeting}</p>
-            <h1 className="text-3xl font-bold mb-2">{adminName} 👑</h1>
-            <p className="text-navy-300">Ofis genelinde {stats.totalActive} aktif dosya, {stats.todayAppointments} bugünkü randevu var.</p>
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
           </div>
-          <div className="hidden md:flex items-center gap-4">
-            <div className="text-center bg-white/10 backdrop-blur rounded-2xl px-6 py-4">
-              <p className="text-3xl font-bold text-primary-400">{successRate}%</p>
-              <p className="text-xs text-navy-300">Başarı Oranı</p>
-            </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">{timeGreeting}, {adminName}</h1>
+            <p className="text-slate-500 text-sm">Ofis genelinde {stats.totalActive} aktif dosya, {stats.todayAppointments} bugünkü randevu var.</p>
           </div>
         </div>
-        <div className="absolute bottom-4 right-4 text-7xl opacity-10">🦊</div>
+        <div className="hidden md:flex items-center gap-2">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-2 text-center">
+            <p className="text-2xl font-bold text-blue-600">{successRate}%</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wide">Başarı Oranı</p>
+          </div>
+        </div>
       </div>
 
       {/* KPI Kartları */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-white to-blue-50 border-0 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-navy-500 font-medium">Aktif Dosya</p>
-              <p className="text-3xl font-bold text-navy-900 mt-1">{stats.totalActive}</p>
-              <p className="text-xs text-navy-400 mt-1">Devam Eden</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
             </div>
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-2xl">📁</span>
-            </div>
+            <span className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">AKTİF DOSYA</span>
           </div>
-        </Card>
+          <p className="text-2xl font-bold text-slate-900">{stats.totalActive}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Devam Eden</p>
+        </div>
 
-        <Card className="p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-white to-primary-50 border-0 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-navy-500 font-medium">Bugün Randevu</p>
-              <p className="text-3xl font-bold text-primary-600 mt-1">{stats.todayAppointments}</p>
-              <p className="text-xs text-navy-400 mt-1">Randevu</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
-            <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-2xl">📅</span>
-            </div>
+            <span className="text-[10px] font-medium text-violet-500 uppercase tracking-wide">BUGÜN RANDEVU</span>
           </div>
-        </Card>
+          <p className="text-2xl font-bold text-slate-900">{stats.todayAppointments}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Randevu</p>
+        </div>
 
-        <Card className="p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-white to-red-50 border-0 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-navy-500 font-medium">Ödenmemiş</p>
-              <p className="text-3xl font-bold text-red-600 mt-1">{stats.unpaidCari}</p>
-              <p className="text-xs text-navy-400 mt-1">Cari Dosya</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-2xl">💰</span>
-            </div>
+            <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">ÖDENMEMİŞ</span>
           </div>
-        </Card>
+          <p className="text-2xl font-bold text-slate-900">{stats.unpaidCari}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Cari Dosya</p>
+        </div>
 
-        <Card className="p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-white to-green-50 border-0 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-navy-500 font-medium">Toplam Gelir</p>
-              <div className="mt-1 space-y-0.5">
-                {Object.entries(stats.totalRevenue).map(([curr, val]) => (
-                  val > 0 && (
-                    <p key={curr} className="text-sm font-bold text-navy-700">
-                      {val.toLocaleString("tr-TR")} {getCurrencySymbol(curr)}
-                    </p>
-                  )
-                ))}
-                {Object.values(stats.totalRevenue).every(v => v === 0) && (
-                  <p className="text-sm text-navy-400">-</p>
-                )}
-              </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
             </div>
-            <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-2xl">💵</span>
-            </div>
+            <span className="text-[10px] font-medium text-green-500 uppercase tracking-wide">TOPLAM GELİR</span>
           </div>
-        </Card>
+          <div className="space-y-0.5">
+            {Object.entries(stats.totalRevenue).map(([curr, val]) => (
+              val > 0 && (
+                <p key={curr} className="text-sm font-bold text-slate-700">
+                  {val.toLocaleString("tr-TR")} {getCurrencySymbol(curr)}
+                </p>
+              )
+            ))}
+            {Object.values(stats.totalRevenue).every(v => v === 0) && (
+              <p className="text-2xl font-bold text-slate-900">-</p>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-0.5">Ödenen Toplam</p>
+        </div>
       </div>
 
       {/* Sonuç İstatistikleri */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Vize Onay</p>
-              <p className="text-4xl font-bold mt-1">{stats.approvedVisa}</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <span className="text-5xl opacity-50">🎉</span>
+            <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wide">VİZE ONAY</span>
           </div>
-        </Card>
-        <Card className="p-5 bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-red-100 text-sm">Reddedilen</p>
-              <p className="text-4xl font-bold mt-1">{stats.rejectedVisa}</p>
+          <p className="text-2xl font-bold text-slate-900">{stats.approvedVisa}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Onaylanan Başvuru</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
-            <span className="text-5xl opacity-50">❌</span>
+            <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">REDDEDİLEN</span>
           </div>
-        </Card>
-        <Card className="p-5 bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-primary-100 text-sm">Başarı Oranı</p>
-              <p className="text-4xl font-bold mt-1">%{successRate}</p>
+          <p className="text-2xl font-bold text-slate-900">{stats.rejectedVisa}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Red Başvuru</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
             </div>
-            <span className="text-5xl opacity-50">📈</span>
+            <span className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">BAŞARI ORANI</span>
           </div>
-        </Card>
+          <p className="text-2xl font-bold text-slate-900">%{successRate}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Onay / Toplam</p>
+        </div>
       </div>
 
       {/* Personel Tablosu */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <span className="text-xl">👥</span>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
             Personel Performansı
           </h3>
         </div>
@@ -287,12 +300,12 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-navy-200">
-                  <th className="text-left py-3 px-4 text-sm font-bold text-navy-700">Personel</th>
-                  <th className="text-center py-3 px-4 text-sm font-bold text-navy-700">Aktif</th>
-                  <th className="text-center py-3 px-4 text-sm font-bold text-navy-700">7 Gün Randevu</th>
-                  <th className="text-center py-3 px-4 text-sm font-bold text-navy-700">Tamamlanan</th>
-                  <th className="text-center py-3 px-4 text-sm font-bold text-navy-700">Ödenmemiş</th>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-3 px-4 text-sm font-bold text-slate-700">Personel</th>
+                  <th className="text-center py-3 px-4 text-sm font-bold text-slate-700">Aktif</th>
+                  <th className="text-center py-3 px-4 text-sm font-bold text-slate-700">7 Gün Randevu</th>
+                  <th className="text-center py-3 px-4 text-sm font-bold text-slate-700">Tamamlanan</th>
+                  <th className="text-center py-3 px-4 text-sm font-bold text-slate-700">Ödenmemiş</th>
                 </tr>
               </thead>
               <tbody>
@@ -300,12 +313,12 @@ export default function AdminDashboard() {
                   <tr
                     key={s.id}
                     onClick={() => handleStaffClick(s.id)}
-                    className="border-b border-navy-100 hover:bg-gradient-to-r hover:from-primary-50 hover:to-white cursor-pointer transition-all duration-200"
+                    className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-all duration-200"
                   >
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-3">
                         {USER_AVATARS[s.name.toUpperCase()] ? (
-                          <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-navy-200 flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-slate-200 flex-shrink-0">
                             <Image src={USER_AVATARS[s.name.toUpperCase()]} alt={s.name} width={40} height={40} className="w-full h-full object-cover" />
                           </div>
                         ) : (
@@ -313,7 +326,7 @@ export default function AdminDashboard() {
                             <span className="text-primary-600 font-bold">{s.name.charAt(0)}</span>
                           </div>
                         )}
-                        <span className="font-semibold text-navy-900">{s.name}</span>
+                        <span className="font-semibold text-slate-800">{s.name}</span>
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -338,30 +351,34 @@ export default function AdminDashboard() {
             </table>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Son Aktiviteler */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <span className="text-xl">📋</span>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
             Son Aktiviteler
           </h3>
         </div>
         <div className="p-6">
           {recentLogs.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-20 h-20 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">📝</span>
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
               </div>
-              <p className="text-navy-500 font-medium">Henüz aktivite yok</p>
+              <p className="text-slate-500 font-medium">Henüz aktivite yok</p>
             </div>
           ) : (
             <div className="space-y-3">
               {recentLogs.map((log) => (
-                <div key={log.id} className="flex items-start gap-4 p-4 bg-gradient-to-r from-navy-50 to-white rounded-xl hover:shadow-md transition-all duration-200">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <span className="text-xl">
+                <div key={log.id} className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl hover:shadow-md transition-all duration-200">
+                  <div className="w-10 h-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-base">
                       {log.type === "file_created" && "📁"}
                       {log.type === "file_updated" && "✏️"}
                       {log.type === "dosya_hazir" && "✅"}
@@ -373,19 +390,19 @@ export default function AdminDashboard() {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-navy-900 font-medium">{log.message}</p>
+                    <p className="text-sm text-slate-800 font-medium">{log.message}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       {log.profiles && <Badge variant="purple" size="sm">{log.profiles.name}</Badge>}
                       {log.visa_files && <Badge variant="info" size="sm">{log.visa_files.musteri_ad}</Badge>}
                     </div>
-                    <p className="text-xs text-navy-400 mt-2">{formatDate(log.created_at)}</p>
+                    <p className="text-xs text-slate-400 mt-2">{formatDate(log.created_at)}</p>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

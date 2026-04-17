@@ -149,19 +149,26 @@ export default function WhatsAppPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900">WhatsApp Bildirimleri</h1>
-          <p className="text-navy-500 text-sm mt-1">Müşterilere randevu ve evrak hatırlatma mesajlarını otomatik olarak gönderin</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">WhatsApp Bildirimleri</h1>
+            <p className="text-slate-500 text-sm">Müşterilere randevu ve evrak hatırlatma mesajlarını otomatik olarak gönderin</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full ${
             connectionStatus === "connected" ? "bg-green-500" :
             connectionStatus === "disconnected" ? "bg-red-500" : "bg-yellow-500 animate-pulse"
           }`} />
-          <span className="text-sm text-navy-600">
+          <span className="text-sm text-slate-600">
             {connectionStatus === "connected" ? "Bağlı" :
              connectionStatus === "disconnected" ? "Bağlantı yok" : "Kontrol ediliyor"}
           </span>
@@ -170,7 +177,7 @@ export default function WhatsAppPage() {
 
       {/* Alıcı Seçimi */}
       <Card className="p-5">
-        <h3 className="text-sm font-semibold text-navy-700 uppercase tracking-wide mb-3">Bildirim Alıcısı</h3>
+        <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">Bildirim Alıcısı</h3>
         <div className="flex flex-wrap gap-2">
           {CONTACT_LIST.map((contact) => {
             const avatarSrc = USER_AVATARS[contact.name];
@@ -181,16 +188,16 @@ export default function WhatsAppPage() {
                 onClick={() => setSelectedRecipient(contact.value)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   isSelected
-                    ? "bg-navy-900 text-white shadow-md"
-                    : "bg-navy-50 text-navy-600 hover:bg-navy-100"
+                    ? "bg-slate-800 text-white shadow-md"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100"
                 }`}
               >
                 {avatarSrc ? (
-                  <div className={`w-6 h-6 rounded-full overflow-hidden flex-shrink-0 ${isSelected ? "ring-1 ring-white/50" : "ring-1 ring-navy-200"}`}>
+                  <div className={`w-6 h-6 rounded-full overflow-hidden flex-shrink-0 ${isSelected ? "ring-1 ring-white/50" : "ring-1 ring-slate-200"}`}>
                     <Image src={avatarSrc} alt={contact.label} width={24} height={24} className="w-full h-full object-cover" />
                   </div>
                 ) : contact.value !== "all" ? (
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isSelected ? "bg-white/20 text-white" : "bg-navy-200 text-navy-600"}`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"}`}>
                     {contact.label.charAt(0)}
                   </div>
                 ) : null}
@@ -217,7 +224,7 @@ export default function WhatsAppPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className={`font-semibold ${colors.text}`}>{action.title}</h4>
-                  <p className="text-sm text-navy-500 mt-0.5">{action.subtitle}</p>
+                  <p className="text-sm text-slate-500 mt-0.5">{action.subtitle}</p>
                 </div>
               </div>
               <button
@@ -254,12 +261,12 @@ export default function WhatsAppPage() {
       )}
 
       {/* Bilgi */}
-      <Card className="p-4 bg-navy-50 border border-navy-200">
+      <Card className="p-4 bg-slate-50 border border-slate-200 shadow-sm">
         <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-navy-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <div className="text-sm text-navy-600 space-y-1">
+          <div className="text-sm text-slate-600 space-y-1">
             <p>Randevu hatırlatmaları seçilen kişilere toplu bilgi mesajı gönderir.</p>
             <p>Müşteri bildirimi, telefon numarası kayıtlı ve 60 gün içinde vizesi dolacak müşterilere doğrudan gider. Aynı müşteriye 5 gün içinde tekrar mesaj gönderilmez.</p>
           </div>

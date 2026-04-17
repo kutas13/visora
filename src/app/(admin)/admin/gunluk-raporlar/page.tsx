@@ -135,19 +135,19 @@ export default function AdminGunlukRaporlarPage() {
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Sayfa Başlığı */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            Günlük Raporlar
-          </h1>
-          <p className="text-sm text-slate-500 mt-1 ml-[52px]">Personel günlük satış raporlarını görüntüleyin</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Günlük Raporlar</h1>
+            <p className="text-slate-500 text-sm">Personel günlük satış raporlarını görüntüleyin</p>
+          </div>
         </div>
         <button
           onClick={loadReports}
@@ -162,7 +162,7 @@ export default function AdminGunlukRaporlarPage() {
 
       {/* İstatistik Kartlar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
               <svg className="w-[18px] h-[18px] text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,7 +173,7 @@ export default function AdminGunlukRaporlarPage() {
           </div>
           <p className="text-3xl font-bold text-slate-900">{stats.reportCount}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
               <svg className="w-[18px] h-[18px] text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,7 +184,7 @@ export default function AdminGunlukRaporlarPage() {
           </div>
           <p className="text-3xl font-bold text-slate-900">{stats.totalRows}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
               <svg className="w-[18px] h-[18px] text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,7 +195,7 @@ export default function AdminGunlukRaporlarPage() {
           </div>
           <p className="text-3xl font-bold text-slate-900">{stats.totalCustomers}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
               <svg className="w-[18px] h-[18px] text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,14 +247,14 @@ export default function AdminGunlukRaporlarPage() {
       </div>
 
       {/* Rapor Listesi */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-        <div className="bg-gradient-to-r from-slate-800 to-slate-900 px-6 py-4 flex items-center justify-between">
-          <h3 className="text-white font-semibold text-sm flex items-center gap-2.5">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+          <h3 className="text-slate-800 font-semibold text-sm flex items-center gap-2.5">
             <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
             Rapor Listesi
-            <span className="bg-white/15 px-2.5 py-0.5 rounded-full text-xs font-normal">{filtered.length}</span>
+            <span className="bg-slate-100 text-slate-500 px-2.5 py-0.5 rounded-full text-xs font-normal">{filtered.length}</span>
           </h3>
         </div>
 

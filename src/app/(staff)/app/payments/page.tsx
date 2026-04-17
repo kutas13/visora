@@ -596,16 +596,23 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-navy-900">Ödemeler</h1>
-        <p className="text-navy-500 text-sm">Müşteri tahsilatlarını kaydedin, ödeme geçmişini görüntüleyin ve bekleyen ödemeleri takip edin</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">Ödemeler</h1>
+          <p className="text-slate-500 text-sm">Müşteri tahsilatlarını kaydedin, ödeme geçmişini görüntüleyin ve bekleyen ödemeleri takip edin</p>
+        </div>
       </div>
 
       {/* Özet */}
       <div className="grid grid-cols-3 gap-3">
         {Object.entries(stats).map(([curr, total]) => (
-          <div key={curr} className="bg-white rounded-xl border border-navy-200 p-4">
-            <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">{curr}</p>
+          <div key={curr} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{curr}</p>
             <p className={`text-xl font-black mt-1 ${curr === "TL" ? "text-emerald-600" : curr === "EUR" ? "text-blue-600" : "text-amber-600"}`}>
               {total > 0 ? formatCurrency(total, curr) : "—"}
             </p>
@@ -615,7 +622,7 @@ export default function PaymentsPage() {
 
       {/* Arama */}
       <div className="relative">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
@@ -623,21 +630,21 @@ export default function PaymentsPage() {
           placeholder="Müşteri adı ile ara..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 border border-navy-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
+          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all bg-white"
         />
         {searchTerm && (
-          <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-400 hover:text-navy-600">
+          <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5 w-fit">
-        <button onClick={() => setActiveTab("odenmemis")} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === "odenmemis" ? "bg-white text-navy-900 shadow-sm" : "text-navy-500"}`}>
+      <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5 w-fit">
+        <button onClick={() => setActiveTab("odenmemis")} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === "odenmemis" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
           Ödenmemişler {unpaidFiles.length > 0 && <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 rounded-full">{unpaidFiles.length}</span>}
         </button>
-        <button onClick={() => setActiveTab("tahsilatlar")} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === "tahsilatlar" ? "bg-white text-navy-900 shadow-sm" : "text-navy-500"}`}>
+        <button onClick={() => setActiveTab("tahsilatlar")} className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === "tahsilatlar" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
           Tahsilatlarım
         </button>
       </div>
@@ -668,7 +675,7 @@ export default function PaymentsPage() {
                   >
                     Seçilenleri Öde
                   </button>
-                  <button onClick={() => { setBulkMode(false); setSelectedFileIds(new Set()); }} className="px-3 py-2 text-xs font-medium text-navy-500 hover:text-navy-700 transition-colors">
+                  <button onClick={() => { setBulkMode(false); setSelectedFileIds(new Set()); }} className="px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors">
                     İptal
                   </button>
                 </div>
@@ -676,33 +683,33 @@ export default function PaymentsPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             {filteredUnpaidFiles.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-sm text-navy-400">{searchQ ? "Aramayla eşleşen ödenmemiş dosya bulunamadı" : "Tüm ödemeler tahsil edilmiş"}</p>
+                <p className="text-sm text-slate-400">{searchQ ? "Aramayla eşleşen ödenmemiş dosya bulunamadı" : "Tüm ödemeler tahsil edilmiş"}</p>
               </div>
             ) : (
-              <div className="divide-y divide-navy-100">
+              <div className="divide-y divide-slate-100">
                 {filteredUnpaidFiles.map((file) => (
-                  <div key={file.id} className={`flex items-center justify-between p-4 hover:bg-navy-50/50 transition-colors ${bulkMode && selectedFileIds.has(file.id) ? "bg-amber-50/60" : ""}`}>
+                  <div key={file.id} className={`flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors ${bulkMode && selectedFileIds.has(file.id) ? "bg-amber-50/60" : ""}`}>
                     <div className="flex items-center gap-3 min-w-0">
                       {bulkMode && (
                         <input
                           type="checkbox"
                           checked={selectedFileIds.has(file.id)}
                           onChange={() => toggleFileSelection(file.id)}
-                          className="w-4.5 h-4.5 rounded border-navy-300 text-amber-600 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                          className="w-4.5 h-4.5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer flex-shrink-0"
                         />
                       )}
                       <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />
                       <div className="min-w-0">
-                        <p className="font-semibold text-navy-900 text-sm truncate">{file.musteri_ad}</p>
-                        <p className="text-xs text-navy-400">{file.hedef_ulke} · {file.pasaport_no}</p>
+                        <p className="font-semibold text-slate-800 text-sm truncate">{file.musteri_ad}</p>
+                        <p className="text-xs text-slate-400">{file.hedef_ulke} · {file.pasaport_no}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                       <div className="text-right">
-                        <p className="font-bold text-navy-900">{formatCurrency(getTotalDosyaAmount(file), file.ucret_currency || "TL")}</p>
+                        <p className="font-bold text-slate-800">{formatCurrency(getTotalDosyaAmount(file), file.ucret_currency || "TL")}</p>
                         {file.on_odeme_tutar && (
                           <p className="text-[10px] text-blue-600">ön ödeme: {file.on_odeme_tutar} {file.on_odeme_currency}</p>
                         )}
@@ -710,7 +717,7 @@ export default function PaymentsPage() {
                       <button
                         type="button"
                         onClick={() => { setFileDetailId(file.id); setShowFileDetailModal(true); }}
-                        className="px-2 py-1.5 text-[11px] font-semibold rounded-lg border border-navy-200 text-navy-600 hover:bg-primary-50 hover:border-primary-300 transition-colors"
+                        className="px-2 py-1.5 text-[11px] font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-primary-50 hover:border-primary-300 transition-colors"
                       >
                         Görüntüle
                       </button>
@@ -727,25 +734,25 @@ export default function PaymentsPage() {
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
-          <div className="flex items-center justify-between p-3 border-b border-navy-100">
-            <p className="text-sm font-medium text-navy-600">{filteredPayments.length} kayıt</p>
-            <select value={filterCurrency} onChange={(e) => setFilterCurrency(e.target.value)} className="text-xs border border-navy-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between p-3 border-b border-slate-100">
+            <p className="text-sm font-medium text-slate-600">{filteredPayments.length} kayıt</p>
+            <select value={filterCurrency} onChange={(e) => setFilterCurrency(e.target.value)} className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all">
               {currencyOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           {filteredPayments.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm text-navy-400">Tahsilat kaydı bulunamadı</p>
+              <p className="text-sm text-slate-400">Tahsilat kaydı bulunamadı</p>
             </div>
           ) : (
-            <div className="divide-y divide-navy-50">
+            <div className="divide-y divide-slate-50">
               {filteredPayments.map((p) => (
-                <div key={p.id} className="flex items-center justify-between p-3 hover:bg-navy-50/30 transition-colors">
+                <div key={p.id} className="flex items-center justify-between p-3 hover:bg-slate-50/30 transition-colors">
                   <div className="min-w-0">
-                    <p className="font-medium text-navy-900 text-sm truncate">{p.visa_files?.musteri_ad || "-"}</p>
+                    <p className="font-medium text-slate-800 text-sm truncate">{p.visa_files?.musteri_ad || "-"}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-navy-400">{p.visa_files?.hedef_ulke}</span>
+                      <span className="text-[10px] text-slate-400">{p.visa_files?.hedef_ulke}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${p.payment_type === "pesin_satis" ? "bg-green-50 text-green-700" : p.payment_type === "firma_cari" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"}`}>
                         {p.payment_type === "pesin_satis" ? "Peşin" : p.payment_type === "firma_cari" ? "Firma Cari" : "Tahsilat"}
                       </span>
@@ -761,14 +768,14 @@ export default function PaymentsPage() {
                       <button
                         type="button"
                         onClick={() => { setFileDetailId(p.file_id); setShowFileDetailModal(true); }}
-                        className="px-2 py-1 text-[10px] font-semibold rounded-md border border-navy-200 text-navy-600 hover:bg-primary-50"
+                        className="px-2 py-1 text-[10px] font-semibold rounded-md border border-slate-200 text-slate-600 hover:bg-primary-50"
                       >
                         Görüntüle
                       </button>
                     ) : null}
                     <div>
-                      <p className="font-bold text-navy-900 text-sm">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
-                      <p className="text-[10px] text-navy-400">{formatDate(p.created_at)}</p>
+                      <p className="font-bold text-slate-800 text-sm">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
+                      <p className="text-[10px] text-slate-400">{formatDate(p.created_at)}</p>
                     </div>
                   </div>
                 </div>
@@ -782,14 +789,14 @@ export default function PaymentsPage() {
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Tahsilat Bilgileri" size="sm">
         {selectedFile && (
           <div className="space-y-4">
-            <div className="bg-navy-50 rounded-xl p-4 border border-navy-200">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-navy-900">{selectedFile.musteri_ad}</p>
-                  <p className="text-xs text-navy-500">{selectedFile.hedef_ulke}</p>
+                  <p className="font-bold text-slate-800">{selectedFile.musteri_ad}</p>
+                  <p className="text-xs text-slate-500">{selectedFile.hedef_ulke}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-navy-400">Beklenen</p>
+                  <p className="text-xs text-slate-400">Beklenen</p>
                   <p className="font-bold text-primary-600">{formatCurrency(getTotalDosyaAmount(selectedFile), selectedFile.ucret_currency || "TL")}</p>
                 </div>
               </div>
@@ -798,7 +805,7 @@ export default function PaymentsPage() {
             {/* Ödeme Kalemleri */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Ödeme Kalemleri</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ödeme Kalemleri</p>
                 {yontem !== "pos" && (
                 <button type="button" onClick={addPaymentEntry} className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
@@ -841,7 +848,7 @@ export default function PaymentsPage() {
                       value={yontem === "pos" ? "TL" : entry.currency}
                       onChange={(e) => updatePaymentEntry(index, "currency", e.target.value)}
                       disabled={yontem === "pos"}
-                      className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-navy-100 disabled:text-navy-500"
+                      className="w-full px-2 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-slate-100 disabled:text-slate-500"
                     >
                       <option value="TL">TL ₺</option>
                       {yontem !== "pos" && <option value="EUR">EUR €</option>}
@@ -869,11 +876,11 @@ export default function PaymentsPage() {
               {selectedFile && selectedFile.ucret_currency !== "TL" && yontem !== "pos" && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Oto Kur</p>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Oto Kur</p>
                     <button
                       type="button"
                       onClick={loadExchangeRates}
-                      className="flex items-center gap-1 text-[10px] font-medium text-navy-400 hover:text-primary-600 transition-colors"
+                      className="flex items-center gap-1 text-[10px] font-medium text-slate-400 hover:text-primary-600 transition-colors"
                       disabled={ratesLoading}
                     >
                       <svg className={`w-3 h-3 ${ratesLoading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -989,7 +996,7 @@ export default function PaymentsPage() {
               <div className="space-y-3">
                 <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
                 <div>
-                  <label className="block text-xs font-medium text-navy-600 mb-1">Dekont Yükle</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Dekont Yükle</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -998,10 +1005,10 @@ export default function PaymentsPage() {
                       setDekontFile(f);
                       setDekontPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
                     }}
-                    className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-navy-600"
+                    className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-slate-600"
                   />
                   {dekontPreview && (
-                    <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-navy-200">
+                    <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
                       <img src={dekontPreview} alt="Dekont" className="w-full h-full object-cover" />
                       <button type="button" onClick={() => { setDekontFile(null); setDekontPreview(null); }} className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px]">×</button>
                     </div>
@@ -1031,12 +1038,12 @@ export default function PaymentsPage() {
             )}
 
             <div>
-              <label className="text-xs font-medium text-navy-500">Not <span className="text-navy-300">(isteğe bağlı)</span></label>
-              <textarea value={notlar} onChange={(e) => setNotlar(e.target.value)} placeholder="Ek bilgi..." className="w-full mt-1 px-3 py-2 border border-navy-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" rows={2} />
+              <label className="text-xs font-medium text-slate-500">Not <span className="text-slate-300">(isteğe bağlı)</span></label>
+              <textarea value={notlar} onChange={(e) => setNotlar(e.target.value)} placeholder="Ek bilgi..." className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" rows={2} />
             </div>
 
-            <div className="flex gap-3 pt-3 border-t border-navy-100">
-              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">İptal</button>
+            <div className="flex gap-3 pt-3 border-t border-slate-100">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">İptal</button>
               <button type="button" onClick={handleTahsilatOnay} disabled={!hasValidEntries || (yontem === "pos" && posPrefillLoading)} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
             </div>
           </div>
@@ -1048,7 +1055,7 @@ export default function PaymentsPage() {
         {selectedFile && (
           <div className="space-y-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
-              <p className="text-sm text-navy-600 mb-1"><strong>{selectedFile.musteri_ad}</strong></p>
+              <p className="text-sm text-slate-600 mb-1"><strong>{selectedFile.musteri_ad}</strong></p>
               <div className="space-y-1 mt-3">
                 {validEntries.map((e, i) => (
                   <p key={i} className="text-2xl font-black text-emerald-700">{formatCurrency(parseFloat(e.amount), e.currency)}</p>
@@ -1057,7 +1064,7 @@ export default function PaymentsPage() {
               {validEntries.length > 1 && (
                 <p className="text-xs text-emerald-600 mt-2 bg-emerald-100 rounded-full px-3 py-1 inline-block">Karışık döviz ödemesi</p>
               )}
-              <p className="text-xs text-navy-500 mt-2">
+              <p className="text-xs text-slate-500 mt-2">
                 {yontem === "nakit" ? "Nakit" : yontem === "pos" ? "POS" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
               </p>
             </div>
@@ -1067,7 +1074,7 @@ export default function PaymentsPage() {
             </div>
 
             <div className="flex gap-3">
-              <button type="button" onClick={() => { setShowConfirmModal(false); setShowModal(true); }} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors" disabled={isSubmitting}>Geri</button>
+              <button type="button" onClick={() => { setShowConfirmModal(false); setShowModal(true); }} className="flex-1 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors" disabled={isSubmitting}>Geri</button>
               <button type="button" onClick={handleTahsilatKaydet} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors" disabled={isSubmitting}>
                 {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
               </button>
@@ -1084,15 +1091,15 @@ export default function PaymentsPage() {
             <div className="space-y-1.5 max-h-[120px] overflow-y-auto">
               {selectedFiles.map(f => (
                 <div key={f.id} className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-navy-900 truncate">{f.musteri_ad}</span>
-                  <span className="text-navy-500 text-xs flex-shrink-0 ml-2">{formatCurrency(getTotalDosyaAmount(f), f.ucret_currency || "TL")}</span>
+                  <span className="font-medium text-slate-800 truncate">{f.musteri_ad}</span>
+                  <span className="text-slate-500 text-xs flex-shrink-0 ml-2">{formatCurrency(getTotalDosyaAmount(f), f.ucret_currency || "TL")}</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Toplam Ödeme Tutarı</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Toplam Ödeme Tutarı</p>
             {bulkYontem === "pos" && bulkPosPrefillLoading && (
               <p className="text-xs text-violet-600 flex items-center gap-2">
                 <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
@@ -1110,7 +1117,7 @@ export default function PaymentsPage() {
                   <Input label={index === 0 ? "Tutar" : undefined} type="number" placeholder="0" value={entry.amount} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, amount: e.target.value } : en))} disabled={bulkYontem === "pos" && bulkPosPrefillLoading && index === 0} />
                 </div>
                 <div className="w-24">
-                  <select value={bulkYontem === "pos" ? "TL" : entry.currency} disabled={bulkYontem === "pos"} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value as ParaBirimi } : en))} className="w-full px-2 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-navy-100">
+                  <select value={bulkYontem === "pos" ? "TL" : entry.currency} disabled={bulkYontem === "pos"} onChange={(e) => setBulkPaymentEntries(prev => prev.map((en, i) => i === index ? { ...en, currency: e.target.value as ParaBirimi } : en))} className="w-full px-2 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-slate-100">
                     <option value="TL">TL</option>
                     {bulkYontem !== "pos" && <option value="EUR">EUR</option>}
                     {bulkYontem !== "pos" && <option value="USD">USD</option>}
@@ -1124,8 +1131,8 @@ export default function PaymentsPage() {
           {selectedFiles.length > 0 && bulkYontem !== "pos" && selectedFiles.some(f => (f.ucret_currency || "TL") !== "TL") && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Oto Kur</p>
-                <button type="button" onClick={loadExchangeRates} className="flex items-center gap-1 text-[10px] font-medium text-navy-400 hover:text-primary-600 transition-colors" disabled={ratesLoading}>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Oto Kur</p>
+                <button type="button" onClick={loadExchangeRates} className="flex items-center gap-1 text-[10px] font-medium text-slate-400 hover:text-primary-600 transition-colors" disabled={ratesLoading}>
                   <svg className={`w-3 h-3 ${ratesLoading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                   {ratesLoading ? "Güncelleniyor..." : "Kur Güncelle"}
                 </button>
@@ -1204,10 +1211,10 @@ export default function PaymentsPage() {
             <div className="space-y-3">
               <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={bulkHesapSahibi} onChange={(e) => setBulkHesapSahibi(e.target.value as HesapSahibi)} />
               <div>
-                <label className="block text-xs font-medium text-navy-600 mb-1">Dekont Yükle</label>
-                <input type="file" accept="image/*,.pdf" onChange={(e) => { const f = e.target.files?.[0] || null; setBulkDekontFile(f); setBulkDekontPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null); }} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-navy-600" />
+                <label className="block text-xs font-medium text-slate-600 mb-1">Dekont Yükle</label>
+                <input type="file" accept="image/*,.pdf" onChange={(e) => { const f = e.target.files?.[0] || null; setBulkDekontFile(f); setBulkDekontPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null); }} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-slate-600" />
                 {bulkDekontPreview && (
-                  <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-navy-200">
+                  <div className="mt-2 relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
                     <img src={bulkDekontPreview} alt="Dekont" className="w-full h-full object-cover" />
                     <button type="button" onClick={() => { setBulkDekontFile(null); setBulkDekontPreview(null); }} className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px]">x</button>
                   </div>
@@ -1217,12 +1224,12 @@ export default function PaymentsPage() {
           )}
 
           <div>
-            <label className="text-xs font-medium text-navy-500">Muhasebe Notu <span className="text-navy-300">(isteğe bağlı)</span></label>
-            <textarea value={bulkNotlar} onChange={(e) => setBulkNotlar(e.target.value)} placeholder="Muhasebeye iletilecek not..." className="w-full mt-1 px-3 py-2 border border-navy-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" rows={2} />
+            <label className="text-xs font-medium text-slate-500">Muhasebe Notu <span className="text-slate-300">(isteğe bağlı)</span></label>
+            <textarea value={bulkNotlar} onChange={(e) => setBulkNotlar(e.target.value)} placeholder="Muhasebeye iletilecek not..." className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg resize-none text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" rows={2} />
           </div>
 
-          <div className="flex gap-3 pt-3 border-t border-navy-100">
-            <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">İptal</button>
+          <div className="flex gap-3 pt-3 border-t border-slate-100">
+            <button type="button" onClick={() => setShowBulkModal(false)} className="flex-1 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">İptal</button>
             <button type="button" onClick={handleBulkConfirm} disabled={!bulkValidEntries.length || (bulkYontem === "pos" && bulkPosPrefillLoading)} className="flex-1 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">Devam</button>
           </div>
         </div>
@@ -1232,16 +1239,16 @@ export default function PaymentsPage() {
       <Modal isOpen={showBulkConfirmModal} onClose={() => setShowBulkConfirmModal(false)} title="Toplu Tahsilatı Onayla" size="sm">
         <div className="space-y-4">
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
-            <p className="text-xs text-navy-500 mb-3">{selectedFiles.length} müşteri için toplu tahsilat</p>
+            <p className="text-xs text-slate-500 mb-3">{selectedFiles.length} müşteri için toplu tahsilat</p>
             <div className="space-y-1 mb-3">
               {selectedFiles.map(f => (
-                <p key={f.id} className="text-sm font-semibold text-navy-800">{f.musteri_ad} - {f.hedef_ulke}</p>
+                <p key={f.id} className="text-sm font-semibold text-slate-700">{f.musteri_ad} - {f.hedef_ulke}</p>
               ))}
             </div>
             {bulkValidEntries.map((e, i) => (
               <p key={i} className="text-2xl font-black text-emerald-700">{formatCurrency(parseFloat(e.amount), e.currency)}</p>
             ))}
-            <p className="text-xs text-navy-500 mt-2">
+            <p className="text-xs text-slate-500 mt-2">
               {bulkYontem === "nakit" ? "Nakit" : bulkYontem === "pos" ? "POS" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === bulkHesapSahibi) || {label: ""}).label})`}
             </p>
           </div>
@@ -1249,7 +1256,7 @@ export default function PaymentsPage() {
             <p className="text-amber-800 text-xs text-center">Bu işlem geri alınamaz. Emin misiniz?</p>
           </div>
           <div className="flex gap-3">
-            <button type="button" onClick={() => { setShowBulkConfirmModal(false); setShowBulkModal(true); }} className="flex-1 py-2 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors" disabled={isSubmitting}>Geri</button>
+            <button type="button" onClick={() => { setShowBulkConfirmModal(false); setShowBulkModal(true); }} className="flex-1 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors" disabled={isSubmitting}>Geri</button>
             <button type="button" onClick={handleBulkPaymentSave} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors" disabled={isSubmitting}>
               {isSubmitting ? "Kaydediliyor..." : "Kaydet"}
             </button>

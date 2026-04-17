@@ -114,13 +114,20 @@ export default function CalendarPage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-navy-900">Randevu Takvimi</h1>
-          <p className="text-xs text-navy-400 mt-0.5">Randevu tarihlerinizi takvim üzerinde görüntüleyin &middot; {appointments.length} yaklaşan randevu</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Randevu Takvimi</h1>
+            <p className="text-slate-500 text-sm">Randevu tarihlerinizi takvim üzerinde görüntüleyin &middot; {appointments.length} yaklaşan randevu</p>
+          </div>
         </div>
-        <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5">
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
           {(["day","week","month"] as const).map(m => (
-            <button key={m} onClick={() => setView(m)} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${view===m ? "bg-white text-navy-900 shadow-sm" : "text-navy-500"}`}>
+            <button key={m} onClick={() => setView(m)} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${view===m ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
               {m==="day"?"Gün":m==="week"?"Hafta":"Ay"}
             </button>
           ))}
@@ -147,44 +154,44 @@ export default function CalendarPage() {
       )}
 
       {/* Navigation bar */}
-      <div className="flex items-center justify-between bg-white rounded-xl border border-navy-200 px-4 py-2.5">
-        <button onClick={() => nav(-1)} className="p-1.5 hover:bg-navy-100 rounded-lg transition-colors">
-          <svg className="w-4 h-4 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+      <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-2.5">
+        <button onClick={() => nav(-1)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
         </button>
         <div className="text-center">
-          <p className="text-sm font-semibold text-navy-900">
+          <p className="text-sm font-semibold text-slate-800">
             {view==="day" ? fmtDay(sel.toISOString()) : view==="week" ? `${fmtShort(wk[0].toISOString())} – ${fmtShort(wk[6].toISOString())}` : sel.toLocaleDateString("tr-TR",{year:"numeric",month:"long"})}
           </p>
           <button onClick={() => setSel(new Date())} className="text-[10px] text-primary-600 hover:text-primary-700 font-medium">
             {view==="day"?"Bugün":view==="week"?"Bu Hafta":"Bu Ay"}
           </button>
         </div>
-        <button onClick={() => nav(1)} className="p-1.5 hover:bg-navy-100 rounded-lg transition-colors">
-          <svg className="w-4 h-4 text-navy-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+        <button onClick={() => nav(1)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
         </button>
       </div>
 
       {/* Calendar view */}
       {view === "day" ? (
-        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {dayAppts.length === 0 ? (
-            <div className="text-center py-16"><p className="text-sm text-navy-400">Randevu yok</p></div>
+            <div className="text-center py-16"><p className="text-sm text-slate-400">Randevu yok</p></div>
           ) : (
-            <div className="divide-y divide-navy-100">
+            <div className="divide-y divide-slate-100">
               {dayAppts.map(a => {
                 const mine = a.assigned_user_id === uid;
                 return (
-                  <button key={a.id} onClick={() => onEdit(a)} className="w-full flex items-center gap-3 p-4 hover:bg-navy-50/50 transition-colors text-left">
+                  <button key={a.id} onClick={() => onEdit(a)} className="w-full flex items-center gap-3 p-4 hover:bg-slate-50/50 transition-colors text-left">
                     <div className={`w-1 h-10 rounded-full ${mine ? "bg-emerald-500" : "bg-primary-500"}`}/>
                     <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-xs font-bold text-white ${mine ? "bg-emerald-600" : "bg-primary-600"}`}>
                       {fmtTime(a.randevu_tarihi!)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-navy-900 text-sm">{a.musteri_ad}</p>
-                      <p className="text-xs text-navy-400">{a.hedef_ulke} · {a.pasaport_no}</p>
+                      <p className="font-semibold text-slate-800 text-sm">{a.musteri_ad}</p>
+                      <p className="text-xs text-slate-400">{a.hedef_ulke} · {a.pasaport_no}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-xs text-navy-500">{a.profiles?.name}</p>
+                      <p className="text-xs text-slate-500">{a.profiles?.name}</p>
                       {mine && <span className="text-[10px] text-emerald-600 font-medium">Benim</span>}
                     </div>
                   </button>
@@ -194,17 +201,17 @@ export default function CalendarPage() {
           )}
         </div>
       ) : view === "week" ? (
-        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="grid grid-cols-7">
             {wk.map((d, i) => {
               const k = dateKey(d);
               const appts = wkMap[k] || [];
               const today = isToday(d);
               return (
-                <div key={k} className={`border-r last:border-r-0 border-navy-100 ${today ? "bg-primary-50/50" : ""}`}>
-                  <div className={`text-center py-3 border-b border-navy-100 ${today ? "bg-primary-100/50" : "bg-navy-50/50"}`}>
-                    <p className="text-[10px] font-medium text-navy-400 uppercase">{DAY_NAMES[i]}</p>
-                    <p className={`text-lg font-bold mt-0.5 ${today ? "text-primary-600" : "text-navy-700"}`}>{d.getDate()}</p>
+                <div key={k} className={`border-r last:border-r-0 border-slate-100 ${today ? "bg-primary-50/50" : ""}`}>
+                  <div className={`text-center py-3 border-b border-slate-100 ${today ? "bg-primary-100/50" : "bg-slate-50/50"}`}>
+                    <p className="text-[10px] font-medium text-slate-400 uppercase">{DAY_NAMES[i]}</p>
+                    <p className={`text-lg font-bold mt-0.5 ${today ? "text-primary-600" : "text-slate-700"}`}>{d.getDate()}</p>
                   </div>
                   <div className="p-1.5 min-h-[120px] space-y-1">
                     {appts.slice(0,4).map(a => {
@@ -217,7 +224,7 @@ export default function CalendarPage() {
                         </button>
                       );
                     })}
-                    {appts.length > 4 && <p className="text-[10px] text-navy-400 text-center font-medium">+{appts.length-4}</p>}
+                    {appts.length > 4 && <p className="text-[10px] text-slate-400 text-center font-medium">+{appts.length-4}</p>}
                   </div>
                 </div>
               );
@@ -225,9 +232,9 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-navy-100">
-            {DAY_NAMES.map(d => <div key={d} className="text-center py-2.5"><span className="text-[11px] font-semibold text-navy-500 uppercase tracking-wider">{d}</span></div>)}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="grid grid-cols-7 border-b border-slate-100">
+            {DAY_NAMES.map(d => <div key={d} className="text-center py-2.5"><span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{d}</span></div>)}
           </div>
           <div className="grid grid-cols-7">
             {mo.dates.map((d, i) => {
@@ -236,9 +243,9 @@ export default function CalendarPage() {
               const today = isToday(d);
               const cur = d.getMonth() === sel.getMonth();
               return (
-                <div key={k} className={`min-h-[88px] p-1 border-b border-r border-navy-100 transition-all ${today ? "bg-primary-50" : !cur ? "bg-gray-50/80" : ""}`}>
+                <div key={k} className={`min-h-[88px] p-1 border-b border-r border-slate-100 transition-all ${today ? "bg-primary-50" : !cur ? "bg-gray-50/80" : ""}`}>
                   <div className="text-right px-1 mb-1">
-                    <span className={`text-xs inline-flex items-center justify-center ${today ? "w-6 h-6 rounded-full bg-primary-600 text-white font-bold" : cur ? "text-navy-600 font-medium" : "text-navy-300"}`}>{d.getDate()}</span>
+                    <span className={`text-xs inline-flex items-center justify-center ${today ? "w-6 h-6 rounded-full bg-primary-600 text-white font-bold" : cur ? "text-slate-600 font-medium" : "text-slate-300"}`}>{d.getDate()}</span>
                   </div>
                   <div className="space-y-0.5">
                     {appts.slice(0,2).map(a => {
@@ -250,7 +257,7 @@ export default function CalendarPage() {
                         </button>
                       );
                     })}
-                    {appts.length > 2 && <p className="text-[10px] text-navy-400 text-center">+{appts.length-2}</p>}
+                    {appts.length > 2 && <p className="text-[10px] text-slate-400 text-center">+{appts.length-2}</p>}
                   </div>
                 </div>
               );
@@ -261,27 +268,27 @@ export default function CalendarPage() {
 
       {/* Upcoming list */}
       {upcoming.length > 0 && (
-        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-navy-100">
-            <p className="text-xs font-semibold text-navy-500 uppercase tracking-wider">Yaklaşan Randevular</p>
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Yaklaşan Randevular</p>
           </div>
-          <div className="divide-y divide-navy-50">
+          <div className="divide-y divide-slate-50">
             {upcoming.slice(0,15).map(a => {
               const d = daysUntil(a.randevu_tarihi!);
               const mine = a.assigned_user_id === uid;
               return (
-                <button key={a.id} onClick={() => onEdit(a)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-navy-50/50 transition-colors text-left">
+                <button key={a.id} onClick={() => onEdit(a)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50/50 transition-colors text-left">
                   <div className={`w-9 h-9 rounded-lg flex flex-col items-center justify-center text-white text-xs font-bold ${d<=2?"bg-red-500":d<=7?"bg-amber-500":"bg-emerald-500"}`}>
                     <span className="leading-none">{d}</span>
                     <span className="text-[7px] opacity-80">gün</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-navy-900 truncate">{a.musteri_ad}</p>
-                    <p className="text-[11px] text-navy-400">{a.hedef_ulke}{mine ? " · benim" : ""}</p>
+                    <p className="text-sm font-semibold text-slate-800 truncate">{a.musteri_ad}</p>
+                    <p className="text-[11px] text-slate-400">{a.hedef_ulke}{mine ? " · benim" : ""}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-medium text-navy-700">{fmtShort(a.randevu_tarihi!)} · {fmtTime(a.randevu_tarihi!)}</p>
-                    <p className="text-[10px] text-navy-400">{a.profiles?.name}</p>
+                    <p className="text-xs font-medium text-slate-700">{fmtShort(a.randevu_tarihi!)} · {fmtTime(a.randevu_tarihi!)}</p>
+                    <p className="text-[10px] text-slate-400">{a.profiles?.name}</p>
                   </div>
                 </button>
               );

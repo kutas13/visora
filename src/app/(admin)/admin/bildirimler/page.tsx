@@ -32,7 +32,7 @@ function getKindIcon(kind: string) {
     payment: { bg: "bg-emerald-100", gradient: "from-emerald-500 to-green-600", icon: "💰" },
     internal_message: { bg: "bg-blue-100", gradient: "from-blue-500 to-blue-600", icon: "💬" },
   };
-  return icons[kind] || { bg: "bg-navy-100", gradient: "from-navy-500 to-navy-600", icon: "🔔" };
+  return icons[kind] || { bg: "bg-slate-100", gradient: "from-slate-500 to-slate-600", icon: "🔔" };
 }
 
 function formatTime(dateStr: string) {
@@ -153,12 +153,16 @@ export default function AdminBildirimlerPage() {
     <div className="space-y-6">
       {/* Sayfa Başlığı */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-            <span className="text-3xl">🔔</span>
-            Tüm Bildirimler
-          </h1>
-          <p className="text-navy-500 mt-1">Sistem tarafından oluşturulan tüm bildirimleri yönetin</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Tüm Bildirimler</h1>
+            <p className="text-slate-500 text-sm">Sistem tarafından oluşturulan tüm bildirimleri yönetin</p>
+          </div>
         </div>
         <div className="flex gap-2">
         {stats.unread > 0 && (
@@ -203,52 +207,49 @@ export default function AdminBildirimlerPage() {
 
       {/* İstatistik Kartları */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="overflow-hidden shadow-lg">
-          <div className="p-5 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">Toplam Bildirim</p>
-                <p className="text-4xl font-bold mt-1">{stats.total}</p>
-              </div>
-              <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-3xl">📬</span>
-              </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">TOPLAM</span>
           </div>
-        </Card>
-        <Card className="overflow-hidden shadow-lg">
-          <div className="p-5 bg-gradient-to-r from-red-500 to-red-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">Okunmamış</p>
-                <p className="text-4xl font-bold mt-1">{stats.unread}</p>
-              </div>
-              <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-3xl">🔴</span>
-              </div>
+          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Toplam Bildirim</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">OKUNMAMIŞ</span>
           </div>
-        </Card>
-        <Card className="overflow-hidden shadow-lg">
-          <div className="p-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">Bugün</p>
-                <p className="text-4xl font-bold mt-1">{stats.today}</p>
-              </div>
-              <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-3xl">📅</span>
-              </div>
+          <p className="text-2xl font-bold text-slate-900">{stats.unread}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Okunmamış Bildirim</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-green-500 uppercase tracking-wide">BUGÜN</span>
           </div>
-        </Card>
+          <p className="text-2xl font-bold text-slate-900">{stats.today}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Bugünkü Bildirim</p>
+        </div>
       </div>
 
       {/* Filtre */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-4">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
             Filtreler
@@ -267,15 +268,18 @@ export default function AdminBildirimlerPage() {
             <Button onClick={loadNotifications}>Filtrele</Button>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Bildirim Listesi */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            📋 Bildirimler
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{notifications.length}</span>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Bildirimler
           </h3>
+          <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs font-medium">{notifications.length}</span>
         </div>
         <div className="p-6">
           {loading ? (
@@ -284,11 +288,13 @@ export default function AdminBildirimlerPage() {
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-20 h-20 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">🔔</span>
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
               </div>
-              <h3 className="text-lg font-semibold text-navy-900 mb-2">Bildirim Bulunamadı</h3>
-              <p className="text-navy-500">Filtrelerinize uygun bildirim yok</p>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Bildirim Bulunamadı</h3>
+              <p className="text-slate-500">Filtrelerinize uygun bildirim yok</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -298,7 +304,7 @@ export default function AdminBildirimlerPage() {
                   <div 
                     key={notif.id} 
                     className={`flex items-start gap-4 p-4 rounded-xl transition-all hover:shadow-md ${
-                      notif.is_read ? (index % 2 === 0 ? "bg-navy-50" : "bg-white") : "bg-primary-50 border-l-4 border-l-primary-500"
+                      notif.is_read ? (index % 2 === 0 ? "bg-slate-50" : "bg-white") : "bg-primary-50 border-l-4 border-l-primary-500"
                     }`}
                   >
                     <div className={`w-14 h-14 bg-gradient-to-br ${kindStyle.gradient} rounded-xl flex items-center justify-center text-2xl text-white shadow-lg flex-shrink-0`}>
@@ -306,11 +312,11 @@ export default function AdminBildirimlerPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="font-bold text-navy-900">{notif.title}</h4>
+                        <h4 className="font-bold text-slate-800">{notif.title}</h4>
                         {!notif.is_read && <Badge variant="warning" size="sm" className="animate-pulse">Yeni</Badge>}
                       </div>
-                      <p className="text-navy-600 text-sm">{notif.body}</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-navy-500">
+                      <p className="text-slate-600 text-sm">{notif.body}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
                         <span className="flex items-center gap-1">
                           <span className="w-5 h-5 bg-primary-100 rounded-full flex items-center justify-center">
                             <span className="text-primary-600 font-bold text-[10px]">{notif.profiles?.name?.charAt(0) || "?"}</span>
@@ -346,7 +352,7 @@ export default function AdminBildirimlerPage() {
             </div>
           )}
         </div>
-      </Card>
+      </div>
 
       {/* Detay Modal */}
       <FileDetailModal

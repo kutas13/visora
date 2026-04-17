@@ -94,20 +94,20 @@ export default function VizeGorselleriPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-[1100px]">
+    <div className="space-y-5">
       {/* Başlık */}
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md shadow-violet-500/20">
-            <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          </div>
-          Vize Görselleri
-        </h1>
-        <p className="text-sm text-slate-500 mt-1 ml-[46px]">Onaylanan vizelerin görsellerini görüntüleyin ve indirin</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">Vize Görselleri</h1>
+          <p className="text-slate-500 text-sm">Onaylanan vizelerin görsellerini görüntüleyin ve indirin</p>
+        </div>
       </div>
 
       {/* Filtreler */}
-      <div className="bg-white rounded-xl border border-slate-100 p-4 flex flex-wrap items-center gap-3">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input
@@ -133,7 +133,7 @@ export default function VizeGorselleriPage() {
 
       {/* Galeri */}
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-100 p-16 text-center">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
           <div className="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           </div>
@@ -145,7 +145,7 @@ export default function VizeGorselleriPage() {
           {filtered.map(file => (
             <div
               key={file.id}
-              className="group bg-white rounded-xl border border-slate-100 overflow-hidden hover:shadow-lg hover:border-slate-200 transition-all duration-200"
+              className="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200"
             >
               {/* Görsel */}
               <div

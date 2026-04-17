@@ -30,7 +30,7 @@ function getKindIcon(kind: string) {
     payment: { bg: "bg-emerald-100", gradient: "from-emerald-500 to-green-600", icon: "💰" },
     internal_message: { bg: "bg-blue-100", gradient: "from-blue-500 to-blue-600", icon: "💬" },
   };
-  return icons[kind] || { bg: "bg-navy-100", gradient: "from-navy-500 to-navy-600", icon: "🔔" };
+  return icons[kind] || { bg: "bg-slate-100", gradient: "from-slate-500 to-slate-600", icon: "🔔" };
 }
 
 function formatTime(dateStr: string) {
@@ -119,14 +119,18 @@ export default function BildirimlerPage() {
     <div className="space-y-6">
       {/* Sayfa Başlığı */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-            <span className="text-3xl">🔔</span>
-            Bildirimlerim
-          </h1>
-          <p className="text-navy-500 mt-1">
-            {unreadCount > 0 ? `${unreadCount} okunmamış bildirim var` : "Tüm bildirimler okundu ✓"}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Bildirimlerim</h1>
+            <p className="text-slate-500 text-sm">
+              {unreadCount > 0 ? `${unreadCount} okunmamış bildirim var` : "Tüm bildirimler okundu ✓"}
+            </p>
+          </div>
         </div>
         {unreadCount > 0 && (
           <Button onClick={markAllAsRead} variant="outline" className="shadow-md">
@@ -143,19 +147,21 @@ export default function BildirimlerPage() {
           <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
         </div>
       ) : notifications.length === 0 ? (
-        <Card className="p-12 text-center shadow-lg">
-          <div className="w-24 h-24 bg-gradient-to-br from-navy-100 to-navy-200 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-5xl">🔔</span>
+        <Card className="p-12 text-center shadow-sm">
+          <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
           </div>
-          <h3 className="text-xl font-bold text-navy-900 mb-2">Bildirim Yok</h3>
-          <p className="text-navy-500">Henüz hiç bildiriminiz bulunmuyor. Yeni gelişmeler olduğunda burada göreceksiniz.</p>
+          <h3 className="text-xl font-bold text-slate-800 mb-2">Bildirim Yok</h3>
+          <p className="text-slate-500">Henüz hiç bildiriminiz bulunmuyor. Yeni gelişmeler olduğunda burada göreceksiniz.</p>
         </Card>
       ) : (
         <div className="space-y-8">
           {/* Okunmamış Bildirimler */}
           {unreadNotifications.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-navy-700 uppercase tracking-wide mb-4 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-4 flex items-center gap-2">
                 <span className="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></span>
                 Okunmamış ({unreadNotifications.length})
               </h3>
@@ -173,11 +179,11 @@ export default function BildirimlerPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-navy-900">{notif.title}</h4>
+                            <h4 className="font-bold text-slate-800">{notif.title}</h4>
                             <Badge variant="warning" size="sm" className="animate-pulse">Yeni</Badge>
                           </div>
-                          <p className="text-navy-600 text-sm leading-relaxed">{notif.body}</p>
-                          <p className="text-navy-400 text-xs mt-2 flex items-center gap-1">
+                          <p className="text-slate-600 text-sm leading-relaxed">{notif.body}</p>
+                          <p className="text-slate-400 text-xs mt-2 flex items-center gap-1">
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -205,22 +211,22 @@ export default function BildirimlerPage() {
           {/* Okunmuş Bildirimler */}
           {readNotifications.length > 0 && (
             <div>
-              <h3 className="text-sm font-bold text-navy-500 uppercase tracking-wide mb-4">
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-4">
                 Okunmuş ({readNotifications.length})
               </h3>
               <div className="space-y-2">
                 {readNotifications.map((notif) => {
                   const kindStyle = getKindIcon(notif.kind);
                   return (
-                    <Card key={notif.id} className="p-4 opacity-70 hover:opacity-100 transition-opacity">
+                    <Card key={notif.id} className="p-4 opacity-70 hover:opacity-100 transition-opacity shadow-sm">
                       <div className="flex items-start gap-4">
                         <div className={`w-10 h-10 ${kindStyle.bg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>
                           {kindStyle.icon}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-navy-700">{notif.title}</h4>
-                          <p className="text-navy-500 text-sm">{notif.body}</p>
-                          <p className="text-navy-400 text-xs mt-1">{formatTime(notif.created_at)}</p>
+                          <h4 className="font-medium text-slate-700">{notif.title}</h4>
+                          <p className="text-slate-500 text-sm">{notif.body}</p>
+                          <p className="text-slate-400 text-xs mt-1">{formatTime(notif.created_at)}</p>
                         </div>
                         {notif.file_id && (
                           <Button size="sm" variant="outline" onClick={() => handleDetailClick(notif.file_id)} className="text-xs shrink-0">

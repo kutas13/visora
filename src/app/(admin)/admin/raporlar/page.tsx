@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
-import { Card } from "@/components/ui";
+
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Payment, Profile } from "@/lib/supabase/types";
 import dynamic from "next/dynamic";
@@ -159,18 +159,25 @@ export default function RaporlarPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-navy-900">Raporlar</h1>
-          <p className="text-navy-500 text-sm">Ofis geneli tahsilat, başvuru ve performans istatistiklerini dönemsel olarak inceleyin ve karşılaştırın</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Raporlar</h1>
+            <p className="text-slate-500 text-sm">Ofis geneli tahsilat, başvuru ve performans istatistiklerini dönemsel olarak inceleyin ve karşılaştırın</p>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5">
+          <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
             {(["week", "month", "quarter", "year", "custom"] as Period[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                  period === p ? "bg-white text-navy-900 shadow-sm" : "text-navy-500 hover:text-navy-700"
+                  period === p ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
                 }`}
               >
                 {periodLabels[p]}
@@ -183,14 +190,14 @@ export default function RaporlarPage() {
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="px-2.5 py-1.5 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
               />
-              <span className="text-navy-400 text-xs">—</span>
+              <span className="text-slate-400 text-xs">—</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="px-2.5 py-1.5 border border-navy-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
               />
             </div>
           )}
@@ -199,13 +206,13 @@ export default function RaporlarPage() {
 
       {/* Staff Filter */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-semibold text-navy-500 uppercase tracking-wider mr-1">Personel:</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Personel:</span>
         <button
           onClick={() => setSelectedStaffId("all")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
             selectedStaffId === "all"
-              ? "bg-navy-900 text-white border-navy-900 shadow-md"
-              : "bg-white text-navy-600 border-navy-200 hover:border-navy-400"
+              ? "bg-slate-800 text-white border-slate-800 shadow-md"
+              : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
           }`}
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,16 +229,16 @@ export default function RaporlarPage() {
               onClick={() => setSelectedStaffId(s.id)}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
                 isActive
-                  ? "bg-navy-900 text-white border-navy-900 shadow-md"
-                  : "bg-white text-navy-600 border-navy-200 hover:border-navy-400"
+                  ? "bg-slate-800 text-white border-slate-800 shadow-md"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
               }`}
             >
               {avatarSrc ? (
-                <div className={`w-5 h-5 rounded-full overflow-hidden flex-shrink-0 ${isActive ? "ring-1 ring-white" : "ring-1 ring-navy-200"}`}>
+                <div className={`w-5 h-5 rounded-full overflow-hidden flex-shrink-0 ${isActive ? "ring-1 ring-white" : "ring-1 ring-slate-200"}`}>
                   <Image src={avatarSrc} alt={s.name} width={20} height={20} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold ${isActive ? "bg-white/20 text-white" : "bg-navy-100 text-navy-600"}`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
                   {s.name.charAt(0)}
                 </div>
               )}
@@ -242,38 +249,63 @@ export default function RaporlarPage() {
       </div>
 
       {/* Period Label */}
-      <p className="text-xs text-navy-400 font-medium uppercase tracking-wider">
+      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
         {selectedStaffName} · {activeLabel} · {filteredFiles.length} dosya · {filteredPayments.length} tahsilat
       </p>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Dosya</p>
-          <p className="text-2xl font-black text-navy-900 mt-1">{kpis.totalFiles}</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            </div>
+            <span className="text-[10px] font-medium text-indigo-500 uppercase tracking-wide">DOSYA</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">{kpis.totalFiles}</p>
         </div>
-        <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Onay</p>
-          <p className="text-2xl font-black text-green-600 mt-1">{kpis.approvedFiles}</p>
-          <p className="text-[10px] text-green-500">%{kpis.successRate}</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <span className="text-[10px] font-medium text-green-500 uppercase tracking-wide">ONAY</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">{kpis.approvedFiles}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">%{kpis.successRate} başarı</p>
         </div>
-        <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Red</p>
-          <p className="text-2xl font-black text-red-600 mt-1">{kpis.rejectedFiles}</p>
-          <p className="text-[10px] text-navy-400">{kpis.pendingFiles} beklemede</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">RED</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">{kpis.rejectedFiles}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">{kpis.pendingFiles} beklemede</p>
         </div>
-        <div className="bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Tahsilat</p>
-          <p className="text-2xl font-black text-amber-600 mt-1">{kpis.totalPayments}</p>
-          <p className="text-[10px] text-navy-400">{kpis.pesinCount} peşin · {kpis.tahsilatCount} cari · {kpis.firmaCariCount} firma</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            </div>
+            <span className="text-[10px] font-medium text-amber-500 uppercase tracking-wide">TAHSİLAT</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-900">{kpis.totalPayments}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">{kpis.pesinCount} peşin · {kpis.tahsilatCount} cari · {kpis.firmaCariCount} firma</p>
         </div>
-        <div className="col-span-2 lg:col-span-1 bg-white rounded-xl border border-navy-200 p-4">
-          <p className="text-[10px] font-semibold text-navy-400 uppercase tracking-wider">Gelir</p>
-          <div className="mt-1 space-y-0.5">
+        <div className="col-span-2 lg:col-span-1 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <span className="text-[10px] font-medium text-emerald-500 uppercase tracking-wide">GELİR</span>
+          </div>
+          <div className="space-y-0.5">
             {Object.entries(kpis.revenue).map(([curr, val]) => val > 0 && (
-              <p key={curr} className="text-sm font-bold text-navy-800">{val.toLocaleString("tr-TR")} {getCurrencySymbol(curr)}</p>
+              <p key={curr} className="text-sm font-bold text-slate-800">{val.toLocaleString("tr-TR")} {getCurrencySymbol(curr)}</p>
             ))}
-            {Object.values(kpis.revenue).every((v) => v === 0) && <p className="text-sm text-navy-400">—</p>}
+            {Object.values(kpis.revenue).every((v) => v === 0) && <p className="text-sm text-slate-400">—</p>}
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Card, Button, Badge, Modal, Select } from "@/components/ui";
+import { Badge, Modal, Select } from "@/components/ui";
 import VisaFileForm from "@/components/files/VisaFileForm";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
@@ -103,90 +103,88 @@ export default function AdminVizeBitisiPage() {
     <div className="space-y-6">
       {/* Sayfa Başlığı */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-            <span className="text-3xl">🛂</span>
-            Vize Bitişi Takibi
-          </h1>
-          <p className="text-navy-500 mt-1">Tüm personellerin onaylı vizelerinin bitiş tarihlerini takip edin, süresi dolacak dosyaları tespit edin</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg shadow-rose-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Vize Bitişi Takibi</h1>
+            <p className="text-slate-500 text-sm">Tüm personellerin onaylı vizelerinin bitiş tarihlerini takip edin, süresi dolacak dosyaları tespit edin</p>
+          </div>
         </div>
         <Select options={staffOptions} value={filterStaff} onChange={(e) => setFilterStaff(e.target.value)} className="min-w-[180px]" />
       </div>
 
       {/* Özet Kartlar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-          <div className="p-5 bg-gradient-to-r from-red-500 to-red-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">30 Gün İçinde</p>
-                <p className="text-4xl font-bold mt-1">{stats.critical}</p>
-                <p className="text-white/60 text-xs mt-1">Kritik Seviye</p>
-              </div>
-              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-4xl">🚨</span>
-              </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">KRİTİK</span>
           </div>
-        </Card>
-        <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-          <div className="p-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">30-60 Gün</p>
-                <p className="text-4xl font-bold mt-1">{stats.warning}</p>
-                <p className="text-white/60 text-xs mt-1">Dikkat Seviyesi</p>
-              </div>
-              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-4xl">⚠️</span>
-              </div>
+          <p className="text-2xl font-bold text-slate-900">{stats.critical}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">30 gün içinde dolacak</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-amber-500 uppercase tracking-wide">DİKKAT</span>
           </div>
-        </Card>
-        <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-          <div className="p-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm">Toplam Aktif</p>
-                <p className="text-4xl font-bold mt-1">{stats.total}</p>
-                <p className="text-white/60 text-xs mt-1">Geçerli Vize</p>
-              </div>
-              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center">
-                <span className="text-4xl">✓</span>
-              </div>
+          <p className="text-2xl font-bold text-slate-900">{stats.warning}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">30-60 gün arası</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+            <span className="text-[10px] font-medium text-green-500 uppercase tracking-wide">AKTİF</span>
           </div>
-        </Card>
+          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Geçerli vize sayısı</p>
+        </div>
       </div>
 
       {/* Filtre */}
-      <div className="bg-navy-100 p-1 rounded-xl inline-flex gap-1">
+      <div className="bg-slate-100 p-1 rounded-xl inline-flex gap-1">
         <button
           onClick={() => setFilter("all")}
-          className={`px-6 py-3 font-medium rounded-lg transition-all ${
+          className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
             filter === "all" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-white text-slate-800 shadow-sm" 
+              : "text-slate-600 hover:text-slate-800"
           }`}
         >
           Tümü
         </button>
         <button
           onClick={() => setFilter("30")}
-          className={`px-6 py-3 font-medium rounded-lg transition-all ${
+          className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
             filter === "30" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-white text-slate-800 shadow-sm" 
+              : "text-slate-600 hover:text-slate-800"
           }`}
         >
           30 Günden Az
         </button>
         <button
           onClick={() => setFilter("60")}
-          className={`px-6 py-3 font-medium rounded-lg transition-all ${
+          className={`px-6 py-2.5 text-sm font-medium rounded-lg transition-all ${
             filter === "60" 
-              ? "bg-white text-navy-900 shadow-md" 
-              : "text-navy-600 hover:text-navy-900"
+              ? "bg-white text-slate-800 shadow-sm" 
+              : "text-slate-600 hover:text-slate-800"
           }`}
         >
           60 Günden Az
@@ -194,22 +192,21 @@ export default function AdminVizeBitisiPage() {
       </div>
 
       {/* Liste */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <span className="text-xl">📋</span>
-            Vize Listesi
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{filteredFiles.length}</span>
-          </h3>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="font-semibold text-slate-800">Vize Listesi</h3>
+          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{filteredFiles.length} kayıt</span>
         </div>
         <div className="p-6">
           {filteredFiles.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-4xl">✓</span>
+              <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <h3 className="text-lg font-bold text-navy-900 mb-2">Harika!</h3>
-              <p className="text-navy-500">Bu filtreye uyan vize bulunamadı</p>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Harika!</h3>
+              <p className="text-slate-500">Bu filtreye uyan vize bulunamadı</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -237,19 +234,19 @@ export default function AdminVizeBitisiPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-bold text-navy-900 text-lg">{file.musteri_ad}</p>
+                        <p className="font-bold text-slate-800 text-lg">{file.musteri_ad}</p>
                         {file.daysRemaining <= 10 && (
                           <Badge variant="error" size="sm" className="animate-pulse">ACİL</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-navy-500">{file.hedef_ulke} • {file.pasaport_no}</p>
+                      <p className="text-sm text-slate-500">{file.hedef_ulke} • {file.pasaport_no}</p>
                       <Badge variant="purple" size="sm" className="mt-1">{file.profiles?.name}</Badge>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-navy-700">Bitiş: {formatDate(file.vize_bitis_tarihi!)}</p>
+                      <p className="text-sm font-semibold text-slate-700">Bitiş: {formatDate(file.vize_bitis_tarihi!)}</p>
                       <Badge variant="success" size="sm" className="mt-1">Vize Onay</Badge>
                     </div>
-                    <div className="text-navy-300 group-hover:text-primary-500 transition-colors">
+                    <div className="text-slate-300 group-hover:text-primary-500 transition-colors">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
@@ -260,7 +257,7 @@ export default function AdminVizeBitisiPage() {
             </div>
           )}
         </div>
-      </Card>
+      </div>
 
       {/* Edit Modal */}
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Dosyayı Düzenle" size="xl">

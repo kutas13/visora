@@ -180,12 +180,16 @@ export default function FilesPage() {
     <div className="space-y-6">
       {/* Sayfa Başlığı */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-            <span className="text-3xl">📁</span>
-            Vize Dosyaları
-          </h1>
-          <p className="text-navy-500 mt-1">Yeni dosya oluşturun, mevcut dosyaları düzenleyin, evrak/ödeme/randevu durumlarını takip edin ve işlemden çıkarın</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-800">Vize Dosyaları</h1>
+            <p className="text-slate-500 text-sm">Yeni dosya oluşturun, mevcut dosyaları düzenleyin, evrak/ödeme/randevu durumlarını takip edin ve işlemden çıkarın</p>
+          </div>
         </div>
         <Button onClick={() => router.push("/app/files/new")} className="shadow-lg hover:shadow-xl transition-shadow">
           <span className="mr-2">+</span> Yeni Dosya
@@ -193,16 +197,16 @@ export default function FilesPage() {
       </div>
 
       {/* Filtre Kartı */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-700 to-navy-800 px-6 py-4">
+      <Card className="overflow-hidden border border-slate-200 shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between">
-            <h3 className="text-white font-semibold flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h3 className="text-slate-700 font-semibold flex items-center gap-2">
+              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
               Filtreler
             </h3>
-            <button onClick={() => { setSearchTerm(""); setFilterIslemTipi("all"); setFilterUlke("all"); }} className="text-sm text-navy-200 hover:text-white transition-colors">
+            <button onClick={() => { setSearchTerm(""); setFilterIslemTipi("all"); setFilterUlke("all"); }} className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
               Temizle
             </button>
           </div>
@@ -213,7 +217,7 @@ export default function FilesPage() {
             <Select label="İşlem Tipi" options={islemTipiOptions} value={filterIslemTipi} onChange={(e) => setFilterIslemTipi(e.target.value)} />
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-navy-700">Hedef Ülke</label>
+                <label className="block text-sm font-medium text-slate-700">Hedef Ülke</label>
                 <button type="button" onClick={() => setIsManualCountry(!isManualCountry)} className="text-xs text-primary-600 hover:text-primary-700">{isManualCountry ? "Listeden seç" : "Manuel giriş"}</button>
               </div>
               {isManualCountry ? <Input placeholder="Ülke adı..." value={manualCountryFilter} onChange={(e) => setManualCountryFilter(e.target.value)} /> : <Select options={TARGET_COUNTRIES} value={filterUlke} onChange={(e) => setFilterUlke(e.target.value)} />}
@@ -231,17 +235,17 @@ export default function FilesPage() {
       </Card>
 
       {/* Aktif / Sonuçlanan Toggle */}
-      <div className="flex gap-1 bg-navy-100 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
         <button
           onClick={() => setStepFilter("all")}
           className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
             stepFilter !== "sonuclanan"
-              ? "bg-white text-navy-900 shadow-sm"
-              : "text-navy-500 hover:text-navy-700"
+              ? "bg-white text-slate-800 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           Aktif Dosyalar
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter !== "sonuclanan" ? "bg-navy-100 text-navy-600" : "bg-navy-200/60 text-navy-400"}`}>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter !== "sonuclanan" ? "bg-slate-100 text-slate-600" : "bg-slate-200/60 text-slate-400"}`}>
             {files.filter(f => !f.sonuc).length}
           </span>
         </button>
@@ -250,11 +254,11 @@ export default function FilesPage() {
           className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
             stepFilter === "sonuclanan"
               ? "bg-emerald-600 text-white shadow-sm"
-              : "text-navy-500 hover:text-navy-700"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           Sonuçlanan
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter === "sonuclanan" ? "bg-white/20" : "bg-navy-200/60 text-navy-400"}`}>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter === "sonuclanan" ? "bg-white/20" : "bg-slate-200/60 text-slate-400"}`}>
             {files.filter(f => !!f.sonuc).length}
           </span>
         </button>
@@ -264,7 +268,7 @@ export default function FilesPage() {
       {stepFilter !== "sonuclanan" && (
       <div className="flex items-center gap-2 flex-wrap">
         {[
-          { key: "all", label: "Hepsi", color: "navy" },
+          { key: "all", label: "Hepsi", color: "slate" },
           { key: "yeni", label: "Yeni", color: "slate" },
           { key: "evrak_eksik", label: "Evrak Eksik", color: "orange" },
           { key: "dosya_hazir", label: "Dosya Hazır", color: "blue" },
@@ -282,12 +286,12 @@ export default function FilesPage() {
               onClick={() => setStepFilter(step.key)}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 stepFilter === step.key
-                  ? "bg-navy-900 text-white shadow-md"
-                  : "bg-white text-navy-600 border border-navy-200 hover:border-navy-400"
+                  ? "bg-slate-800 text-white shadow-md"
+                  : "bg-white text-slate-600 border border-slate-200 hover:border-slate-400"
               }`}
             >
               {step.label}
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter === step.key ? "bg-white/20" : "bg-navy-100 text-navy-500"}`}>{count}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${stepFilter === step.key ? "bg-white/20" : "bg-slate-100 text-slate-500"}`}>{count}</span>
             </button>
           );
         })}
@@ -295,12 +299,12 @@ export default function FilesPage() {
       )}
 
       {/* Dosya Listesi */}
-      <Card className="overflow-hidden shadow-lg">
-        <div className="bg-gradient-to-r from-navy-800 to-navy-900 px-6 py-4">
+      <Card className="overflow-hidden border border-slate-200 shadow-sm">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center justify-between">
-            <h3 className="text-white font-semibold flex items-center gap-2">
+            <h3 className="text-slate-700 font-semibold flex items-center gap-2">
               Dosyalar
-              <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm">{files.length}</span>
+              <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-sm">{files.length}</span>
             </h3>
           </div>
         </div>
@@ -324,11 +328,13 @@ export default function FilesPage() {
             );
             return displayFiles.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-24 h-24 bg-navy-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-5xl">📂</span>
+              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
               </div>
-              <h3 className="text-lg font-semibold text-navy-900 mb-2">Dosya Bulunamadı</h3>
-              <p className="text-navy-500 mb-4">Aramanıza uygun dosya yok veya henüz dosya oluşturmadınız.</p>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Dosya Bulunamadı</h3>
+              <p className="text-slate-500 mb-4">Aramanıza uygun dosya yok veya henüz dosya oluşturmadınız.</p>
               <Button onClick={() => setShowForm(true)}>İlk Dosyayı Oluştur</Button>
             </div>
           ) : (
@@ -337,27 +343,27 @@ export default function FilesPage() {
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b-2 border-navy-200">
-                      <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Müşteri</th>
-                      <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Ülke</th>
-                      <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Ücret</th>
-                      <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Randevu</th>
-                      <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">Durum</th>
-                      <th className="text-left py-4 px-4 text-sm font-bold text-navy-700">İşlemler</th>
+                    <tr className="bg-slate-50">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Müşteri</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ülke</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ücret</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Randevu</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Durum</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">İşlemler</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayFiles.map((file, index) => (
                       <tr 
                         key={file.id} 
-                        className={`border-b border-navy-100 hover:bg-gradient-to-r hover:from-primary-50 hover:to-white transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-navy-50/50'}`}
+                        className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
                       >
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
                             <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />
                             <div className="min-w-0">
-                              <p className="font-semibold text-navy-900 truncate">{file.musteri_ad}</p>
-                              <p className="text-[11px] text-navy-400 font-mono">{file.pasaport_no}</p>
+                              <p className="font-semibold text-slate-800 truncate">{file.musteri_ad}</p>
+                              <p className="text-[11px] text-slate-400 font-mono">{file.pasaport_no}</p>
                             </div>
                           </div>
                         </td>
@@ -366,9 +372,9 @@ export default function FilesPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex flex-col gap-1.5">
-                            <span className="font-bold text-navy-900 text-sm">{((file.ucret || 0) + (file.davetiye_ucreti || 0)).toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</span>
+                            <span className="font-bold text-slate-800 text-sm">{((file.ucret || 0) + (file.davetiye_ucreti || 0)).toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</span>
                             {(file.davetiye_ucreti || 0) > 0 && (
-                              <span className="text-xs text-navy-400">{file.ucret?.toLocaleString('tr-TR')} + {file.davetiye_ucreti?.toLocaleString('tr-TR')} dav.</span>
+                              <span className="text-xs text-slate-400">{file.ucret?.toLocaleString('tr-TR')} + {file.davetiye_ucreti?.toLocaleString('tr-TR')} dav.</span>
                             )}
                             <div className="flex gap-1.5 flex-wrap">
                               <Badge variant={file.cari_tipi === "firma_cari" ? "purple" : file.odeme_plani === "pesin" ? "success" : "warning"} size="sm">
@@ -382,7 +388,7 @@ export default function FilesPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-4 text-sm text-navy-600">{formatDateTime(file.randevu_tarihi)}</td>
+                        <td className="py-4 px-4 text-sm text-slate-600">{formatDateTime(file.randevu_tarihi)}</td>
                         <td className="py-4 px-4">
                           <div className="flex flex-col gap-1">
                             {getStatusBadge(file)}
@@ -396,7 +402,7 @@ export default function FilesPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleDetail(file.id)}
-                                className="text-[11px] h-8 px-2.5 shrink-0 border-navy-200 text-navy-700 hover:bg-primary-50 hover:border-primary-300"
+                                className="text-[11px] h-8 px-2.5 shrink-0 border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300"
                               >
                                 Görüntüle
                               </Button>
@@ -428,22 +434,22 @@ export default function FilesPage() {
                       <div className="flex items-center gap-3">
                         <CustomerAvatar name={file.musteri_ad} size="lg" status={resolveAvatarStatus(file)} />
                         <div className="min-w-0">
-                          <p className="font-bold text-navy-900 truncate">{file.musteri_ad}</p>
-                          <p className="text-sm text-navy-400 font-mono">{file.pasaport_no}</p>
+                          <p className="font-bold text-slate-800 truncate">{file.musteri_ad}</p>
+                          <p className="text-sm text-slate-400 font-mono">{file.pasaport_no}</p>
                         </div>
                       </div>
                       {getStatusBadge(file)}
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                      <div className="bg-navy-50 rounded-lg p-2">
-                        <span className="text-navy-500 text-xs">Ülke</span>
+                      <div className="bg-slate-50 rounded-lg p-2">
+                        <span className="text-slate-500 text-xs">Ülke</span>
                         <p className="font-medium">{file.hedef_ulke}</p>
                       </div>
-                      <div className="bg-navy-50 rounded-lg p-2">
-                        <span className="text-navy-500 text-xs">Ücret</span>
+                      <div className="bg-slate-50 rounded-lg p-2">
+                        <span className="text-slate-500 text-xs">Ücret</span>
                         <p className="font-bold">{((file.ucret || 0) + (file.davetiye_ucreti || 0)).toLocaleString('tr-TR')} {getCurrencySymbol(file.ucret_currency)}</p>
                         {(file.davetiye_ucreti || 0) > 0 && (
-                          <p className="text-xs text-navy-400">{file.ucret?.toLocaleString('tr-TR')} + {file.davetiye_ucreti?.toLocaleString('tr-TR')} dav.</p>
+                          <p className="text-xs text-slate-400">{file.ucret?.toLocaleString('tr-TR')} + {file.davetiye_ucreti?.toLocaleString('tr-TR')} dav.</p>
                         )}
                       </div>
                     </div>
@@ -458,7 +464,7 @@ export default function FilesPage() {
                       )}
                       {file.evrak_eksik_mi && <Badge variant="error" size="sm">Eksik</Badge>}
                     </div>
-                    <div className="flex gap-2 pt-3 border-t border-navy-100">
+                    <div className="flex gap-2 pt-3 border-t border-slate-100">
                       <Button size="sm" variant="outline" onClick={() => handleDetail(file.id)} className="flex-1 text-xs">Görüntüle</Button>
                       <Button size="sm" variant="outline" onClick={() => handleEdit(file)} className="flex-1">Düzenle</Button>
                       <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(file)}>
