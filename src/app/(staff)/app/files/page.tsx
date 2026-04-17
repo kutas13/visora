@@ -185,7 +185,7 @@ export default function FilesPage() {
             <span className="text-3xl">📁</span>
             Vize Dosyaları
           </h1>
-          <p className="text-navy-500 mt-1">Müşteri dosyalarını yönetin ve takip edin</p>
+          <p className="text-navy-500 mt-1">Yeni dosya oluşturun, mevcut dosyaları düzenleyin, evrak/ödeme/randevu durumlarını takip edin ve işlemden çıkarın</p>
         </div>
         <Button onClick={() => router.push("/app/files/new")} className="shadow-lg hover:shadow-xl transition-shadow">
           <span className="mr-2">+</span> Yeni Dosya
