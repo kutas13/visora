@@ -20,18 +20,13 @@ const ZAFER_ALLOWED_HREFS = ["/app/randevu-listesi", "/app/randevu-raporlari"];
 
 const menuGroups = [
   {
-    title: "Genel",
+    title: "Ana Menü",
     items: [
       {
         href: "/app",
         label: "Ana Sayfa",
         exact: true,
         icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>,
-      },
-      {
-        href: "/app/files",
-        label: "Vize Dosyaları",
-        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
       },
       {
         href: "/app/bildirimler",
@@ -42,6 +37,16 @@ const menuGroups = [
         href: "/app/whatsapp",
         label: "WhatsApp",
         icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12c0 2.121.555 4.11 1.527 5.835L0 24l6.315-1.527A11.962 11.962 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm6 16.2c-.247.7-1.4 1.3-2.3 1.5-.7.1-1.3.2-4.4-1-3.3-1.3-5.4-4.7-5.6-4.9-.2-.2-1.4-1.9-1.4-3.6s.9-2.5 1.2-2.9c.3-.3.7-.5 1-.5s.6 0 .8 0c.3 0 .6 0 .9.7.3.8 1.1 2.7 1.2 2.9.1.2.2.4.1.7-.1.3-.2.4-.4.6-.2.2-.4.5-.6.7-.2.2-.4.4-.2.8.2.4 1 1.6 2.1 2.6 1.4 1.3 2.6 1.7 3 1.9.3.2.5.2.7 0s.8-.9 1-1.2c.2-.3.5-.2.8-.1.3.1 1.9.9 2.2 1.1.3.2.6.3.7.5.1.4.1 1-.1 1.7z"/></svg>,
+      },
+    ],
+  },
+  {
+    title: "Vize",
+    items: [
+      {
+        href: "/app/files",
+        label: "Vize Dosyaları",
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
       },
     ],
   },
@@ -76,7 +81,7 @@ const menuGroups = [
     ],
   },
   {
-    title: "Finans & Raporlar",
+    title: "Raporlar & Finans",
     items: [
       {
         href: "/app/payments",
