@@ -35,7 +35,6 @@ export default function VizeBitisiPage() {
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("sonuc", "vize_onay")
-      .eq("arsiv_mi", false)
       .not("vize_bitis_tarihi", "is", null);
 
     setFiles(data || []);
