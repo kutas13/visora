@@ -161,7 +161,7 @@ export default function RaporlarPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-navy-900">Raporlar</h1>
-          <p className="text-navy-500 text-sm">Tahsilat, başvuru ve performans istatistikleri</p>
+          <p className="text-navy-500 text-sm">Ofis geneli tahsilat, başvuru ve performans istatistiklerini dönemsel olarak inceleyin ve karşılaştırın</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5">

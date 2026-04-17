@@ -115,7 +115,7 @@ export default function AdminCalendarPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-navy-900">Randevu Takvimi</h1>
-          <p className="text-xs text-navy-400 mt-0.5">{appointments.length} yaklaşan randevu</p>
+          <p className="text-xs text-navy-400 mt-0.5">Tüm personellerin randevularını takvimde görüntüleyin ve yönetin &middot; {appointments.length} yaklaşan</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <select value={filterStaff} onChange={e => setFilterStaff(e.target.value)} className="text-xs border border-navy-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white min-w-[140px]">

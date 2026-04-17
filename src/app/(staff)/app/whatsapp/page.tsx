@@ -154,7 +154,7 @@ export default function WhatsAppPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-navy-900">WhatsApp Bildirimleri</h1>
-          <p className="text-navy-500 text-sm mt-1">Otomatik hatırlatma mesajları gönderin</p>
+          <p className="text-navy-500 text-sm mt-1">Müşterilere randevu ve evrak hatırlatma mesajlarını otomatik olarak gönderin</p>
         </div>
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full ${

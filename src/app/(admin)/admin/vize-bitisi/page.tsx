@@ -108,7 +108,7 @@ export default function AdminVizeBitisiPage() {
             <span className="text-3xl">🛂</span>
             Vize Bitişi Takibi
           </h1>
-          <p className="text-navy-500 mt-1">Tüm ofis için vize bitiş takibi</p>
+          <p className="text-navy-500 mt-1">Tüm personellerin onaylı vizelerinin bitiş tarihlerini takip edin, süresi dolacak dosyaları tespit edin</p>
         </div>
         <Select options={staffOptions} value={filterStaff} onChange={(e) => setFilterStaff(e.target.value)} className="min-w-[180px]" />
       </div>

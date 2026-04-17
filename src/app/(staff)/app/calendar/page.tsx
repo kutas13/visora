@@ -116,7 +116,7 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-navy-900">Randevu Takvimi</h1>
-          <p className="text-xs text-navy-400 mt-0.5">{appointments.length} yaklaşan randevu</p>
+          <p className="text-xs text-navy-400 mt-0.5">Randevu tarihlerinizi takvim üzerinde görüntüleyin &middot; {appointments.length} yaklaşan randevu</p>
         </div>
         <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5">
           {(["day","week","month"] as const).map(m => (

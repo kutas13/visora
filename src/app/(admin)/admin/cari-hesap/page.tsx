@@ -146,7 +146,7 @@ export default function AdminCariHesapPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-navy-900">{"Cari Hesap Yönetimi"}</h1>
-          <p className="text-navy-500 text-sm mt-1">{"Tüm personellerin cari hesap özeti"}</p>
+          <p className="text-navy-500 text-sm mt-1">{"Tüm personellerin borç ve alacak durumunu görüntüleyin, cari bakiyeleri takip edin ve firma hesaplarını yönetin"}</p>
         </div>
           <div className="flex gap-3">
             <button

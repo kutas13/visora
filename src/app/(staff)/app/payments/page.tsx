@@ -598,7 +598,7 @@ export default function PaymentsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-navy-900">Ödemeler</h1>
-        <p className="text-navy-500 text-sm">Tahsilatları yönetin ve takip edin</p>
+        <p className="text-navy-500 text-sm">Müşteri tahsilatlarını kaydedin, ödeme geçmişini görüntüleyin ve bekleyen ödemeleri takip edin</p>
       </div>
 
       {/* Özet */}

@@ -137,8 +137,8 @@ export default function StaffRaporlarPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-navy-900">Raporlarım</h1>
-          <p className="text-navy-500 text-sm">{staffName} - kişisel performans ve istatistikler</p>
+          <h1 className="text-xl font-bold text-navy-900">Vize Raporlarım</h1>
+          <p className="text-navy-500 text-sm">Dosya, tahsilat ve başvuru istatistiklerinizi dönemsel olarak inceleyin &middot; {staffName}</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex gap-1 bg-navy-100 rounded-lg p-0.5">

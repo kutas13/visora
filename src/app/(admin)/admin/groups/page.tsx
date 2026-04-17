@@ -125,7 +125,7 @@ export default function AdminGroupsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-navy-900">Gruplar</h1>
-          <p className="text-navy-500 text-sm">{groups.length} grup</p>
+          <p className="text-navy-500 text-sm">Aile ve topluluk gruplarını oluşturun, dosyaları gruplayın ve toplu takip edin &middot; {groups.length} grup</p>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
           + Yeni Grup

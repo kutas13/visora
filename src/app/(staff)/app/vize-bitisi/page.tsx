@@ -90,7 +90,7 @@ export default function VizeBitisiPage() {
           <span className="text-3xl">🛂</span>
           Vize Bitişi Takibi
         </h1>
-        <p className="text-navy-500 mt-1">Onaylanmış vizelerin bitiş tarihlerini takip edin</p>
+        <p className="text-navy-500 mt-1">Onaylanmış vizelerin bitiş tarihlerini takip edin, süresi dolmak üzere olan dosyaları görün ve tekrar başvuru oluşturun</p>
       </div>
 
       {/* Özet Kartlar */}

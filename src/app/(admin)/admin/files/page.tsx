@@ -148,7 +148,7 @@ export default function AdminFilesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-navy-900">Vize Dosyaları</h1>
-          <p className="text-navy-500 text-sm">{files.length} dosya</p>
+          <p className="text-navy-500 text-sm">Tüm personellerin dosyalarını görüntüleyin, filtreleyin, düzenleyin ve işlem yapın &middot; {files.length} dosya</p>
         </div>
         <input
           type="text"

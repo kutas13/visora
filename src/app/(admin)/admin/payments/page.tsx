@@ -118,7 +118,7 @@ export default function AdminPaymentsPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-bold text-navy-900">Ofis Ödemeleri</h1>
-        <p className="text-navy-500 text-sm">Tüm ödeme ve tahsilat takibi</p>
+        <p className="text-navy-500 text-sm">Tüm personellerin tahsilatlarını görüntüleyin, döviz bazında filtreleyin ve ödeme geçmişini inceleyin</p>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
