@@ -846,7 +846,7 @@ export default function LoginPage() {
         {/* Yuna Form Butonu */}
         <div className="order-3 lg:col-span-2 flex justify-center">
           <a
-            href="https://foxvize.com/"
+            href="https://foxvize.info/"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 active:scale-[0.98]"
