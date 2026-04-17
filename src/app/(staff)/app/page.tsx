@@ -183,7 +183,7 @@ export default function StaffDashboard() {
   const avatarSrc = USER_AVATARS[userName];
 
   return (
-    <div className="space-y-6 max-w-[1100px]">
+    <div className="space-y-6">
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] p-7 shadow-xl border border-white/[0.06]">
         <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/[0.06] rounded-full -translate-y-1/2 translate-x-1/3" />
