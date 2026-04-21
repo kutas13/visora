@@ -13,23 +13,20 @@ function adminClient() {
 
 async function ensureTable() {
   const sb = adminClient();
-  await sb.rpc("exec_sql", {
-    query: `
-      CREATE TABLE IF NOT EXISTS vize_gorselleri_uploads (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-        gorsel_url TEXT NOT NULL,
-        gorsel_adi TEXT NOT NULL,
-        sira_no INTEGER NOT NULL DEFAULT 1,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-      );
-    `,
-  }).catch(() => {});
-
-  const { error } = await sb.from("vize_gorselleri_uploads").select("id").limit(1);
-  if (error?.code === "42P01") {
-    await sb.from("vize_gorselleri_uploads").select("id").limit(0).catch(() => {});
-  }
+  try {
+    await sb.rpc("exec_sql", {
+      query: `
+        CREATE TABLE IF NOT EXISTS vize_gorselleri_uploads (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+          gorsel_url TEXT NOT NULL,
+          gorsel_adi TEXT NOT NULL,
+          sira_no INTEGER NOT NULL DEFAULT 1,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `,
+    });
+  } catch {}
 }
 
 export async function GET() {
