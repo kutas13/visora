@@ -138,16 +138,25 @@ export default function MuhasebeFileDetailModal({
                   src={file.vize_gorseli}
                   alt={`${file.musteri_ad} - ${file.hedef_ulke} Vizesi`}
                   className="max-w-full max-h-64 rounded-lg border border-violet-200 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => {
-                    const link = document.createElement("a");
-                    link.href = file.vize_gorseli!;
+                  onClick={async () => {
+                    const url = file.vize_gorseli!;
                     const safeName = (file.musteri_ad || "musteri").replace(/\s+/g, "_");
                     const safeCountry = (file.hedef_ulke || "ulke").replace(/\s+/g, "_");
-                    const ext = file.vize_gorseli!.match(/^data:image\/(\w+);/) ? file.vize_gorseli!.match(/^data:image\/(\w+);/)![1] : "jpg";
-                    link.download = `${safeName}_${safeCountry}_Vizesi.${ext}`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    try {
+                      const res = await fetch(url);
+                      const blob = await res.blob();
+                      const ext = blob.type.split("/")[1] || "jpg";
+                      const blobUrl = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = blobUrl;
+                      link.download = `${safeName}_${safeCountry}_Vizesi.${ext}`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(blobUrl);
+                    } catch {
+                      window.open(url, "_blank");
+                    }
                   }}
                 />
                 <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">

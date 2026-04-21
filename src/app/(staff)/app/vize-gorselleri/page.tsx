@@ -69,17 +69,26 @@ export default function VizeGorselleriPage() {
     return Array.from(set).sort();
   }, [files]);
 
-  const handleDownload = (file: VisaFile) => {
+  const handleDownload = async (file: VisaFile) => {
     if (!file.vize_gorseli) return;
-    const link = document.createElement("a");
-    link.href = file.vize_gorseli;
+    const url = file.vize_gorseli;
     const safeName = file.musteri_ad.replace(/\s+/g, "_");
     const safeCountry = file.hedef_ulke.replace(/\s+/g, "_");
-    const ext = file.vize_gorseli.match(/^data:image\/(\w+);/) ? file.vize_gorseli.match(/^data:image\/(\w+);/)![1] : "jpg";
-    link.download = `${safeName}_${safeCountry}_Vizesi.${ext}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const ext = blob.type.split("/")[1] || "jpg";
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${safeName}_${safeCountry}_Vizesi.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank");
+    }
   };
 
   if (loading) {
