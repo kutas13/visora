@@ -475,7 +475,7 @@ export default function GunlukRaporPage() {
     setHasDraft(false);
   }, []);
 
-  const loadPastReportAsNew = useCallback((report: PastReport) => {
+  const loadPastReportAsNew = useCallback(async (report: PastReport) => {
     if (!report.rows || report.rows.length === 0) return;
     const converted: ReportRow[] = report.rows.map(er => {
       let musteriAd = er.yolcuAdi || "";
@@ -507,6 +507,27 @@ export default function GunlukRaporPage() {
     setRows(converted);
     setRaporTarih(toDateStr(new Date()));
     setShowPastPicker(false);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: reportedFiles } = await supabase
+        .from("visa_files")
+        .select("*, companies(firma_adi)")
+        .eq("assigned_user_id", user.id)
+        .eq("gunluk_rapor_gonderildi", true)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (reportedFiles) {
+        setUserFiles(prev => {
+          const existingIds = new Set(prev.map(f => f.id));
+          const newFiles = (reportedFiles as VisaFileWithCompany[]).filter(f => !existingIds.has(f.id));
+          return [...prev, ...newFiles];
+        });
+      }
+    }
+
     setStatusMsg({ type: "success", text: `"${report.tarih}" raporundaki ${converted.length} kayıt yüklendi` });
     setTimeout(() => setStatusMsg(null), 3000);
   }, []);
