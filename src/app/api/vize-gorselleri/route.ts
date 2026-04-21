@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     let query = sb
       .from("vize_gorselleri_uploads")
-      .select("*, profiles:user_id(name)")
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (!isAdmin) {
@@ -53,6 +53,18 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error("[GET error]", error.message, error.code);
       return NextResponse.json({ data: [], queryError: error.message });
+    }
+
+    if (isAdmin && data && data.length > 0) {
+      const userIds = Array.from(new Set(data.map((d: any) => d.user_id)));
+      const { data: profiles } = await sb
+        .from("profiles")
+        .select("id, name")
+        .in("id", userIds);
+      const nameMap = new Map((profiles || []).map((p: any) => [p.id, p.name]));
+      for (const row of data) {
+        (row as any).staff_name = nameMap.get(row.user_id) || "";
+      }
     }
 
     return NextResponse.json({ data: data || [] });
