@@ -75,21 +75,26 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "upload_single") {
-      const { base64, fileName, contentType, siraNo } = body as { base64: string; fileName: string; contentType: string; siraNo: number };
-      if (!base64 || !fileName) return NextResponse.json({ error: "Eksik veri" }, { status: 400 });
+      const { base64, contentType, siraNo } = body as { base64: string; contentType: string; siraNo: number };
+      if (!base64) return NextResponse.json({ error: "Eksik veri (base64)" }, { status: 400 });
 
       const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
       const bytes = Buffer.from(base64Data, "base64");
-      const ext = fileName.split(".").pop()?.toLowerCase() || "jpg";
-      const storagePath = `vize-gorselleri/${user.id}/${Date.now()}-${siraNo}.${ext}`;
+      const storagePath = `vize-gorselleri/${user.id}/${Date.now()}-${siraNo}.jpg`;
+
+      const { data: buckets } = await sb.storage.listBuckets();
+      const bucketExists = buckets?.some((b: any) => b.id === "uploads");
+      if (!bucketExists) {
+        await sb.storage.createBucket("uploads", { public: true });
+      }
 
       const { error: uploadErr } = await sb.storage
         .from("uploads")
         .upload(storagePath, bytes, { contentType: contentType || "image/jpeg", upsert: true });
 
       if (uploadErr) {
-        console.error("[Storage upload error]", uploadErr.message);
-        return NextResponse.json({ error: uploadErr.message }, { status: 500 });
+        console.error("[Storage upload error]", JSON.stringify(uploadErr));
+        return NextResponse.json({ error: "Storage hatası: " + uploadErr.message }, { status: 500 });
       }
 
       const { data: urlData } = sb.storage.from("uploads").getPublicUrl(storagePath);
@@ -103,8 +108,8 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (insertErr) {
-        console.error("[DB insert error]", insertErr.message);
-        return NextResponse.json({ error: insertErr.message }, { status: 500 });
+        console.error("[DB insert error]", JSON.stringify(insertErr));
+        return NextResponse.json({ error: "DB hatası: " + insertErr.message }, { status: 500 });
       }
 
       return NextResponse.json({ data: row });

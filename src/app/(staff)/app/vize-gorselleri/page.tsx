@@ -149,12 +149,24 @@ export default function VizeGorselleriPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState("");
 
-  const fileToBase64 = (file: File): Promise<string> => {
+  const compressImage = (file: File, maxW = 1600, quality = 0.8): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * (maxW / w)); w = maxW; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Canvas error")); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Görsel okunamadı")); };
+      img.src = url;
     });
   };
 
@@ -169,46 +181,56 @@ export default function VizeGorselleriPage() {
         body: JSON.stringify({ action: "next_sira" }),
       });
       const siraJson = await siraRes.json();
-      let nextNo = siraJson.nextNo || 1;
+      const startNo = siraJson.nextNo || 1;
       let successCount = 0;
+      let lastError = "";
 
-      for (let i = 0; i < pendingFiles.length; i++) {
-        const file = pendingFiles[i];
-        setUploadProgress(`${i + 1}/${pendingFiles.length} yükleniyor...`);
+      const uploadOne = async (file: File, idx: number) => {
+        const siraNo = startNo + idx;
+        setUploadProgress(`${idx + 1}/${pendingFiles.length} sıkıştırılıyor...`);
 
-        const base64 = await fileToBase64(file);
+        const base64 = await compressImage(file);
 
+        setUploadProgress(`${idx + 1}/${pendingFiles.length} yükleniyor...`);
         const res = await fetch("/api/vize-gorselleri", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "upload_single",
             base64,
-            fileName: file.name,
-            contentType: file.type,
-            siraNo: nextNo,
+            contentType: "image/jpeg",
+            siraNo,
           }),
         });
 
         const json = await res.json();
         if (!res.ok) {
           console.error("[Upload error]", json.error);
-          setUploadError(`Hata: ${json.error}`);
+          lastError = json.error || "Bilinmeyen hata";
         } else {
           successCount++;
         }
-        nextNo++;
+      };
+
+      const BATCH = 3;
+      for (let i = 0; i < pendingFiles.length; i += BATCH) {
+        const batch = pendingFiles.slice(i, i + BATCH).map((f, j) => uploadOne(f, i + j));
+        await Promise.all(batch);
       }
 
       if (successCount > 0) {
-        pendingPreviews.forEach(url => URL.revokeObjectURL(url));
+        pendingPreviews.forEach(u => URL.revokeObjectURL(u));
         setPendingFiles([]);
         setPendingPreviews([]);
         setShowUploadModal(false);
         await loadUploads();
         setTab("uploads");
       } else {
-        setUploadError("Hiçbir görsel yüklenemedi");
+        setUploadError(lastError || "Hiçbir görsel yüklenemedi");
+      }
+
+      if (successCount > 0 && lastError) {
+        setUploadError(`${successCount} yüklendi, bazıları başarısız: ${lastError}`);
       }
     } catch (err: any) {
       setUploadError(err?.message || "Bağlantı hatası");
