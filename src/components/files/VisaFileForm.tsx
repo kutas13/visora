@@ -158,6 +158,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       setVizeTipleri([]);
       return;
     }
+    setIslemTipi("randevusuz");
     if (!showDavetiyeUcreti && isEdit && (Number(file?.davetiye_ucreti) || 0) > 0) {
       setShowDavetiyeUcreti(true);
     }
@@ -1103,8 +1104,10 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         )}
       </fieldset>
 
-      {/* İşlem Tipi */}
+      {/* İşlem Tipi - Çin hariç */}
       <fieldset className="space-y-3">
+        {!isChinaSelected && (
+        <>
         <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">İşlem Tipi</legend>
         <div className="grid grid-cols-2 gap-2">
           {ISLEM_TIPLERI.map((tip) => (
@@ -1114,6 +1117,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
             </label>
           ))}
         </div>
+        </>
+        )}
 
         {/* Firma Cari Arama */}
         {odemePlani === "firma_cari" && (
