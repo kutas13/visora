@@ -153,24 +153,37 @@ export default function AdminVizeGorselleriPage() {
     setPendingPreviews(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const confirmUpload = async () => {
     if (pendingFiles.length === 0) return;
     setUploading(true);
+    setUploadError(null);
     try {
       const formData = new FormData();
       formData.append("action", "upload");
       pendingFiles.forEach(f => formData.append("files", f));
 
       const res = await fetch("/api/vize-gorselleri", { method: "POST", body: formData });
-      if (res.ok) {
+      const json = await res.json();
+      if (!res.ok) {
+        setUploadError(json.error || "Yükleme hatası oluştu");
+        setUploading(false);
+        return;
+      }
+      if (json.data && json.data.length > 0) {
+        pendingPreviews.forEach(url => URL.revokeObjectURL(url));
+        setPendingFiles([]);
+        setPendingPreviews([]);
+        setShowUploadModal(false);
         await loadUploads();
         setTab("uploads");
+      } else {
+        setUploadError("Görseller yüklenemedi. Lütfen tekrar deneyin.");
       }
-    } catch {}
-    pendingPreviews.forEach(url => URL.revokeObjectURL(url));
-    setPendingFiles([]);
-    setPendingPreviews([]);
-    setShowUploadModal(false);
+    } catch (err: any) {
+      setUploadError(err?.message || "Bağlantı hatası");
+    }
     setUploading(false);
   };
 
@@ -521,6 +534,11 @@ export default function AdminVizeGorselleriPage() {
                 </div>
               )}
             </div>
+            {uploadError && (
+              <div className="mx-6 mb-0 mt-0 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {uploadError}
+              </div>
+            )}
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
               <button
                 onClick={() => fileInputRef.current?.click()}

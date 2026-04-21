@@ -11,24 +11,6 @@ function adminClient() {
   );
 }
 
-async function ensureTable() {
-  const sb = adminClient();
-  try {
-    await sb.rpc("exec_sql", {
-      query: `
-        CREATE TABLE IF NOT EXISTS vize_gorselleri_uploads (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-          gorsel_url TEXT NOT NULL,
-          gorsel_adi TEXT NOT NULL,
-          sira_no INTEGER NOT NULL DEFAULT 1,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
-      `,
-    });
-  } catch {}
-}
-
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient();
@@ -38,7 +20,8 @@ export async function GET() {
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
     const isAdmin = profile?.role === "admin";
 
-    let query = supabase
+    const sb = adminClient();
+    let query = sb
       .from("vize_gorselleri_uploads")
       .select("*, profiles:user_id(name)")
       .order("created_at", { ascending: false });
@@ -49,15 +32,13 @@ export async function GET() {
 
     const { data, error } = await query;
     if (error) {
-      if (error.code === "42P01") {
-        await ensureTable();
-        return NextResponse.json({ data: [] });
-      }
-      throw error;
+      console.error("[GET error]", error.message, error.code);
+      return NextResponse.json({ data: [] });
     }
 
     return NextResponse.json({ data: data || [] });
   } catch (err: any) {
+    console.error("[GET catch]", err?.message);
     return NextResponse.json({ error: err?.message }, { status: 500 });
   }
 }
@@ -68,6 +49,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const sb = adminClient();
     const formData = await req.formData();
     const action = formData.get("action") as string;
 
@@ -75,9 +57,7 @@ export async function POST(req: NextRequest) {
       const files = formData.getAll("files") as File[];
       if (!files.length) return NextResponse.json({ error: "Dosya seçilmedi" }, { status: 400 });
 
-      const sb = adminClient();
-
-      const { data: existing } = await supabase
+      const { data: existing } = await sb
         .from("vize_gorselleri_uploads")
         .select("sira_no")
         .eq("user_id", user.id)
@@ -100,7 +80,7 @@ export async function POST(req: NextRequest) {
           });
 
         if (uploadErr) {
-          console.error("[Upload error]", uploadErr.message);
+          console.error("[Storage upload error]", uploadErr.message);
           continue;
         }
 
@@ -108,24 +88,14 @@ export async function POST(req: NextRequest) {
         const gorselUrl = urlData.publicUrl;
         const gorselAdi = String(nextNo);
 
-        const { data: row, error: insertErr } = await supabase
+        const { data: row, error: insertErr } = await sb
           .from("vize_gorselleri_uploads")
           .insert({ user_id: user.id, gorsel_url: gorselUrl, gorsel_adi: gorselAdi, sira_no: nextNo })
           .select("*")
           .single();
 
         if (insertErr) {
-          if (insertErr.code === "42P01") {
-            await ensureTable();
-            const { data: row2 } = await supabase
-              .from("vize_gorselleri_uploads")
-              .insert({ user_id: user.id, gorsel_url: gorselUrl, gorsel_adi: gorselAdi, sira_no: nextNo })
-              .select("*")
-              .single();
-            if (row2) results.push(row2);
-          } else {
-            console.error("[Insert error]", insertErr.message);
-          }
+          console.error("[DB insert error]", insertErr.message, insertErr.code);
         } else if (row) {
           results.push(row);
         }
@@ -133,7 +103,7 @@ export async function POST(req: NextRequest) {
         nextNo++;
       }
 
-      return NextResponse.json({ data: results });
+      return NextResponse.json({ data: results, count: results.length });
     }
 
     if (action === "rename") {
@@ -141,14 +111,17 @@ export async function POST(req: NextRequest) {
       const newName = formData.get("name") as string;
       if (!id || !newName) return NextResponse.json({ error: "Eksik parametre" }, { status: 400 });
 
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from("vize_gorselleri_uploads")
         .update({ gorsel_adi: newName.trim() })
         .eq("id", id)
         .select("*")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[Rename error]", error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
       return NextResponse.json({ data });
     }
 
@@ -156,7 +129,7 @@ export async function POST(req: NextRequest) {
       const id = formData.get("id") as string;
       if (!id) return NextResponse.json({ error: "Eksik parametre" }, { status: 400 });
 
-      const { data: row } = await supabase
+      const { data: row } = await sb
         .from("vize_gorselleri_uploads")
         .select("gorsel_url")
         .eq("id", id)
@@ -166,22 +139,25 @@ export async function POST(req: NextRequest) {
         const url = row.gorsel_url as string;
         const pathMatch = url.match(/\/uploads\/(.+)$/);
         if (pathMatch) {
-          const sb = adminClient();
           await sb.storage.from("uploads").remove([pathMatch[1]]);
         }
       }
 
-      const { error } = await supabase
+      const { error } = await sb
         .from("vize_gorselleri_uploads")
         .delete()
         .eq("id", id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("[Delete error]", error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
       return NextResponse.json({ ok: true });
     }
 
     return NextResponse.json({ error: "Geçersiz action" }, { status: 400 });
   } catch (err: any) {
+    console.error("[POST catch]", err?.message);
     return NextResponse.json({ error: err?.message }, { status: 500 });
   }
 }
