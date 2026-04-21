@@ -405,7 +405,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         on_odeme_currency: onOdemeVar ? onOdemeCurrency : null,
         kalan_tutar: kalanTutar,
         vize_tipleri: vizeTipleri,
-        eski_pasaport: eskiPasaport,
+        ...(eskiPasaport ? { eski_pasaport: true } : {}),
       };
 
       if (isEdit && file) {
