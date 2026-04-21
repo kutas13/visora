@@ -64,17 +64,40 @@ export default function VizeGorselleriPage() {
     setFiles(data || []);
   }, []);
 
+  const [systemError, setSystemError] = useState<string | null>(null);
+
   const loadUploads = useCallback(async () => {
     try {
       const res = await fetch("/api/vize-gorselleri");
-      if (res.ok) {
-        const json = await res.json();
+      const text = await res.text();
+      try {
+        const json = JSON.parse(text);
+        if (json.tableError) {
+          setSystemError(`Tablo hatası (${json.tableCode}): ${json.tableError}. Supabase SQL Editor'den migration dosyasını çalıştırın.`);
+        }
         setUploads(json.data || []);
+      } catch {
+        setSystemError("API yanıtı geçersiz: " + text.substring(0, 200));
       }
-    } catch {}
+    } catch (e: any) {
+      setSystemError("API bağlantı hatası: " + e.message);
+    }
   }, []);
 
   useEffect(() => {
+    fetch("/api/vize-gorselleri", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "health" }),
+    })
+      .then(r => r.json())
+      .then(j => {
+        if (j.checks?.table && !j.checks.table.ok) {
+          setSystemError(`Tablo mevcut değil (${j.checks.table.code}). Supabase SQL Editor'den migration SQL'ini çalıştırın.`);
+        }
+      })
+      .catch(() => {});
+
     Promise.all([loadFiles(), loadUploads()]).finally(() => setLoading(false));
   }, [loadFiles, loadUploads]);
 
@@ -161,7 +184,7 @@ export default function VizeGorselleriPage() {
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext("2d");
-        if (!ctx) { reject(new Error("Canvas error")); return; }
+        if (!ctx) { reject(new Error("Canvas desteklenmiyor")); return; }
         ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL("image/jpeg", quality));
       };
@@ -170,52 +193,63 @@ export default function VizeGorselleriPage() {
     });
   };
 
+  const safeFetch = async (url: string, opts: RequestInit): Promise<{ ok: boolean; status: number; json: any; rawText: string }> => {
+    const res = await fetch(url, opts);
+    const rawText = await res.text();
+    let json: any = null;
+    try { json = JSON.parse(rawText); } catch {}
+    return { ok: res.ok, status: res.status, json, rawText };
+  };
+
   const confirmUpload = async () => {
     if (pendingFiles.length === 0) return;
     setUploading(true);
     setUploadError(null);
+
     try {
-      const siraRes = await fetch("/api/vize-gorselleri", {
+      setUploadProgress("Hazırlanıyor...");
+
+      const siraResult = await safeFetch("/api/vize-gorselleri", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "next_sira" }),
       });
-      const siraJson = await siraRes.json();
-      const startNo = siraJson.nextNo || 1;
+
+      if (!siraResult.ok) {
+        setUploadError(`Sıra alma hatası (${siraResult.status}): ${siraResult.json?.error || siraResult.rawText.substring(0, 200)}`);
+        setUploading(false);
+        setUploadProgress("");
+        return;
+      }
+
+      const startNo = siraResult.json?.nextNo || 1;
       let successCount = 0;
-      let lastError = "";
+      const errors: string[] = [];
 
-      const uploadOne = async (file: File, idx: number) => {
-        const siraNo = startNo + idx;
-        setUploadProgress(`${idx + 1}/${pendingFiles.length} sıkıştırılıyor...`);
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const file = pendingFiles[i];
+        const siraNo = startNo + i;
 
-        const base64 = await compressImage(file);
+        try {
+          setUploadProgress(`${i + 1}/${pendingFiles.length} sıkıştırılıyor...`);
+          const base64 = await compressImage(file);
 
-        setUploadProgress(`${idx + 1}/${pendingFiles.length} yükleniyor...`);
-        const res = await fetch("/api/vize-gorselleri", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "upload_single",
-            base64,
-            contentType: "image/jpeg",
-            siraNo,
-          }),
-        });
+          setUploadProgress(`${i + 1}/${pendingFiles.length} yükleniyor...`);
+          const result = await safeFetch("/api/vize-gorselleri", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "upload_single", base64, contentType: "image/jpeg", siraNo }),
+          });
 
-        const json = await res.json();
-        if (!res.ok) {
-          console.error("[Upload error]", json.error);
-          lastError = json.error || "Bilinmeyen hata";
-        } else {
-          successCount++;
+          if (result.ok && result.json?.ok) {
+            successCount++;
+          } else {
+            const msg = result.json?.error || `HTTP ${result.status}: ${result.rawText.substring(0, 100)}`;
+            errors.push(`#${siraNo}: ${msg}`);
+          }
+        } catch (fileErr: any) {
+          errors.push(`#${siraNo}: ${fileErr.message}`);
         }
-      };
-
-      const BATCH = 3;
-      for (let i = 0; i < pendingFiles.length; i += BATCH) {
-        const batch = pendingFiles.slice(i, i + BATCH).map((f, j) => uploadOne(f, i + j));
-        await Promise.all(batch);
       }
 
       if (successCount > 0) {
@@ -225,16 +259,17 @@ export default function VizeGorselleriPage() {
         setShowUploadModal(false);
         await loadUploads();
         setTab("uploads");
-      } else {
-        setUploadError(lastError || "Hiçbir görsel yüklenemedi");
       }
 
-      if (successCount > 0 && lastError) {
-        setUploadError(`${successCount} yüklendi, bazıları başarısız: ${lastError}`);
+      if (errors.length > 0) {
+        setUploadError(`${successCount}/${pendingFiles.length} başarılı. Hatalar: ${errors.join(" | ")}`);
+      } else if (successCount === 0) {
+        setUploadError("Hiçbir görsel yüklenemedi");
       }
     } catch (err: any) {
-      setUploadError(err?.message || "Bağlantı hatası");
+      setUploadError(`Bağlantı hatası: ${err?.message || String(err)}`);
     }
+
     setUploading(false);
     setUploadProgress("");
   };
@@ -286,6 +321,11 @@ export default function VizeGorselleriPage() {
 
   return (
     <div className="space-y-5">
+      {systemError && (
+        <div className="bg-red-50 border border-red-300 rounded-xl p-4 text-sm text-red-800">
+          <strong>Sistem Hatası:</strong> {systemError}
+        </div>
+      )}
       {/* Başlık + Upload */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
