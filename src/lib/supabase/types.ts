@@ -176,7 +176,7 @@ export interface Notification {
 }
 
 // Randevu Talebi
-export type RandevuVizeTipi = "turistik" | "ticari" | "ogrenci" | "konferans" | "aile" | "arkadas";
+export type RandevuVizeTipi = "turistik" | "ticari" | "ogrenci" | "konferans" | "kulturel" | "sportif" | "aile" | "arkadas" | "ziyaret";
 export type RandevuAltKategori = "ilk_vize" | "multi_vize";
 
 export interface HesapBilgileri {

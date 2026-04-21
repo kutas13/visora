@@ -26,6 +26,7 @@ const VIZE_TIPLERI = [
   { value: "sportif", label: "Sportif" },
   { value: "aile", label: "Aile" },
   { value: "arkadas", label: "Arkadaş" },
+  { value: "ziyaret", label: "Ziyaret" },
 ];
 
 const ALT_KATEGORILER = [

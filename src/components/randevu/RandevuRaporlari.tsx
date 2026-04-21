@@ -40,6 +40,7 @@ const VIZE_TIPLERI: Record<string, string> = {
   sportif: "Sportif",
   aile: "Aile",
   arkadas: "Arkadaş",
+  ziyaret: "Ziyaret",
 };
 
 function formatDate(dateStr: string) {
