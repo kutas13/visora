@@ -156,15 +156,20 @@ export default function AdminVizeGorselleriPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState("");
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const confirmUpload = async () => {
     if (pendingFiles.length === 0) return;
     setUploading(true);
     setUploadError(null);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setUploadError("Oturum bulunamadı, sayfayı yenileyin"); setUploading(false); return; }
-
       const siraRes = await fetch("/api/vize-gorselleri", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -172,47 +177,43 @@ export default function AdminVizeGorselleriPage() {
       });
       const siraJson = await siraRes.json();
       let nextNo = siraJson.nextNo || 1;
-
-      const savedItems: { gorsel_url: string; gorsel_adi: string; sira_no: number }[] = [];
+      let successCount = 0;
 
       for (let i = 0; i < pendingFiles.length; i++) {
         const file = pendingFiles[i];
         setUploadProgress(`${i + 1}/${pendingFiles.length} yükleniyor...`);
-        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-        const storagePath = `vize-gorselleri/${user.id}/${Date.now()}-${nextNo}.${ext}`;
 
-        const { error: uploadErr } = await supabase.storage
-          .from("uploads")
-          .upload(storagePath, file, { contentType: file.type, upsert: true });
+        const base64 = await fileToBase64(file);
 
-        if (uploadErr) {
-          console.error("[Storage upload]", uploadErr.message);
-          setUploadError(`Yükleme hatası: ${uploadErr.message}`);
-          continue;
+        const res = await fetch("/api/vize-gorselleri", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "upload_single",
+            base64,
+            fileName: file.name,
+            contentType: file.type,
+            siraNo: nextNo,
+          }),
+        });
+
+        const json = await res.json();
+        if (!res.ok) {
+          console.error("[Upload error]", json.error);
+          setUploadError(`Hata: ${json.error}`);
+        } else {
+          successCount++;
         }
-
-        const { data: urlData } = supabase.storage.from("uploads").getPublicUrl(storagePath);
-        savedItems.push({ gorsel_url: urlData.publicUrl, gorsel_adi: String(nextNo), sira_no: nextNo });
         nextNo++;
       }
 
-      if (savedItems.length > 0) {
-        const saveRes = await fetch("/api/vize-gorselleri", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "save", items: savedItems }),
-        });
-        const saveJson = await saveRes.json();
-        if (!saveRes.ok) {
-          setUploadError(saveJson.error || "Kayıt hatası");
-        } else {
-          pendingPreviews.forEach(url => URL.revokeObjectURL(url));
-          setPendingFiles([]);
-          setPendingPreviews([]);
-          setShowUploadModal(false);
-          await loadUploads();
-          setTab("uploads");
-        }
+      if (successCount > 0) {
+        pendingPreviews.forEach(url => URL.revokeObjectURL(url));
+        setPendingFiles([]);
+        setPendingPreviews([]);
+        setShowUploadModal(false);
+        await loadUploads();
+        setTab("uploads");
       } else {
         setUploadError("Hiçbir görsel yüklenemedi");
       }

@@ -74,6 +74,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ data: results, count: results.length });
     }
 
+    if (action === "upload_single") {
+      const { base64, fileName, contentType, siraNo } = body as { base64: string; fileName: string; contentType: string; siraNo: number };
+      if (!base64 || !fileName) return NextResponse.json({ error: "Eksik veri" }, { status: 400 });
+
+      const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+      const bytes = Buffer.from(base64Data, "base64");
+      const ext = fileName.split(".").pop()?.toLowerCase() || "jpg";
+      const storagePath = `vize-gorselleri/${user.id}/${Date.now()}-${siraNo}.${ext}`;
+
+      const { error: uploadErr } = await sb.storage
+        .from("uploads")
+        .upload(storagePath, bytes, { contentType: contentType || "image/jpeg", upsert: true });
+
+      if (uploadErr) {
+        console.error("[Storage upload error]", uploadErr.message);
+        return NextResponse.json({ error: uploadErr.message }, { status: 500 });
+      }
+
+      const { data: urlData } = sb.storage.from("uploads").getPublicUrl(storagePath);
+      const gorselUrl = urlData.publicUrl;
+      const gorselAdi = String(siraNo);
+
+      const { data: row, error: insertErr } = await sb
+        .from("vize_gorselleri_uploads")
+        .insert({ user_id: user.id, gorsel_url: gorselUrl, gorsel_adi: gorselAdi, sira_no: siraNo })
+        .select("*")
+        .single();
+
+      if (insertErr) {
+        console.error("[DB insert error]", insertErr.message);
+        return NextResponse.json({ error: insertErr.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ data: row });
+    }
+
     if (action === "rename") {
       const { id, name } = body;
       if (!id || !name) return NextResponse.json({ error: "Eksik parametre" }, { status: 400 });
