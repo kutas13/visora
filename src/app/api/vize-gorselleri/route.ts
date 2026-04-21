@@ -50,83 +50,47 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const sb = adminClient();
-    const formData = await req.formData();
-    const action = formData.get("action") as string;
+    const body = await req.json();
+    const { action } = body;
 
-    if (action === "upload") {
-      const files = formData.getAll("files") as File[];
-      if (!files.length) return NextResponse.json({ error: "Dosya seçilmedi" }, { status: 400 });
+    if (action === "save") {
+      const { items } = body as { items: { gorsel_url: string; gorsel_adi: string; sira_no: number }[] };
+      if (!items || !items.length) return NextResponse.json({ error: "Eksik veri" }, { status: 400 });
 
-      const { data: existing } = await sb
-        .from("vize_gorselleri_uploads")
-        .select("sira_no")
-        .eq("user_id", user.id)
-        .order("sira_no", { ascending: false })
-        .limit(1);
-
-      let nextNo = (existing?.[0]?.sira_no || 0) + 1;
       const results: any[] = [];
-
-      for (const file of files) {
-        const bytes = await file.arrayBuffer();
-        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-        const storagePath = `vize-gorselleri/${user.id}/${Date.now()}-${nextNo}.${ext}`;
-
-        const { error: uploadErr } = await sb.storage
-          .from("uploads")
-          .upload(storagePath, Buffer.from(bytes), {
-            contentType: file.type,
-            upsert: true,
-          });
-
-        if (uploadErr) {
-          console.error("[Storage upload error]", uploadErr.message);
-          continue;
-        }
-
-        const { data: urlData } = sb.storage.from("uploads").getPublicUrl(storagePath);
-        const gorselUrl = urlData.publicUrl;
-        const gorselAdi = String(nextNo);
-
+      for (const item of items) {
         const { data: row, error: insertErr } = await sb
           .from("vize_gorselleri_uploads")
-          .insert({ user_id: user.id, gorsel_url: gorselUrl, gorsel_adi: gorselAdi, sira_no: nextNo })
+          .insert({ user_id: user.id, gorsel_url: item.gorsel_url, gorsel_adi: item.gorsel_adi, sira_no: item.sira_no })
           .select("*")
           .single();
 
         if (insertErr) {
-          console.error("[DB insert error]", insertErr.message, insertErr.code);
+          console.error("[DB insert error]", insertErr.message);
         } else if (row) {
           results.push(row);
         }
-
-        nextNo++;
       }
-
       return NextResponse.json({ data: results, count: results.length });
     }
 
     if (action === "rename") {
-      const id = formData.get("id") as string;
-      const newName = formData.get("name") as string;
-      if (!id || !newName) return NextResponse.json({ error: "Eksik parametre" }, { status: 400 });
+      const { id, name } = body;
+      if (!id || !name) return NextResponse.json({ error: "Eksik parametre" }, { status: 400 });
 
       const { data, error } = await sb
         .from("vize_gorselleri_uploads")
-        .update({ gorsel_adi: newName.trim() })
+        .update({ gorsel_adi: name.trim() })
         .eq("id", id)
         .select("*")
         .single();
 
-      if (error) {
-        console.error("[Rename error]", error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ data });
     }
 
     if (action === "delete") {
-      const id = formData.get("id") as string;
+      const { id } = body;
       if (!id) return NextResponse.json({ error: "Eksik parametre" }, { status: 400 });
 
       const { data: row } = await sb
@@ -148,11 +112,19 @@ export async function POST(req: NextRequest) {
         .delete()
         .eq("id", id);
 
-      if (error) {
-        console.error("[Delete error]", error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
+    }
+
+    if (action === "next_sira") {
+      const { data: existing } = await sb
+        .from("vize_gorselleri_uploads")
+        .select("sira_no")
+        .eq("user_id", user.id)
+        .order("sira_no", { ascending: false })
+        .limit(1);
+
+      return NextResponse.json({ nextNo: (existing?.[0]?.sira_no || 0) + 1 });
     }
 
     return NextResponse.json({ error: "Geçersiz action" }, { status: 400 });
