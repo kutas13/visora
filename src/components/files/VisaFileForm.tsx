@@ -107,6 +107,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
     });
   };
 
+  const [eskiPasaport, setEskiPasaport] = useState(file?.eski_pasaport || false);
+
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 0, EUR: 0, TL: 1 });
@@ -403,6 +405,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         on_odeme_currency: onOdemeVar ? onOdemeCurrency : null,
         kalan_tutar: kalanTutar,
         vize_tipleri: vizeTipleri,
+        eski_pasaport: eskiPasaport,
       };
 
       if (isEdit && file) {
@@ -681,6 +684,10 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
           <Input label="Ad Soyad" value={musteriAd} onChange={(e) => setMusteriAd(e.target.value)} placeholder="Ahmet Yılmaz" required />
           <Input label="Pasaport No" value={pasaportNo} onChange={(e) => setPasaportNo(e.target.value)} placeholder="U12345678" required />
         </div>
+        <label className="flex items-center gap-2 mt-2">
+          <input type="checkbox" checked={eskiPasaport} onChange={(e) => setEskiPasaport(e.target.checked)} className="w-4 h-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500" />
+          <span className="text-sm text-navy-700">Eski pasaport var</span>
+        </label>
       </fieldset>
 
       {/* Geçmiş Başvuru Uyarısı */}

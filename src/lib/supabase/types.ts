@@ -87,6 +87,7 @@ export interface VisaFile {
   vize_tipleri: string[];
   tahmini_cikis_tarihi: string | null;
   vize_gorseli: string | null;
+  eski_pasaport: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -272,6 +273,7 @@ export interface Database {
           vize_tipleri?: string[];
           tahmini_cikis_tarihi?: string | null;
           vize_gorseli?: string | null;
+          eski_pasaport?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -307,6 +309,7 @@ export interface Database {
           odeme_durumu?: OdemeDurumu;
           cari_sahibi?: string | null;
           vize_gorseli?: string | null;
+          eski_pasaport?: boolean;
           created_at?: string;
           updated_at?: string;
         };

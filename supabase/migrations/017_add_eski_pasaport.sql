@@ -1,0 +1,2 @@
+ALTER TABLE public.visa_files
+ADD COLUMN eski_pasaport BOOLEAN NOT NULL DEFAULT FALSE;
