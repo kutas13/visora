@@ -52,7 +52,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   
   const [musteriAd, setMusteriAd] = useState(file?.musteri_ad || "");
   const [pasaportNo, setPasaportNo] = useState(file?.pasaport_no || "");
-  const [hedefUlke, setHedefUlke] = useState(file?.hedef_ulke || "Almanya");
+  const [hedefUlke, setHedefUlke] = useState(file?.hedef_ulke || "");
   const [ulkeManuelMi, setUlkeManuelMi] = useState(file?.ulke_manuel_mi || false);
   const [manuelUlke, setManuelUlke] = useState(file?.ulke_manuel_mi ? file.hedef_ulke : "");
   const [islemTipi, setIslemTipi] = useState<IslemTipi>(file?.islem_tipi || "randevulu");
@@ -668,28 +668,40 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
     }
   };
 
-  // Form doluluk oranı (yakıt deposu göstergesi için)
+  // Form doluluk oranı (sol stepper için)
+  // 5 aşama, her biri 20 puan = 100
   const formProgress = useMemo(() => {
     let score = 0;
-    if (musteriAd.trim().length > 0) score += 15;
-    if (pasaportNo.trim().length > 0) score += 15;
-    if (activeCountry.trim().length > 0) score += 15;
-    if (Number(ucret) > 0) score += 20;
 
+    // 1) Müşteri adı
+    if (musteriAd.trim().length > 0) score += 20;
+
+    // 2) Pasaport numarası
+    if (pasaportNo.trim().length > 0) score += 20;
+
+    // 3) Hedef ülke (kullanıcı seçmeli)
+    if (activeCountry.trim().length > 0) score += 20;
+
+    // 4) Ödeme: ücret var ve plan gereksinimleri tamam
+    const ucretOk = Number(ucret) > 0;
+    let odemeOk = false;
     if (odemePlani === "pesin") {
-      if (pesinYontem === "nakit") score += 20;
-      else if (pesinYontem === "hesaba" && hesapSahibi) score += 20;
-      else if (pesinYontem === "pos" && Number(pesinPosTl) > 0) score += 20;
+      odemeOk =
+        pesinYontem === "nakit" ||
+        (pesinYontem === "hesaba" && !!hesapSahibi) ||
+        (pesinYontem === "pos" && Number(pesinPosTl) > 0);
     } else if (odemePlani === "cari") {
-      if (cariSahibi) score += 20;
+      odemeOk = !!cariSahibi;
     } else if (odemePlani === "firma_cari") {
-      if (selectedCompany) score += 20;
+      odemeOk = !!selectedCompany;
     }
+    if (ucretOk && odemeOk) score += 20;
 
-    if (islemTipi === "randevulu") {
-      if (randevuTarihi) score += 15;
-    } else {
-      score += 15;
+    // 5) İşlem tipi + randevu (randevusuz ise otomatik tamam)
+    if (islemTipi === "randevusuz") {
+      score += 20;
+    } else if (randevuTarihi) {
+      score += 20;
     }
 
     return Math.min(100, score);
@@ -795,7 +807,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               onClick={() => { setCountryDropdownOpen(!countryDropdownOpen); setCountrySearch(""); }}
               className="w-full px-3 py-2.5 border border-navy-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm text-left flex items-center justify-between"
             >
-              <span>{hedefUlke}</span>
+              <span className={hedefUlke ? "text-navy-800" : "text-navy-400"}>{hedefUlke || "Seçiniz"}</span>
               <svg className={`w-4 h-4 text-navy-400 transition-transform ${countryDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {countryDropdownOpen && (

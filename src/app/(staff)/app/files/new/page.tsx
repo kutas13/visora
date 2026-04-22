@@ -18,12 +18,10 @@ export default function NewVisaFilePage() {
       </div>
 
       {/* Ana yerleşim: sol progress + içerik */}
-      <div className="relative max-w-7xl mx-auto flex gap-6 lg:gap-8">
-        {/* Sol taraf: Dikey Stepper */}
-        <aside className="hidden lg:block w-48 shrink-0">
-          <div className="sticky top-6">
-            <VerticalStepper progress={progress} />
-          </div>
+      <div className="relative max-w-7xl mx-auto flex items-stretch gap-6 lg:gap-8">
+        {/* Sol taraf: Dikey Stepper - boydan boya */}
+        <aside className="hidden lg:flex w-48 shrink-0 self-stretch">
+          <VerticalStepper progress={progress} />
         </aside>
 
         {/* Sağ taraf: Mevcut içerik */}
@@ -191,24 +189,26 @@ export default function NewVisaFilePage() {
 }
 
 // ============================================
-// Dikey Stepper - Solda çizgi + aşama etiketleri
-// Form doldukça çizgi yukarıdan aşağıya dolar
+// Dikey Stepper - Boydan boya çizgi + aşama etiketleri
+// En yukarıdan Dosya Oluştur butonu hizasına kadar uzar
+// Form doldukça yukarıdan aşağıya doğru dolar
 // ============================================
 function VerticalStepper({ progress }: { progress: number }) {
   const pct = Math.max(0, Math.min(100, progress));
 
-  const steps: { label: string; threshold: number; desc: string }[] = [
-    { label: "Müşteri", threshold: 15, desc: "Ad Soyad" },
-    { label: "Pasaport", threshold: 30, desc: "Pasaport No" },
-    { label: "Ülke", threshold: 45, desc: "Hedef ülke" },
-    { label: "Ödeme", threshold: 85, desc: "Ücret + plan" },
-    { label: "Bitti", threshold: 100, desc: "Tamamlandı" },
+  // Her biri 20 puan — threshold = pozisyon
+  const steps: { label: string; position: number; threshold: number; desc: string }[] = [
+    { label: "Müşteri",  position: 5,  threshold: 20,  desc: "Ad Soyad" },
+    { label: "Pasaport", position: 25, threshold: 40,  desc: "Pasaport No" },
+    { label: "Ülke",     position: 45, threshold: 60,  desc: "Hedef ülke" },
+    { label: "Ödeme",    position: 70, threshold: 80,  desc: "Ücret + plan" },
+    { label: "Bitti",    position: 95, threshold: 100, desc: "Tamamlandı" },
   ];
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full flex flex-col">
       {/* Başlık */}
-      <div className="mb-5 px-1">
+      <div className="mb-4 px-1 shrink-0">
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-black tabular-nums bg-gradient-to-br from-primary-500 to-amber-500 bg-clip-text text-transparent">
             {Math.round(pct)}
@@ -220,79 +220,82 @@ function VerticalStepper({ progress }: { progress: number }) {
         </p>
       </div>
 
-      {/* Stepper gövde */}
-      <div className="relative pl-1">
-        {/* Arka ray */}
-        <div className="absolute left-[14px] top-3 bottom-3 w-1 rounded-full bg-navy-100" />
+      {/* Stepper gövde - Kalan tüm yüksekliği doldurur */}
+      <div className="relative flex-1 min-h-[400px] pl-1">
+        {/* Arka ray - boydan boya */}
+        <div className="absolute left-[14px] top-0 bottom-0 w-1 rounded-full bg-navy-100" />
 
-        {/* Dolan çizgi */}
+        {/* Dolan çizgi - yukarıdan aşağıya */}
         <div
-          className="absolute left-[14px] top-3 w-1 rounded-full bg-gradient-to-b from-primary-500 via-primary-400 to-amber-400 shadow-[0_0_12px_rgba(249,115,22,0.4)] transition-all duration-700 ease-out"
-          style={{ height: `calc((100% - 24px) * ${pct / 100})` }}
+          className="absolute left-[14px] top-0 w-1 rounded-full bg-gradient-to-b from-primary-500 via-primary-400 to-amber-400 shadow-[0_0_14px_rgba(249,115,22,0.5)] transition-all duration-700 ease-out"
+          style={{ height: `${pct}%` }}
         />
 
-        {/* Adımlar */}
-        <ol className="relative space-y-6">
-          {steps.map((step, i) => {
-            const done = pct >= step.threshold;
-            const active = !done && pct >= (i === 0 ? 0 : steps[i - 1].threshold);
-            const isLast = i === steps.length - 1;
+        {/* Adımlar - pozisyonlarına göre absolute */}
+        {steps.map((step, i) => {
+          const done = pct >= step.threshold;
+          const prev = i === 0 ? 0 : steps[i - 1].threshold;
+          const active = !done && pct >= prev;
+          const isLast = i === steps.length - 1;
 
-            return (
-              <li key={step.label} className="relative flex items-start gap-3">
-                {/* Nokta */}
-                <div className="relative z-10 shrink-0">
-                  {done ? (
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shadow-md ring-4 ring-white transition-all ${
-                      isLast
-                        ? "bg-gradient-to-br from-emerald-400 to-green-600 shadow-emerald-500/30"
-                        : "bg-gradient-to-br from-primary-400 to-primary-600 shadow-primary-500/30"
-                    }`}>
-                      <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
+          return (
+            <div
+              key={step.label}
+              className="absolute left-0 right-0 flex items-center gap-3 -translate-y-1/2"
+              style={{ top: `${step.position}%` }}
+            >
+              {/* Nokta */}
+              <div className="relative z-10 shrink-0">
+                {done ? (
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shadow-md ring-4 ring-white transition-all ${
+                    isLast
+                      ? "bg-gradient-to-br from-emerald-400 to-green-600 shadow-emerald-500/30"
+                      : "bg-gradient-to-br from-primary-400 to-primary-600 shadow-primary-500/30"
+                  }`}>
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : active ? (
+                  <div className="relative w-7 h-7">
+                    <span className="absolute inset-0 rounded-full bg-primary-400/40 animate-ping" />
+                    <div className="relative w-7 h-7 rounded-full bg-white border-2 border-primary-500 flex items-center justify-center shadow-md ring-4 ring-white">
+                      <div className="w-2 h-2 rounded-full bg-primary-500" />
                     </div>
-                  ) : active ? (
-                    <div className="relative w-7 h-7">
-                      <span className="absolute inset-0 rounded-full bg-primary-400/40 animate-ping" />
-                      <div className="relative w-7 h-7 rounded-full bg-white border-2 border-primary-500 flex items-center justify-center shadow-md ring-4 ring-white">
-                        <div className="w-2 h-2 rounded-full bg-primary-500" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-white border-2 border-navy-200 flex items-center justify-center shadow-sm ring-4 ring-white">
-                      <span className="text-[11px] font-bold text-navy-400">{i + 1}</span>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-white border-2 border-navy-200 flex items-center justify-center shadow-sm ring-4 ring-white">
+                    <span className="text-[11px] font-bold text-navy-400">{i + 1}</span>
+                  </div>
+                )}
+              </div>
 
-                {/* Etiket */}
-                <div className="pt-0.5 min-w-0">
-                  <p className={`text-sm font-bold leading-tight transition-colors ${
-                    done
-                      ? isLast
-                        ? "text-emerald-700"
-                        : "text-navy-900"
-                      : active
-                      ? "text-primary-600"
-                      : "text-navy-400"
-                  }`}>
-                    {step.label}
-                  </p>
-                  <p className={`text-[11px] leading-tight mt-0.5 transition-colors ${
-                    done ? "text-navy-500" : active ? "text-primary-500" : "text-navy-300"
-                  }`}>
-                    {step.desc}
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+              {/* Etiket */}
+              <div className="min-w-0">
+                <p className={`text-sm font-bold leading-tight transition-colors ${
+                  done
+                    ? isLast
+                      ? "text-emerald-700"
+                      : "text-navy-900"
+                    : active
+                    ? "text-primary-600"
+                    : "text-navy-400"
+                }`}>
+                  {step.label}
+                </p>
+                <p className={`text-[11px] leading-tight mt-0.5 transition-colors ${
+                  done ? "text-navy-500" : active ? "text-primary-500" : "text-navy-300"
+                }`}>
+                  {step.desc}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Alt durum rozeti */}
-      <div className="mt-5 px-1">
+      <div className="mt-4 px-1 shrink-0">
         {pct >= 100 ? (
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 text-white text-[11px] font-bold shadow-sm shadow-emerald-500/30">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
