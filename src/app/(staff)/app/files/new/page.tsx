@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import VisaFileForm from "@/components/files/VisaFileForm";
 
 export default function NewVisaFilePage() {
   const router = useRouter();
+  const [progress, setProgress] = useState(0);
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-6 lg:-mt-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -70,24 +72,6 @@ export default function NewVisaFilePage() {
                 Müşteri bilgilerini, hedef ülkeyi ve ödeme planını doldurarak yeni dosyayı birkaç saniyede hazırlayın.
               </p>
             </div>
-
-            {/* Adım göstergesi */}
-            <div className="hidden lg:flex items-center gap-3 pl-4 border-l border-white/10">
-              <div className="flex flex-col items-center">
-                <div className="w-8 h-8 rounded-full bg-primary-500 text-white text-xs font-bold flex items-center justify-center ring-4 ring-primary-500/20">1</div>
-                <span className="text-[10px] text-navy-300 mt-1">Bilgiler</span>
-              </div>
-              <div className="w-8 h-px bg-white/20" />
-              <div className="flex flex-col items-center">
-                <div className="w-8 h-8 rounded-full bg-white/10 text-white/70 text-xs font-bold flex items-center justify-center ring-1 ring-white/20">2</div>
-                <span className="text-[10px] text-navy-300 mt-1">Ödeme</span>
-              </div>
-              <div className="w-8 h-px bg-white/20" />
-              <div className="flex flex-col items-center">
-                <div className="w-8 h-8 rounded-full bg-white/10 text-white/70 text-xs font-bold flex items-center justify-center ring-1 ring-white/20">3</div>
-                <span className="text-[10px] text-navy-300 mt-1">Kayıt</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -103,6 +87,7 @@ export default function NewVisaFilePage() {
                   file={null}
                   onSuccess={() => router.push("/app/files")}
                   onCancel={() => router.back()}
+                  onProgress={setProgress}
                 />
               </div>
             </div>
@@ -110,6 +95,9 @@ export default function NewVisaFilePage() {
 
           {/* Yan bilgi paneli */}
           <aside className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 lg:self-start">
+            {/* Yakıt Deposu / Doluluk Göstergesi */}
+            <FuelGauge progress={progress} />
+
             <div className="rounded-2xl bg-gradient-to-br from-primary-50 to-amber-50 border border-primary-100 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center shadow-sm">
@@ -147,35 +135,6 @@ export default function NewVisaFilePage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl bg-white border border-navy-100 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="font-bold text-navy-900 text-sm">Zorunlu Alanlar</h3>
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-navy-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <span>Müşteri ad soyad</span>
-                </div>
-                <div className="flex items-center gap-2 text-navy-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <span>Pasaport numarası</span>
-                </div>
-                <div className="flex items-center gap-2 text-navy-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <span>Hedef ülke</span>
-                </div>
-                <div className="flex items-center gap-2 text-navy-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <span>Ücret ve ödeme planı</span>
-                </div>
-              </div>
-            </div>
-
             <div className="rounded-2xl bg-gradient-to-br from-navy-900 to-navy-800 p-5 shadow-lg text-white">
               <div className="flex items-center gap-2 mb-2">
                 <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,6 +149,136 @@ export default function NewVisaFilePage() {
           </aside>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================
+// Yakıt Deposu Göstergesi - Dikey Progress
+// ============================================
+function FuelGauge({ progress }: { progress: number }) {
+  const pct = Math.max(0, Math.min(100, progress));
+
+  // Seviyeye göre renk & durum mesajı
+  const level =
+    pct >= 100
+      ? { label: "FULL", color: "from-emerald-400 via-green-500 to-emerald-600", text: "text-emerald-600", ring: "ring-emerald-200", msg: "Dosya hazır!" }
+      : pct >= 75
+      ? { label: "YÜKSEK", color: "from-green-400 via-emerald-500 to-green-600", text: "text-emerald-600", ring: "ring-emerald-200", msg: "Neredeyse tamam" }
+      : pct >= 50
+      ? { label: "ORTA", color: "from-amber-400 via-orange-500 to-amber-600", text: "text-amber-600", ring: "ring-amber-200", msg: "Devam ediyor" }
+      : pct >= 25
+      ? { label: "DÜŞÜK", color: "from-orange-400 via-orange-500 to-red-500", text: "text-orange-600", ring: "ring-orange-200", msg: "Doldurmaya devam" }
+      : { label: "BOŞ", color: "from-red-400 via-red-500 to-rose-600", text: "text-red-600", ring: "ring-red-200", msg: "Form boş" };
+
+  return (
+    <div className="relative rounded-2xl bg-white border border-navy-100 shadow-sm overflow-hidden">
+      {/* Üst aksan */}
+      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${level.color}`} />
+
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${level.color} flex items-center justify-center shadow-sm ring-2 ${level.ring}`}>
+            {/* Yakıt pompası ikonu */}
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 20h8M4 4h8v16M12 8h3a2 2 0 012 2v6a2 2 0 002 2 2 2 0 002-2V9l-2-2M12 4v4" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-navy-900 text-sm">Dosya Doluluğu</h3>
+            <p className="text-[11px] text-navy-500 truncate">{level.msg}</p>
+          </div>
+          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${level.text} bg-gradient-to-br ${level.color} text-white shadow-sm`}>
+            {level.label}
+          </div>
+        </div>
+
+        {/* Dikey yakıt deposu */}
+        <div className="flex items-stretch gap-3">
+          {/* Tank */}
+          <div className="relative flex-shrink-0 w-16 h-56 sm:h-64 rounded-2xl bg-gradient-to-b from-navy-100 to-navy-50 border-2 border-navy-200 shadow-inner overflow-hidden">
+            {/* Dolum animasyonlu */}
+            <div
+              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${level.color} transition-all duration-700 ease-out`}
+              style={{ height: `${pct}%` }}
+            >
+              {/* Yüzey parıltı */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-white/40" />
+              {/* Kabarcık animasyonu */}
+              {pct > 10 && (
+                <>
+                  <div className="absolute left-2 bottom-2 w-1.5 h-1.5 rounded-full bg-white/50 animate-ping" style={{ animationDelay: "0s" }} />
+                  <div className="absolute right-3 bottom-6 w-1 h-1 rounded-full bg-white/40 animate-ping" style={{ animationDelay: "0.7s" }} />
+                  <div className="absolute left-4 bottom-10 w-1 h-1 rounded-full bg-white/30 animate-ping" style={{ animationDelay: "1.3s" }} />
+                </>
+              )}
+            </div>
+
+            {/* Ölçek çizgileri */}
+            <div className="absolute inset-y-0 right-0 flex flex-col justify-between py-2 pr-1 pointer-events-none">
+              {[100, 75, 50, 25, 0].map((n) => (
+                <div key={n} className="flex items-center gap-0.5">
+                  <span className="text-[8px] font-bold text-navy-400 mix-blend-difference">{n}</span>
+                  <div className="w-1.5 h-0.5 bg-navy-300/60" />
+                </div>
+              ))}
+            </div>
+
+            {/* Merkez yüzde göstergesi */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-white/90 backdrop-blur-sm rounded-lg px-1.5 py-0.5 shadow-md border border-white ring-1 ring-navy-100">
+                <span className={`text-[13px] font-black tabular-nums ${level.text}`}>
+                  {Math.round(pct)}%
+                </span>
+              </div>
+            </div>
+
+            {/* Tank üst kapağı */}
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-2 rounded-t-lg bg-navy-300 border border-navy-400" />
+          </div>
+
+          {/* Adım listesi */}
+          <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
+            <Step done={pct >= 15} label="Müşteri" />
+            <Step done={pct >= 30} label="Pasaport" />
+            <Step done={pct >= 45} label="Ülke" />
+            <Step done={pct >= 65} label="Ücret" />
+            <Step done={pct >= 85} label="Ödeme" />
+            <Step done={pct >= 100} label="Tamamlandı" highlight />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Step({ done, label, highlight = false }: { done: boolean; label: string; highlight?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 ${
+          done
+            ? highlight
+              ? "bg-gradient-to-br from-emerald-400 to-green-600 shadow-sm shadow-emerald-500/30 ring-2 ring-emerald-200"
+              : "bg-gradient-to-br from-primary-400 to-primary-600 shadow-sm shadow-primary-500/30"
+            : "bg-navy-100 border border-navy-200"
+        }`}
+      >
+        {done ? (
+          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        ) : (
+          <div className="w-1.5 h-1.5 rounded-full bg-navy-300" />
+        )}
+      </div>
+      <span
+        className={`text-[11px] font-semibold truncate transition-colors ${
+          done ? (highlight ? "text-emerald-700" : "text-navy-800") : "text-navy-400"
+        }`}
+      >
+        {label}
+      </span>
     </div>
   );
 }

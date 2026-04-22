@@ -13,6 +13,7 @@ interface VisaFileFormProps {
   file?: VisaFile | null;
   onSuccess: () => void;
   onCancel: () => void;
+  onProgress?: (pct: number) => void;
 }
 
 const SCHENGEN_COUNTRIES = new Set([
@@ -46,7 +47,7 @@ function isSchengenCountry(country: string) {
   return SCHENGEN_COUNTRIES.has(normalizeCountryName(country));
 }
 
-export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileFormProps) {
+export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: VisaFileFormProps) {
   const isEdit = !!file;
   
   const [musteriAd, setMusteriAd] = useState(file?.musteri_ad || "");
@@ -666,6 +667,50 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       setIsLoading(false);
     }
   };
+
+  // Form doluluk oranı (yakıt deposu göstergesi için)
+  const formProgress = useMemo(() => {
+    let score = 0;
+    if (musteriAd.trim().length > 0) score += 15;
+    if (pasaportNo.trim().length > 0) score += 15;
+    if (activeCountry.trim().length > 0) score += 15;
+    if (Number(ucret) > 0) score += 20;
+
+    if (odemePlani === "pesin") {
+      if (pesinYontem === "nakit") score += 20;
+      else if (pesinYontem === "hesaba" && hesapSahibi) score += 20;
+      else if (pesinYontem === "pos" && Number(pesinPosTl) > 0) score += 20;
+    } else if (odemePlani === "cari") {
+      if (cariSahibi) score += 20;
+    } else if (odemePlani === "firma_cari") {
+      if (selectedCompany) score += 20;
+    }
+
+    if (islemTipi === "randevulu") {
+      if (randevuTarihi) score += 15;
+    } else {
+      score += 15;
+    }
+
+    return Math.min(100, score);
+  }, [
+    musteriAd,
+    pasaportNo,
+    activeCountry,
+    ucret,
+    odemePlani,
+    pesinYontem,
+    hesapSahibi,
+    pesinPosTl,
+    cariSahibi,
+    selectedCompany,
+    islemTipi,
+    randevuTarihi,
+  ]);
+
+  useEffect(() => {
+    onProgress?.(formProgress);
+  }, [formProgress, onProgress]);
 
   return (
     <>
