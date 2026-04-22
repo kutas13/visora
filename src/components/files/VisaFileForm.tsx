@@ -669,33 +669,38 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   };
 
   // Form doluluk oranı (sol stepper için)
-  // 5 aşama, her biri 20 puan = 100
+  // Her harf yazdıkça kademeli artar - 5 aşama x 20 puan = 100
   const formProgress = useMemo(() => {
+    // Karakter başına 20 puana doğru kademeli: min(len/target, 1) * 20
+    const partial = (len: number, target: number) => Math.min(len / target, 1) * 20;
+
     let score = 0;
 
-    // 1) Müşteri adı
-    if (musteriAd.trim().length > 0) score += 20;
+    // 1) Müşteri adı (hedef: 10 karakter)
+    score += partial(musteriAd.trim().length, 10);
 
-    // 2) Pasaport numarası
-    if (pasaportNo.trim().length > 0) score += 20;
+    // 2) Pasaport numarası (hedef: 8 karakter)
+    score += partial(pasaportNo.trim().length, 8);
 
-    // 3) Hedef ülke (kullanıcı seçmeli)
-    if (activeCountry.trim().length > 0) score += 20;
+    // 3) Hedef ülke (hedef: 4 karakter - dropdown seçiminde anında tamamlanır)
+    score += partial(activeCountry.trim().length, 4);
 
-    // 4) Ödeme: ücret var ve plan gereksinimleri tamam
-    const ucretOk = Number(ucret) > 0;
-    let odemeOk = false;
+    // 4) Ödeme: ücret (10 puan kademeli) + plan seçimi (10 puan)
+    const ucretDigits = (ucret || "").replace(/\D/g, "").length;
+    score += Math.min(ucretDigits / 3, 1) * 10;
+
+    let planOk = false;
     if (odemePlani === "pesin") {
-      odemeOk =
+      planOk =
         pesinYontem === "nakit" ||
         (pesinYontem === "hesaba" && !!hesapSahibi) ||
         (pesinYontem === "pos" && Number(pesinPosTl) > 0);
     } else if (odemePlani === "cari") {
-      odemeOk = !!cariSahibi;
+      planOk = !!cariSahibi;
     } else if (odemePlani === "firma_cari") {
-      odemeOk = !!selectedCompany;
+      planOk = !!selectedCompany;
     }
-    if (ucretOk && odemeOk) score += 20;
+    if (planOk) score += 10;
 
     // 5) İşlem tipi + randevu (randevusuz ise otomatik tamam)
     if (islemTipi === "randevusuz") {
@@ -704,7 +709,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
       score += 20;
     }
 
-    return Math.min(100, score);
+    return Math.min(100, Math.round(score));
   }, [
     musteriAd,
     pasaportNo,
