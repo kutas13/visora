@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
@@ -12,6 +13,11 @@ interface ModalProps {
 
 export default function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -29,7 +35,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const sizes = {
     sm: "max-w-md",
@@ -38,16 +44,16 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     xl: "max-w-4xl",
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-[100] overflow-y-auto">
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm transition-opacity" 
+      <div
+        className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="relative flex min-h-full items-center justify-center p-4">
         <div
           ref={modalRef}
           className={`relative w-full ${sizes[size]} bg-white rounded-2xl shadow-2xl transform transition-all`}
@@ -74,4 +80,6 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
