@@ -7,35 +7,188 @@ export default function NewVisaFilePage() {
   const router = useRouter();
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => router.back()}
-          className="w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
-        >
-          <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Yeni Vize Dosyası</h1>
-            <p className="text-slate-500 text-sm">Müşteri bilgilerini girin ve dosyayı oluşturun</p>
-          </div>
-        </div>
+    <div className="relative min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-6 lg:-mt-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      {/* Dekoratif arka plan */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-primary-300/40 via-primary-200/30 to-transparent blur-3xl" />
+        <div className="absolute top-40 -left-28 h-96 w-96 rounded-full bg-gradient-to-tr from-navy-200/50 via-blue-100/40 to-transparent blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 h-72 w-72 rounded-full bg-gradient-to-tl from-amber-100/50 to-transparent blur-3xl" />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 md:p-8">
-        <VisaFileForm
-          file={null}
-          onSuccess={() => router.push("/app/files")}
-          onCancel={() => router.back()}
-        />
+      <div className="relative max-w-5xl mx-auto">
+        {/* Üst navigasyon */}
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => router.back()}
+            className="group inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/70 backdrop-blur border border-white/80 text-navy-600 hover:text-navy-800 hover:bg-white transition-all shadow-sm hover:shadow"
+          >
+            <svg className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="text-sm font-medium">Geri</span>
+          </button>
+
+          <nav className="hidden sm:flex items-center gap-2 text-xs text-navy-500">
+            <span className="hover:text-navy-700 cursor-pointer" onClick={() => router.push("/app/files")}>Dosyalar</span>
+            <svg className="w-3 h-3 text-navy-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="text-navy-800 font-semibold">Yeni Dosya</span>
+          </nav>
+        </div>
+
+        {/* Hero başlık */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 p-6 sm:p-8 mb-6 shadow-xl shadow-navy-900/20">
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full bg-primary-500 blur-3xl" />
+            <div className="absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-primary-400 blur-3xl" />
+          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(249,115,22,0.15),transparent_50%)]" />
+
+          <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-primary-600 rounded-2xl blur-lg opacity-60" />
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-primary-400 via-primary-500 to-primary-600 flex items-center justify-center shadow-lg ring-1 ring-white/20">
+                <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-500/20 border border-primary-400/30 text-primary-200 text-[11px] font-semibold uppercase tracking-wider mb-2">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-300 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-400" />
+                </span>
+                Yeni Kayıt
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                Vize Dosyası Oluştur
+              </h1>
+              <p className="text-sm sm:text-base text-navy-200 mt-1.5 max-w-xl">
+                Müşteri bilgilerini, hedef ülkeyi ve ödeme planını doldurarak yeni dosyayı birkaç saniyede hazırlayın.
+              </p>
+            </div>
+
+            {/* Adım göstergesi */}
+            <div className="hidden lg:flex items-center gap-3 pl-4 border-l border-white/10">
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 rounded-full bg-primary-500 text-white text-xs font-bold flex items-center justify-center ring-4 ring-primary-500/20">1</div>
+                <span className="text-[10px] text-navy-300 mt-1">Bilgiler</span>
+              </div>
+              <div className="w-8 h-px bg-white/20" />
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 rounded-full bg-white/10 text-white/70 text-xs font-bold flex items-center justify-center ring-1 ring-white/20">2</div>
+                <span className="text-[10px] text-navy-300 mt-1">Ödeme</span>
+              </div>
+              <div className="w-8 h-px bg-white/20" />
+              <div className="flex flex-col items-center">
+                <div className="w-8 h-8 rounded-full bg-white/10 text-white/70 text-xs font-bold flex items-center justify-center ring-1 ring-white/20">3</div>
+                <span className="text-[10px] text-navy-300 mt-1">Kayıt</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* İçerik grid - form + yan panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Form kartı */}
+          <div className="lg:col-span-2">
+            <div className="relative rounded-3xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl shadow-navy-900/5 overflow-hidden">
+              {/* Dekoratif üst çizgi */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-amber-400" />
+              <div className="p-6 sm:p-8">
+                <VisaFileForm
+                  file={null}
+                  onSuccess={() => router.push("/app/files")}
+                  onCancel={() => router.back()}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Yan bilgi paneli */}
+          <aside className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 lg:self-start">
+            <div className="rounded-2xl bg-gradient-to-br from-primary-50 to-amber-50 border border-primary-100 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center shadow-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-navy-900 text-sm">Hızlı İpuçları</h3>
+              </div>
+              <ul className="space-y-2.5 text-xs text-navy-700">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Pasaport numarası girildiğinde geçmiş başvurular otomatik gösterilir.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Hedef ülkeye göre ücret para birimi otomatik seçilir.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Peşin seçince ödeme yöntemine göre muhasebeye otomatik mail gider.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Firma cari seçildiğinde firmayı aradıktan sonra hızlıca ekleyebilirsiniz.</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl bg-white border border-navy-100 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-navy-900 text-sm">Zorunlu Alanlar</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Müşteri ad soyad</span>
+                </div>
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Pasaport numarası</span>
+                </div>
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Hedef ülke</span>
+                </div>
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Ücret ve ödeme planı</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-gradient-to-br from-navy-900 to-navy-800 p-5 shadow-lg text-white">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <h3 className="font-bold text-sm">Güvenli Kayıt</h3>
+              </div>
+              <p className="text-xs text-navy-200 leading-relaxed">
+                Tüm veriler şifrelenmiş olarak saklanır ve sadece yetkili kullanıcılar tarafından görüntülenebilir.
+              </p>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );

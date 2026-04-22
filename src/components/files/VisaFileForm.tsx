@@ -679,7 +679,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
       {/* Müşteri Bilgileri */}
       <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Müşteri Bilgileri</legend>
+        <legend className="w-full">
+          <div className="flex items-center gap-2.5 pb-2.5 mb-1 border-b border-navy-100">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm shadow-blue-500/25">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-navy-800">Müşteri Bilgileri</h3>
+              <p className="text-[11px] text-navy-500">Ad soyad ve pasaport numarası</p>
+            </div>
+          </div>
+        </legend>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input label="Ad Soyad" value={musteriAd} onChange={(e) => setMusteriAd(e.target.value)} placeholder="Ahmet Yılmaz" required />
           <Input label="Pasaport No" value={pasaportNo} onChange={(e) => setPasaportNo(e.target.value)} placeholder="U12345678" required />
@@ -717,9 +727,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
       {/* Hedef Ülke */}
       <fieldset className="space-y-2">
-        <div className="flex items-center justify-between">
-          <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Hedef Ülke</legend>
-          <button type="button" onClick={() => setUlkeManuelMi(!ulkeManuelMi)} className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+        <div className="flex items-center justify-between pb-2.5 mb-1 border-b border-navy-100">
+          <legend className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shadow-emerald-500/25">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-navy-800">Hedef Ülke</h3>
+              <p className="text-[11px] text-navy-500">Vize başvurulacak ülke</p>
+            </div>
+          </legend>
+          <button type="button" onClick={() => setUlkeManuelMi(!ulkeManuelMi)} className="text-xs text-primary-600 hover:text-primary-700 font-semibold px-2.5 py-1 rounded-lg hover:bg-primary-50 transition-colors">
             {ulkeManuelMi ? "Listeden seç" : "Manuel giriş"}
           </button>
         </div>
@@ -772,7 +790,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       {/* Vize Tipi Seçimi - Sadece Çin dosyalarında */}
       {normalizeCountryName(ulkeManuelMi ? manuelUlke : hedefUlke) === "CIN" && (
       <fieldset className="space-y-2">
-        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Vize Tipi</legend>
+        <legend className="w-full">
+          <div className="flex items-center gap-2.5 pb-2.5 mb-1 border-b border-navy-100">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-sm shadow-rose-500/25">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-navy-800">Vize Tipi</h3>
+              <p className="text-[11px] text-navy-500">Çin vize başvurusu için tip seçimi</p>
+            </div>
+          </div>
+        </legend>
         <div className="flex flex-wrap gap-2">
           {VIZE_TIPI_OPTIONS.map((tip) => {
             const isSelected = vizeTipleri.includes(tip);
@@ -807,20 +835,45 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
       {/* Ücret ve Ödeme */}
       <fieldset className="space-y-4">
-        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Ücret ve Ödeme</legend>
+        <legend className="w-full">
+          <div className="flex items-center gap-2.5 pb-2.5 mb-1 border-b border-navy-100">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-sm shadow-primary-500/25">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-navy-800">Ücret ve Ödeme</h3>
+              <p className="text-[11px] text-navy-500">Ücret, para birimi ve ödeme planı</p>
+            </div>
+          </div>
+        </legend>
         
         <div className="grid grid-cols-3 gap-3">
-          <label className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${odemePlani === "pesin" ? "border-green-500 bg-green-50 text-green-700 font-semibold ring-1 ring-green-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+          <label className={`relative p-3 border-2 rounded-xl cursor-pointer transition-all text-center overflow-hidden group ${odemePlani === "pesin" ? "border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 shadow-sm shadow-green-500/10" : "border-navy-200 bg-white hover:border-green-300 hover:bg-green-50/40"}`}>
             <input type="radio" name="odemePlani" value="pesin" checked={odemePlani === "pesin"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
-            Peşin
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${odemePlani === "pesin" ? "bg-green-500 text-white shadow-md shadow-green-500/30" : "bg-navy-100 text-navy-500 group-hover:bg-green-100 group-hover:text-green-600"}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              </div>
+              <span className={`text-sm font-semibold ${odemePlani === "pesin" ? "text-green-700" : "text-navy-700"}`}>Peşin</span>
+            </div>
           </label>
-          <label className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${odemePlani === "cari" ? "border-amber-500 bg-amber-50 text-amber-700 font-semibold ring-1 ring-amber-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+          <label className={`relative p-3 border-2 rounded-xl cursor-pointer transition-all text-center overflow-hidden group ${odemePlani === "cari" ? "border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm shadow-amber-500/10" : "border-navy-200 bg-white hover:border-amber-300 hover:bg-amber-50/40"}`}>
             <input type="radio" name="odemePlani" value="cari" checked={odemePlani === "cari"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
-            Cari
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${odemePlani === "cari" ? "bg-amber-500 text-white shadow-md shadow-amber-500/30" : "bg-navy-100 text-navy-500 group-hover:bg-amber-100 group-hover:text-amber-600"}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <span className={`text-sm font-semibold ${odemePlani === "cari" ? "text-amber-700" : "text-navy-700"}`}>Cari</span>
+            </div>
           </label>
-          <label className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${odemePlani === "firma_cari" ? "border-purple-500 bg-purple-50 text-purple-700 font-semibold ring-1 ring-purple-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
+          <label className={`relative p-3 border-2 rounded-xl cursor-pointer transition-all text-center overflow-hidden group ${odemePlani === "firma_cari" ? "border-purple-500 bg-gradient-to-br from-purple-50 to-fuchsia-50 shadow-sm shadow-purple-500/10" : "border-navy-200 bg-white hover:border-purple-300 hover:bg-purple-50/40"}`}>
             <input type="radio" name="odemePlani" value="firma_cari" checked={odemePlani === "firma_cari"} onChange={(e) => setOdemePlani(e.target.value as UIPaymentPlan)} className="sr-only" />
-            Firma Cari
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${odemePlani === "firma_cari" ? "bg-purple-500 text-white shadow-md shadow-purple-500/30" : "bg-navy-100 text-navy-500 group-hover:bg-purple-100 group-hover:text-purple-600"}`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+              </div>
+              <span className={`text-sm font-semibold ${odemePlani === "firma_cari" ? "text-purple-700" : "text-navy-700"}`}>Firma Cari</span>
+            </div>
           </label>
         </div>
 
@@ -1115,7 +1168,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       <fieldset className="space-y-3">
         {!isChinaSelected && (
         <>
-        <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">İşlem Tipi</legend>
+        <legend className="w-full">
+          <div className="flex items-center gap-2.5 pb-2.5 mb-1 border-b border-navy-100">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm shadow-violet-500/25">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-navy-800">İşlem Tipi</h3>
+              <p className="text-[11px] text-navy-500">Randevulu veya randevusuz başvuru</p>
+            </div>
+          </div>
+        </legend>
         <div className="grid grid-cols-2 gap-2">
           {ISLEM_TIPLERI.map((tip) => (
             <label key={tip.value} className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${islemTipi === tip.value ? "border-primary-500 bg-primary-50 text-primary-700 font-semibold ring-1 ring-primary-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
@@ -1197,7 +1260,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
       {/* Randevu & Evrak */}
       {islemTipi === "randevulu" && (
         <fieldset className="space-y-3">
-          <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Randevu ve Evrak</legend>
+          <legend className="w-full">
+            <div className="flex items-center gap-2.5 pb-2.5 mb-1 border-b border-navy-100">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center shadow-sm shadow-sky-500/25">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-navy-800">Randevu ve Evrak</h3>
+                <p className="text-[11px] text-navy-500">Randevu zamanı ve evrak durumu</p>
+              </div>
+            </div>
+          </legend>
           <Input label="Randevu Tarihi ve Saati" type="datetime-local" value={randevuTarihi} onChange={(e) => setRandevuTarihi(e.target.value)} required />
           <div className="grid grid-cols-2 gap-2">
             {EVRAK_DURUMLARI.map((durum) => (
@@ -1224,7 +1297,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
 
       {islemTipi === "randevusuz" && (
         <fieldset className="space-y-3">
-          <legend className="text-xs font-semibold text-navy-400 uppercase tracking-widest">Evrak Durumu</legend>
+          <legend className="w-full">
+            <div className="flex items-center gap-2.5 pb-2.5 mb-1 border-b border-navy-100">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-sm shadow-teal-500/25">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-navy-800">Evrak Durumu</h3>
+                <p className="text-[11px] text-navy-500">Müşteri evraklarının durumu</p>
+              </div>
+            </div>
+          </legend>
           <div className="grid grid-cols-2 gap-2">
             {EVRAK_DURUMLARI.map((durum) => (
               <label key={durum.value} className={`p-3 border rounded-lg cursor-pointer transition-all text-center text-sm ${evrakDurumu === durum.value ? "border-primary-500 bg-primary-50 text-primary-700 font-semibold ring-1 ring-primary-500" : "border-navy-200 text-navy-600 hover:border-navy-300"}`}>
@@ -1255,12 +1338,38 @@ export default function VisaFileForm({ file, onSuccess, onCancel }: VisaFileForm
         </div>
       )}
 
-      <div className="flex gap-3 pt-4 border-t border-navy-100">
-        <button type="button" onClick={onCancel} className="flex-1 py-2.5 border border-navy-300 rounded-lg text-sm font-medium text-navy-600 hover:bg-navy-50 transition-colors">
+      <div className="flex flex-col sm:flex-row gap-3 pt-5 mt-2 border-t border-navy-100">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="sm:flex-1 inline-flex items-center justify-center gap-2 py-3 px-5 border border-navy-200 bg-white rounded-xl text-sm font-semibold text-navy-700 hover:bg-navy-50 hover:border-navy-300 transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           İptal
         </button>
-        <button type="submit" disabled={isLoading} className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-lg text-sm font-medium text-white transition-colors">
-          {isLoading ? "Kaydediliyor..." : (isEdit ? "Güncelle" : "Dosya Oluştur")}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="sm:flex-[2] relative inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-sm font-bold text-white transition-all overflow-hidden group disabled:opacity-60 disabled:cursor-not-allowed bg-gradient-to-r from-primary-500 via-primary-600 to-primary-600 hover:from-primary-600 hover:via-primary-600 hover:to-primary-700 shadow-lg shadow-primary-500/30 hover:shadow-xl hover:shadow-primary-500/40 active:scale-[0.99]"
+        >
+          <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+          {isLoading ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              Kaydediliyor...
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isEdit ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                )}
+              </svg>
+              {isEdit ? "Değişiklikleri Kaydet" : "Dosya Oluştur"}
+            </>
+          )}
         </button>
       </div>
     </form>
