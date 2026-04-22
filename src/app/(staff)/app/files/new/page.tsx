@@ -10,6 +10,9 @@ export default function NewVisaFilePage() {
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-6 lg:-mt-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      {/* Sol kenar dikey doluluk çizgisi */}
+      <LeftProgressRail progress={progress} />
+
       {/* Dekoratif arka plan */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-primary-300/40 via-primary-200/30 to-transparent blur-3xl" />
@@ -95,9 +98,6 @@ export default function NewVisaFilePage() {
 
           {/* Yan bilgi paneli */}
           <aside className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 lg:self-start">
-            {/* Yakıt Deposu / Doluluk Göstergesi */}
-            <FuelGauge progress={progress} />
-
             <div className="rounded-2xl bg-gradient-to-br from-primary-50 to-amber-50 border border-primary-100 p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center shadow-sm">
@@ -135,6 +135,35 @@ export default function NewVisaFilePage() {
               </ul>
             </div>
 
+            <div className="rounded-2xl bg-white border border-navy-100 p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="font-bold text-navy-900 text-sm">Zorunlu Alanlar</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Müşteri ad soyad</span>
+                </div>
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Pasaport numarası</span>
+                </div>
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Hedef ülke</span>
+                </div>
+                <div className="flex items-center gap-2 text-navy-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <span>Ücret ve ödeme planı</span>
+                </div>
+              </div>
+            </div>
+
             <div className="rounded-2xl bg-gradient-to-br from-navy-900 to-navy-800 p-5 shadow-lg text-white">
               <div className="flex items-center gap-2 mb-2">
                 <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,131 +183,67 @@ export default function NewVisaFilePage() {
 }
 
 // ============================================
-// Yakıt Deposu Göstergesi - Dikey Progress
+// Sol Kenar Dikey Doluluk Çizgisi
+// Ekranın sol kenarında, boydan boya (fixed), alttan üste dolar
 // ============================================
-function FuelGauge({ progress }: { progress: number }) {
+function LeftProgressRail({ progress }: { progress: number }) {
   const pct = Math.max(0, Math.min(100, progress));
 
-  // Seviyeye göre renk & durum mesajı
-  const level =
+  const color =
     pct >= 100
-      ? { label: "FULL", color: "from-emerald-400 via-green-500 to-emerald-600", text: "text-emerald-600", ring: "ring-emerald-200", msg: "Dosya hazır!" }
+      ? "from-emerald-500 via-green-500 to-emerald-400"
       : pct >= 75
-      ? { label: "YÜKSEK", color: "from-green-400 via-emerald-500 to-green-600", text: "text-emerald-600", ring: "ring-emerald-200", msg: "Neredeyse tamam" }
+      ? "from-green-500 via-emerald-500 to-lime-400"
       : pct >= 50
-      ? { label: "ORTA", color: "from-amber-400 via-orange-500 to-amber-600", text: "text-amber-600", ring: "ring-amber-200", msg: "Devam ediyor" }
+      ? "from-amber-500 via-orange-500 to-amber-400"
       : pct >= 25
-      ? { label: "DÜŞÜK", color: "from-orange-400 via-orange-500 to-red-500", text: "text-orange-600", ring: "ring-orange-200", msg: "Doldurmaya devam" }
-      : { label: "BOŞ", color: "from-red-400 via-red-500 to-rose-600", text: "text-red-600", ring: "ring-red-200", msg: "Form boş" };
+      ? "from-orange-500 via-primary-500 to-orange-400"
+      : "from-rose-500 via-red-500 to-rose-400";
+
+  const badgeColor =
+    pct >= 75
+      ? "bg-emerald-500 text-white shadow-emerald-500/40"
+      : pct >= 50
+      ? "bg-amber-500 text-white shadow-amber-500/40"
+      : pct >= 25
+      ? "bg-primary-500 text-white shadow-primary-500/40"
+      : "bg-rose-500 text-white shadow-rose-500/40";
 
   return (
-    <div className="relative rounded-2xl bg-white border border-navy-100 shadow-sm overflow-hidden">
-      {/* Üst aksan */}
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${level.color}`} />
+    <div className="pointer-events-none fixed left-0 top-16 bottom-0 z-40 flex items-stretch">
+      {/* Zemin rayı */}
+      <div className="relative w-1.5 sm:w-2 h-full bg-gradient-to-b from-navy-100/80 via-navy-100/60 to-navy-100/80 backdrop-blur-sm shadow-[1px_0_0_0_rgba(255,255,255,0.6)_inset]">
+        {/* Dolu kısım (alttan yukarıya doğru dolar) */}
+        <div
+          className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${color} transition-all duration-700 ease-out shadow-lg`}
+          style={{ height: `${pct}%` }}
+        >
+          {/* Üst parıltı */}
+          <div className="absolute -top-px left-0 right-0 h-1 bg-white/70 blur-[1px]" />
+        </div>
 
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${level.color} flex items-center justify-center shadow-sm ring-2 ${level.ring}`}>
-            {/* Yakıt pompası ikonu */}
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 20h8M4 4h8v16M12 8h3a2 2 0 012 2v6a2 2 0 002 2 2 2 0 002-2V9l-2-2M12 4v4" />
+        {/* Ölçek çentikleri */}
+        {[25, 50, 75].map((n) => (
+          <div
+            key={n}
+            className="absolute left-0 right-0 h-px bg-navy-300/60"
+            style={{ bottom: `${n}%` }}
+          />
+        ))}
+
+        {/* Yüzde rozeti (doluluk seviyesine göre hareket eder) */}
+        <div
+          className="absolute left-full ml-2 transition-all duration-700 ease-out pointer-events-auto"
+          style={{ bottom: `calc(${pct}% - 14px)` }}
+        >
+          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold tabular-nums shadow-md ${badgeColor}`}>
+            <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 3a1 1 0 01.894.553l2.11 4.22 4.66.677a1 1 0 01.554 1.706l-3.372 3.286.796 4.641a1 1 0 01-1.451 1.054L10 16.95l-4.191 2.187a1 1 0 01-1.451-1.054l.796-4.641L1.782 10.156a1 1 0 01.554-1.706l4.66-.677 2.11-4.22A1 1 0 0110 3z" />
             </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-navy-900 text-sm">Dosya Doluluğu</h3>
-            <p className="text-[11px] text-navy-500 truncate">{level.msg}</p>
-          </div>
-          <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${level.text} bg-gradient-to-br ${level.color} text-white shadow-sm`}>
-            {level.label}
-          </div>
-        </div>
-
-        {/* Dikey yakıt deposu */}
-        <div className="flex items-stretch gap-3">
-          {/* Tank */}
-          <div className="relative flex-shrink-0 w-16 h-56 sm:h-64 rounded-2xl bg-gradient-to-b from-navy-100 to-navy-50 border-2 border-navy-200 shadow-inner overflow-hidden">
-            {/* Dolum animasyonlu */}
-            <div
-              className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t ${level.color} transition-all duration-700 ease-out`}
-              style={{ height: `${pct}%` }}
-            >
-              {/* Yüzey parıltı */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-white/40" />
-              {/* Kabarcık animasyonu */}
-              {pct > 10 && (
-                <>
-                  <div className="absolute left-2 bottom-2 w-1.5 h-1.5 rounded-full bg-white/50 animate-ping" style={{ animationDelay: "0s" }} />
-                  <div className="absolute right-3 bottom-6 w-1 h-1 rounded-full bg-white/40 animate-ping" style={{ animationDelay: "0.7s" }} />
-                  <div className="absolute left-4 bottom-10 w-1 h-1 rounded-full bg-white/30 animate-ping" style={{ animationDelay: "1.3s" }} />
-                </>
-              )}
-            </div>
-
-            {/* Ölçek çizgileri */}
-            <div className="absolute inset-y-0 right-0 flex flex-col justify-between py-2 pr-1 pointer-events-none">
-              {[100, 75, 50, 25, 0].map((n) => (
-                <div key={n} className="flex items-center gap-0.5">
-                  <span className="text-[8px] font-bold text-navy-400 mix-blend-difference">{n}</span>
-                  <div className="w-1.5 h-0.5 bg-navy-300/60" />
-                </div>
-              ))}
-            </div>
-
-            {/* Merkez yüzde göstergesi */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-white/90 backdrop-blur-sm rounded-lg px-1.5 py-0.5 shadow-md border border-white ring-1 ring-navy-100">
-                <span className={`text-[13px] font-black tabular-nums ${level.text}`}>
-                  {Math.round(pct)}%
-                </span>
-              </div>
-            </div>
-
-            {/* Tank üst kapağı */}
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-2 rounded-t-lg bg-navy-300 border border-navy-400" />
-          </div>
-
-          {/* Adım listesi */}
-          <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
-            <Step done={pct >= 15} label="Müşteri" />
-            <Step done={pct >= 30} label="Pasaport" />
-            <Step done={pct >= 45} label="Ülke" />
-            <Step done={pct >= 65} label="Ücret" />
-            <Step done={pct >= 85} label="Ödeme" />
-            <Step done={pct >= 100} label="Tamamlandı" highlight />
+            {Math.round(pct)}%
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Step({ done, label, highlight = false }: { done: boolean; label: string; highlight?: boolean }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 ${
-          done
-            ? highlight
-              ? "bg-gradient-to-br from-emerald-400 to-green-600 shadow-sm shadow-emerald-500/30 ring-2 ring-emerald-200"
-              : "bg-gradient-to-br from-primary-400 to-primary-600 shadow-sm shadow-primary-500/30"
-            : "bg-navy-100 border border-navy-200"
-        }`}
-      >
-        {done ? (
-          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
-        ) : (
-          <div className="w-1.5 h-1.5 rounded-full bg-navy-300" />
-        )}
-      </div>
-      <span
-        className={`text-[11px] font-semibold truncate transition-colors ${
-          done ? (highlight ? "text-emerald-700" : "text-navy-800") : "text-navy-400"
-        }`}
-      >
-        {label}
-      </span>
     </div>
   );
 }
