@@ -43,7 +43,8 @@ export default function AdminVizeBitisiPage() {
       .select("*")
       .eq("role", "staff");
 
-    setFiles(data || []);
+    const visible = (data || []).filter((f: VisaFileWithProfile) => !(f as any).vize_bitisi_gizli);
+    setFiles(visible);
     setStaff(staffData || []);
     setLoading(false);
   };

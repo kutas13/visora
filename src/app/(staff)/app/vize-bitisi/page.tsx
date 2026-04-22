@@ -37,7 +37,8 @@ export default function VizeBitisiPage() {
       .eq("sonuc", "vize_onay")
       .not("vize_bitis_tarihi", "is", null);
 
-    setFiles(data || []);
+    const visible = (data || []).filter((f: VisaFile) => !(f as any).vize_bitisi_gizli);
+    setFiles(visible);
     setLoading(false);
   };
 
@@ -224,23 +225,29 @@ export default function VizeBitisiPage() {
                       <p className="text-sm font-semibold text-slate-700">Bitiş: {formatDate(file.vize_bitis_tarihi!)}</p>
                       <Badge variant="success" size="sm" className="mt-1">Vize Onay</Badge>
                       <div className="flex flex-wrap gap-2 mt-3">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={async () => {
-                            if (confirm(`${file.musteri_ad} kaydını kalıcı olarak silmek istediğinizden emin misiniz?`)) {
+                            if (confirm(`${file.musteri_ad} kaydını bu listeden kaldırmak istediğinizden emin misiniz?\n\nDosya silinmez, sadece Vize Bitişi Takibi sayfasından gizlenir.`)) {
                               try {
                                 const supabase = createClient();
-                                await supabase.from("visa_files").delete().eq("id", file.id);
+                                const { error } = await supabase
+                                  .from("visa_files")
+                                  .update({ vize_bitisi_gizli: true })
+                                  .eq("id", file.id);
+                                if (error) throw error;
                                 loadData();
                               } catch (err) {
-                                alert("Silme hatası");
+                                console.error(err);
+                                alert("Listeden kaldırma hatası");
                               }
                             }
                           }}
                           className="text-red-600 hover:bg-red-50 border-red-200"
+                          title="Dosyayı silmeden bu listeden kaldır"
                         >
-                          🗑️ Sil
+                          🗑️ Listeden Kaldır
                         </Button>
                         <Button 
                           size="sm"

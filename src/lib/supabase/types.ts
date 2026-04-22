@@ -88,6 +88,7 @@ export interface VisaFile {
   tahmini_cikis_tarihi: string | null;
   vize_gorseli: string | null;
   eski_pasaport: boolean;
+  vize_bitisi_gizli?: boolean;
   created_at: string;
   updated_at: string;
 }
