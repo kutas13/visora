@@ -5,6 +5,19 @@ import { rateLimit, validateOrigin } from "@/lib/security";
 import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 dakika
+
+// WhatsApp rate limit koruması (arka arkaya mesaj engeli için)
+const MIN_DELAY_MS = 8_000;
+const MAX_DELAY_MS = 20_000;
+const MAX_PER_RUN = 30;
+
+function randomDelay() {
+  return Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
+}
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 // Çin dosyalarını kontrol et (Çin, Cin, ÇİN, CHINA vs. tüm varyantlar)
 function isChinaCountry(ulke: string | null | undefined): boolean {
@@ -172,7 +185,12 @@ export async function POST(request: NextRequest) {
       const fiveDaysAgo = new Date();
       fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
 
-      for (const file of customersWithPhone) {
+      // Tek çalıştırmada maksimum MAX_PER_RUN kadar gönder (WP rate limit koruması)
+      const batch = customersWithPhone.slice(0, MAX_PER_RUN);
+      const remaining = customersWithPhone.length - batch.length;
+
+      for (let idx = 0; idx < batch.length; idx++) {
+        const file = batch[idx];
         // 5 gün içinde bu müşteriye mesaj gönderilmiş mi kontrol et (tablo yoksa skip)
         let skipThisCustomer = false;
         try {
@@ -264,12 +282,24 @@ ${personelHitap} — ${personelTelefon}
         } catch (err: any) {
           console.error(`Müşteri ${file.musteri_ad} bağlantı hatası:`, err.message);
         }
+
+        // Son mesaj değilse WhatsApp rate-limit koruması için rastgele bekle
+        if (idx < batch.length - 1) {
+          const delay = randomDelay();
+          console.log(`⏳ ${delay}ms bekleniyor (WhatsApp rate limit koruması)...`);
+          await sleep(delay);
+        }
       }
 
       return NextResponse.json({ 
         success: true, 
         count: customersWithPhone.length,
-        sentTo: sentCount
+        batch: batch.length,
+        sentTo: sentCount,
+        remaining,
+        note: remaining > 0
+          ? `${remaining} mesaj bir sonraki çalıştırmaya bırakıldı (WP rate limit koruması).`
+          : undefined,
       });
 
     } else if (type === "vize_bitis") {
