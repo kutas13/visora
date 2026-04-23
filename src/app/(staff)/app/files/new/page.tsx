@@ -83,104 +83,18 @@ export default function NewVisaFilePage() {
             </div>
           </div>
 
-          {/* İçerik grid - form + yan panel */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Form kartı */}
-            <div className="lg:col-span-2">
-              <div className="relative rounded-3xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl shadow-navy-900/5 overflow-hidden">
-                {/* Dekoratif üst çizgi */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-amber-400" />
-                <div className="p-6 sm:p-8">
-                  <VisaFileForm
-                    file={null}
-                    onSuccess={() => router.push("/app/files")}
-                    onCancel={() => router.back()}
-                    onProgress={setProgress}
-                  />
-                </div>
-              </div>
+          {/* Form kartı — tam genişlik */}
+          <div className="relative rounded-3xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl shadow-navy-900/5 overflow-hidden">
+            {/* Dekoratif üst çizgi */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 via-primary-400 to-amber-400" />
+            <div className="p-6 sm:p-8">
+              <VisaFileForm
+                file={null}
+                onSuccess={() => router.push("/app/files")}
+                onCancel={() => router.back()}
+                onProgress={setProgress}
+              />
             </div>
-
-            {/* Yan bilgi paneli */}
-            <aside className="lg:col-span-1 space-y-4 lg:sticky lg:top-6 lg:self-start">
-              <div className="rounded-2xl bg-gradient-to-br from-primary-50 to-amber-50 border border-primary-100 p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center shadow-sm">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <h3 className="font-bold text-navy-900 text-sm">Hızlı İpuçları</h3>
-                </div>
-                <ul className="space-y-2.5 text-xs text-navy-700">
-                  <li className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Pasaport numarası girildiğinde geçmiş başvurular otomatik gösterilir.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Hedef ülkeye göre ücret para birimi otomatik seçilir.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Peşin seçince ödeme yöntemine göre muhasebeye otomatik mail gider.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-primary-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span>Firma cari seçildiğinde firmayı aradıktan sonra hızlıca ekleyebilirsiniz.</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="rounded-2xl bg-white border border-navy-100 p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="font-bold text-navy-900 text-sm">Zorunlu Alanlar</h3>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center gap-2 text-navy-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    <span>Müşteri ad soyad</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-navy-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    <span>Pasaport numarası</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-navy-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    <span>Hedef ülke</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-navy-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    <span>Ücret ve ödeme planı</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl bg-gradient-to-br from-navy-900 to-navy-800 p-5 shadow-lg text-white">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <h3 className="font-bold text-sm">Güvenli Kayıt</h3>
-                </div>
-                <p className="text-xs text-navy-200 leading-relaxed">
-                  Tüm veriler şifrelenmiş olarak saklanır ve sadece yetkili kullanıcılar tarafından görüntülenebilir.
-                </p>
-              </div>
-            </aside>
           </div>
         </div>
       </div>
