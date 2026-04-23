@@ -18,7 +18,7 @@ const styles = StyleSheet.create({
     fontFamily: "NotoSans",
     fontSize: 9,
     paddingTop: 0,
-    paddingBottom: 48,
+    paddingBottom: 56,
     paddingHorizontal: 0,
     color: COLORS.navy,
   },
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.navy,
     paddingVertical: 14,
     paddingHorizontal: 40,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   headerBrand: { color: "#94a3b8", fontSize: 8, letterSpacing: 1.2, marginBottom: 4 },
   headerTitle: { color: "#ffffff", fontSize: 18, fontWeight: "bold" },
@@ -37,57 +37,66 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.card,
     padding: 10,
-    marginBottom: 16,
+    marginBottom: 14,
     borderRadius: 2,
   },
   scopeTitle: { fontSize: 8, fontWeight: "bold", color: COLORS.slate, marginBottom: 4 },
   scopeText: { fontSize: 8, color: COLORS.muted, lineHeight: 1.45 },
-  kpiGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 14 },
+  kpiGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 12 },
   kpiCard: {
     width: "48%",
-    marginBottom: 10,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 2,
-    padding: 10,
+    padding: 9,
     backgroundColor: COLORS.white,
   },
-  kpiLabel: { fontSize: 7, color: COLORS.muted, textTransform: "uppercase", marginBottom: 4, letterSpacing: 0.5 },
-  kpiValue: { fontSize: 15, fontWeight: "bold", color: COLORS.navy },
-  kpiHint: { fontSize: 7, color: COLORS.muted, marginTop: 3 },
+  kpiLabel: { fontSize: 7, color: COLORS.muted, textTransform: "uppercase", marginBottom: 3, letterSpacing: 0.5 },
+  kpiValue: { fontSize: 14, fontWeight: "bold", color: COLORS.navy },
+  kpiHint: { fontSize: 7, color: COLORS.muted, marginTop: 2 },
   ciroBox: {
     borderWidth: 1,
     borderColor: COLORS.navyMid,
     backgroundColor: "#f0f4f8",
-    padding: 12,
-    marginBottom: 18,
+    padding: 11,
+    marginBottom: 16,
     borderRadius: 2,
   },
-  ciroTitle: { fontSize: 9, fontWeight: "bold", color: COLORS.navyMid, marginBottom: 6 },
-  ciroAmount: { fontSize: 11, color: COLORS.navy, lineHeight: 1.5 },
-  sectionBlock: { marginBottom: 14 },
+  ciroTitle: { fontSize: 9, fontWeight: "bold", color: COLORS.navyMid, marginBottom: 5 },
+  ciroAmount: { fontSize: 10.5, color: COLORS.navy, lineHeight: 1.45 },
+  sectionBlock: { marginBottom: 12 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
-    paddingBottom: 4,
+    marginBottom: 6,
+    paddingBottom: 3,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.navyMid,
   },
   sectionNum: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     backgroundColor: COLORS.navyMid,
     borderRadius: 2,
     color: "#fff",
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "bold",
     textAlign: "center",
-    paddingTop: 4,
-    marginRight: 8,
+    paddingTop: 3,
+    marginRight: 7,
   },
-  sectionTitle: { fontSize: 11, fontWeight: "bold", color: COLORS.navy },
+  sectionTitle: { fontSize: 10.5, fontWeight: "bold", color: COLORS.navy },
   sectionHint: { fontSize: 7, color: COLORS.muted, marginTop: 2 },
+  sectionDivider: {
+    marginTop: 14,
+    marginBottom: 10,
+    paddingTop: 10,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.navyMid,
+  },
+  sectionDividerTitle: { fontSize: 10.5, fontWeight: "bold", color: COLORS.navy },
+  sectionDividerSub: { fontSize: 7.5, color: COLORS.muted, marginTop: 2 },
   tableFrame: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -97,45 +106,47 @@ const styles = StyleSheet.create({
   th: {
     flexDirection: "row",
     backgroundColor: COLORS.navyMid,
-    paddingVertical: 7,
-    paddingHorizontal: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 5,
   },
   thText: { fontSize: 7.5, fontWeight: "bold", color: "#e2e8f0" },
-  row: { flexDirection: "row", paddingVertical: 5, paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" },
+  row: { flexDirection: "row", paddingVertical: 4, paddingHorizontal: 5, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" },
   rowAlt: { backgroundColor: COLORS.stripe },
-  cell: { fontSize: 8, color: COLORS.navy },
-  cellNum: { fontSize: 8, color: COLORS.navy, textAlign: "right" },
+  cell: { fontSize: 7.5, color: COLORS.navy },
+  cellNum: { fontSize: 7.5, color: COLORS.navy, textAlign: "right" },
   totalRow: {
     flexDirection: "row",
-    paddingVertical: 7,
-    paddingHorizontal: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 5,
     backgroundColor: "#e2e8f0",
     borderTopWidth: 1.5,
     borderTopColor: COLORS.navyMid,
   },
-  totalCell: { fontSize: 8.5, fontWeight: "bold", color: COLORS.navy },
+  totalCell: { fontSize: 8, fontWeight: "bold", color: COLORS.navy },
   legend: {
-    marginTop: 12,
-    padding: 8,
+    marginTop: 10,
+    marginBottom: 4,
+    padding: 7,
     borderWidth: 1,
     borderColor: "#e2e8f0",
     backgroundColor: "#fafafa",
     borderRadius: 2,
   },
-  legendTitle: { fontSize: 7.5, fontWeight: "bold", color: COLORS.slate, marginBottom: 4 },
-  legendLine: { fontSize: 7, color: COLORS.muted, marginBottom: 2, lineHeight: 1.35 },
-  footer: {
+  legendTitle: { fontSize: 7.5, fontWeight: "bold", color: COLORS.slate, marginBottom: 3 },
+  legendLine: { fontSize: 6.5, color: COLORS.muted, marginBottom: 2, lineHeight: 1.35 },
+  truncateNote: { fontSize: 6.5, color: COLORS.muted, marginTop: 5 },
+  footerFixed: {
     position: "absolute",
-    bottom: 16,
+    bottom: 14,
     left: 40,
     right: 40,
+    fontSize: 7,
+    color: COLORS.muted,
+    textAlign: "center",
     borderTopWidth: 0.5,
     borderTopColor: COLORS.border,
-    paddingTop: 8,
+    paddingTop: 6,
   },
-  footerText: { fontSize: 7, color: COLORS.muted, textAlign: "center" },
-  pageNum: { fontSize: 7, color: COLORS.muted, textAlign: "right", marginTop: 4 },
-  truncateNote: { fontSize: 7, color: COLORS.muted, marginTop: 6 },
 });
 
 function fmtMoney(b: SummaryBucket["revenue"]) {
@@ -148,7 +159,7 @@ function fmtMoney(b: SummaryBucket["revenue"]) {
 
 type CountryRow = MonthlySummary["byCountry"][number];
 
-function CountryTableFixed({ rows, startIndex }: { rows: CountryRow[]; startIndex: number }) {
+function CountryTableRows({ rows, startIndex }: { rows: CountryRow[]; startIndex: number }) {
   return (
     <View style={styles.tableFrame}>
       <View style={styles.th}>
@@ -162,7 +173,7 @@ function CountryTableFixed({ rows, startIndex }: { rows: CountryRow[]; startInde
       {rows.map((r, i) => {
         const globalI = startIndex + i;
         return (
-          <View key={r.key} style={[styles.row, globalI % 2 === 1 ? styles.rowAlt : {}]} wrap={false}>
+          <View key={r.key} style={[styles.row, globalI % 2 === 1 ? styles.rowAlt : {}]}>
             <Text style={[styles.cell, { width: "30%" }]}>{r.label}</Text>
             <Text style={[styles.cellNum, { width: "11%" }]}>{r.total}</Text>
             <Text style={[styles.cellNum, { width: "11%" }]}>{r.approved}</Text>
@@ -183,20 +194,21 @@ export type MonthlySummaryPdfDocumentProps = {
   showPersonelTotals?: boolean;
 };
 
+/**
+ * Tek `<Page>`: react-pdf içinde birden fazla `<Page>` kullanılırsa ilki taşınca araya boş devam
+ * sayfası girebiliyor. Tüm içerik tek sayfa bileşeninde akar; gerektiğinde PDF otomatik böler.
+ */
 export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlySummaryPdfDocumentProps) {
   const o = data.overall;
   const avg = o.avgDaysToResult != null ? `${o.avgDaysToResult} gün` : "—";
   const staffTotals = showPersonelTotals ? sumStaffBuckets(data.byStaff) : null;
   const generated = new Date(data.generatedAt).toLocaleString("tr-TR");
-
-  const countriesP1 = data.byCountry.slice(0, 14);
-  const countriesP2 = data.byCountry.slice(14, 28);
+  const countryRows = data.byCountry.slice(0, 28);
 
   return (
     <Document title={`Fox Turizm — Aylık vize özeti ${data.monthLabelTr}`} author="Fox Turizm">
-      {/* Sayfa 1 — özet + ülke (üst dilim) */}
       <Page size="A4" style={styles.page}>
-        <View style={styles.headerBand}>
+        <View style={styles.headerBand} wrap={false}>
           <Text style={styles.headerBrand}>FOX TURİZM · VİZE OPERASYON</Text>
           <Text style={styles.headerTitle}>Aylık vize özeti</Text>
           <Text style={styles.headerSub}>{data.monthLabelTr}</Text>
@@ -249,13 +261,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
                 <Text style={styles.sectionHint}>Her satır bir hedef ülke; sayılar o ülkedeki sonuçlanan dosyalara göredir.</Text>
               </View>
             </View>
-            <CountryTableFixed rows={countriesP1} startIndex={0} />
-            {countriesP2.length > 0 && (
-              <>
-                <View style={{ height: 10 }} />
-                <CountryTableFixed rows={countriesP2} startIndex={14} />
-              </>
-            )}
+            <CountryTableRows rows={countryRows} startIndex={0} />
             {data.byCountry.length > 28 && (
               <Text style={styles.truncateNote}>
                 Tablo toplam {data.byCountry.length} ülkeyi kapsar; PDF’de ilk 28 satır gösterilir. Tam liste için
@@ -270,23 +276,12 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
             <Text style={styles.legendLine}>• Onay oranı: Onaylı dosya ÷ tüm sonuçlanan dosya</Text>
             <Text style={styles.legendLine}>• Ort. süre: İlgili dosyalar için gün cinsinden ortalama bekleme süresi</Text>
           </View>
-        </View>
 
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>Fox Turizm · Gizli / iç kullanım · Oluşturulma: {generated}</Text>
-          <Text style={styles.pageNum}>Sayfa 1 / 2</Text>
-        </View>
-      </Page>
+          <View style={styles.sectionDivider}>
+            <Text style={styles.sectionDividerTitle}>Personel ve ciro</Text>
+            <Text style={styles.sectionDividerSub}>{data.monthLabelTr} — bölüm 2</Text>
+          </View>
 
-      {/* Sayfa 2 — personel + ciro */}
-      <Page size="A4" style={styles.page}>
-        <View style={[styles.headerBand, { marginBottom: 16 }]}>
-          <Text style={styles.headerBrand}>FOX TURİZM · DEVAM</Text>
-          <Text style={styles.headerTitle}>{data.monthLabelTr}</Text>
-          <Text style={styles.headerSub}>Personel ve ciro detayı</Text>
-        </View>
-
-        <View style={styles.body}>
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionNum}>2</Text>
@@ -305,7 +300,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
                 <Text style={[styles.thText, { width: "18%", textAlign: "right" }]}>Ort. süre</Text>
               </View>
               {data.byStaff.map((r, i) => (
-                <View key={r.staffId} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]} wrap={false}>
+                <View key={r.staffId} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]}>
                   <Text style={[styles.cell, { width: "34%" }]}>{r.staffName}</Text>
                   <Text style={[styles.cellNum, { width: "11%" }]}>{r.total}</Text>
                   <Text style={[styles.cellNum, { width: "11%" }]}>{r.approved}</Text>
@@ -317,7 +312,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
                 </View>
               ))}
               {staffTotals && (
-                <View style={styles.totalRow} wrap={false}>
+                <View style={styles.totalRow}>
                   <Text style={[styles.totalCell, { width: "34%" }]}>TOPLAM (tüm personel)</Text>
                   <Text style={[styles.totalCell, { width: "11%", textAlign: "right" }]}>{staffTotals.total}</Text>
                   <Text style={[styles.totalCell, { width: "11%", textAlign: "right" }]}>{staffTotals.approved}</Text>
@@ -333,7 +328,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
             </View>
           </View>
 
-          <View style={[styles.sectionBlock, { marginTop: 6 }]}>
+          <View style={[styles.sectionBlock, { marginTop: 8 }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionNum}>3</Text>
               <View style={{ flex: 1 }}>
@@ -349,7 +344,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
               {data.byCountry.slice(0, 22).map((r, i) => (
                 <View key={`rev-${r.key}`} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]}>
                   <Text style={[styles.cell, { width: "32%" }]}>{r.label}</Text>
-                  <Text style={[styles.cell, { width: "68%", fontSize: 7.5 }]}>{fmtMoney(r.revenue)}</Text>
+                  <Text style={[styles.cell, { width: "68%", fontSize: 7 }]}>{fmtMoney(r.revenue)}</Text>
                 </View>
               ))}
             </View>
@@ -361,10 +356,13 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
           </View>
         </View>
 
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>Fox Turizm · Gizli / iç kullanım · Oluşturulma: {generated}</Text>
-          <Text style={styles.pageNum}>Sayfa 2 / 2</Text>
-        </View>
+        <Text
+          style={styles.footerFixed}
+          fixed
+          render={({ pageNumber, totalPages }) =>
+            `Fox Turizm · Gizli / iç kullanım · Oluşturulma: ${generated} · Sayfa ${pageNumber} / ${totalPages ?? "—"}`
+          }
+        />
       </Page>
     </Document>
   );
