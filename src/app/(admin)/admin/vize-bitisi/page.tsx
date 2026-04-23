@@ -20,6 +20,21 @@ function getDaysUntil(dateStr: string) {
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function isChinaCountry(ulke: string | null | undefined): boolean {
+  if (!ulke) return false;
+  const normalized = String(ulke)
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/İ/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
+    .trim();
+  return normalized === "cin" || normalized === "china";
+}
+
 export default function AdminVizeBitisiPage() {
   const [files, setFiles] = useState<VisaFileWithProfile[]>([]);
   const [staff, setStaff] = useState<Profile[]>([]);
@@ -43,7 +58,7 @@ export default function AdminVizeBitisiPage() {
       .select("*")
       .eq("role", "staff");
 
-    const visible = (data || []).filter((f: VisaFileWithProfile) => !(f as any).vize_bitisi_gizli);
+    const visible = (data || []).filter((f: VisaFileWithProfile) => !(f as any).vize_bitisi_gizli && !isChinaCountry(f.hedef_ulke));
     setFiles(visible);
     setStaff(staffData || []);
     setLoading(false);

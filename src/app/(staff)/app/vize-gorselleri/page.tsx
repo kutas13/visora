@@ -41,7 +41,7 @@ export default function VizeGorselleriPage() {
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [tab, setTab] = useState<"visa" | "uploads">("visa");
+  const [filterKind, setFilterKind] = useState<"all" | "visa" | "upload">("all");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -101,26 +101,44 @@ export default function VizeGorselleriPage() {
     Promise.all([loadFiles(), loadUploads()]).finally(() => setLoading(false));
   }, [loadFiles, loadUploads]);
 
-  const filteredFiles = useMemo(() => {
-    let result = files;
-    if (filterCountry !== "all") result = result.filter(f => f.hedef_ulke === filterCountry);
+  const combined = useMemo<GalleryItem[]>(() => {
+    const visaItems: GalleryItem[] = files.map(f => ({ kind: "visa", file: f }));
+    const uploadItems: GalleryItem[] = uploads.map(u => ({ kind: "upload", upload: u }));
+    const all = [...visaItems, ...uploadItems];
+    all.sort((a, b) => {
+      const aDate = a.kind === "visa"
+        ? (a.file.sonuc_tarihi || a.file.created_at || "")
+        : a.upload.created_at;
+      const bDate = b.kind === "visa"
+        ? (b.file.sonuc_tarihi || b.file.created_at || "")
+        : b.upload.created_at;
+      return new Date(bDate).getTime() - new Date(aDate).getTime();
+    });
+    return all;
+  }, [files, uploads]);
+
+  const filteredAll = useMemo<GalleryItem[]>(() => {
+    let result = combined;
+
+    if (filterKind === "visa") result = result.filter(i => i.kind === "visa");
+    else if (filterKind === "upload") result = result.filter(i => i.kind === "upload");
+
+    if (filterCountry !== "all") {
+      result = result.filter(i => i.kind === "visa" && i.file.hedef_ulke === filterCountry);
+    }
+
     if (search.trim().length >= 2) {
       const term = norm(search.trim());
-      result = result.filter(f => norm(f.musteri_ad).includes(term) || norm(f.pasaport_no).includes(term));
-      result.sort((a, b) => {
-        const aStart = norm(a.musteri_ad).startsWith(term) ? 0 : 1;
-        const bStart = norm(b.musteri_ad).startsWith(term) ? 0 : 1;
-        return aStart - bStart;
+      result = result.filter(i => {
+        if (i.kind === "visa") {
+          return norm(i.file.musteri_ad).includes(term) || norm(i.file.pasaport_no).includes(term);
+        }
+        return norm(i.upload.gorsel_adi).includes(term);
       });
     }
-    return result;
-  }, [files, search, filterCountry]);
 
-  const filteredUploads = useMemo(() => {
-    if (search.trim().length < 2) return uploads;
-    const term = norm(search.trim());
-    return uploads.filter(u => norm(u.gorsel_adi).includes(term));
-  }, [uploads, search]);
+    return result;
+  }, [combined, filterKind, filterCountry, search]);
 
   const countries = useMemo(() => {
     const set = new Set(files.map(f => f.hedef_ulke));
@@ -258,7 +276,6 @@ export default function VizeGorselleriPage() {
         setPendingPreviews([]);
         setShowUploadModal(false);
         await loadUploads();
-        setTab("uploads");
       }
 
       if (errors.length > 0) {
@@ -366,37 +383,42 @@ export default function VizeGorselleriPage() {
         </div>
       </div>
 
-      {/* Tab Seçimi */}
-      <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-        <button
-          onClick={() => setTab("visa")}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === "visa" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-        >
-          Vize Dosyaları
-          {files.length > 0 && <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600">{files.length}</span>}
-        </button>
-        <button
-          onClick={() => setTab("uploads")}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === "uploads" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-        >
-          Yüklenen Görseller
-          {uploads.length > 0 && <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-xs bg-purple-100 text-purple-600">{uploads.length}</span>}
-        </button>
-      </div>
-
       {/* Filtreler */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input
             type="text"
-            placeholder={tab === "visa" ? "Müşteri adı veya pasaport no..." : "Görsel adı ara..."}
+            placeholder="Müşteri adı, pasaport no veya görsel adı..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
           />
         </div>
-        {tab === "visa" && (
+
+        {/* Tür filtresi */}
+        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+          <button
+            onClick={() => setFilterKind("all")}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${filterKind === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Tümü <span className="ml-1 text-[10px] text-slate-400">({files.length + uploads.length})</span>
+          </button>
+          <button
+            onClick={() => setFilterKind("visa")}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${filterKind === "visa" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Vize <span className="ml-1 text-[10px] text-slate-400">({files.length})</span>
+          </button>
+          <button
+            onClick={() => setFilterKind("upload")}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${filterKind === "upload" ? "bg-white text-purple-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Yüklenen <span className="ml-1 text-[10px] text-slate-400">({uploads.length})</span>
+          </button>
+        </div>
+
+        {filterKind !== "upload" && countries.length > 0 && (
           <select
             value={filterCountry}
             onChange={e => setFilterCountry(e.target.value)}
@@ -406,26 +428,28 @@ export default function VizeGorselleriPage() {
             {countries.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         )}
+
         <div className="text-xs text-slate-400">
-          {tab === "visa" ? `${filteredFiles.length} / ${files.length}` : `${filteredUploads.length} / ${uploads.length}`} görsel
+          {filteredAll.length} / {combined.length} görsel
         </div>
       </div>
 
-      {/* Vize Dosyaları Tab */}
-      {tab === "visa" && (
-        <>
-          {filteredFiles.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
-              <div className="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              </div>
-              <p className="text-sm font-medium text-slate-600">Vize görseli bulunamadı</p>
-              <p className="text-xs text-slate-400 mt-1">Onaylanan dosyalara eklenen görseller burada görünür</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredFiles.map(file => (
-                <div key={file.id} className="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200">
+      {/* Birleşik Grid */}
+      {filteredAll.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
+          <div className="w-16 h-16 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+          </div>
+          <p className="text-sm font-medium text-slate-600">Görsel bulunamadı</p>
+          <p className="text-xs text-slate-400 mt-1">Onaylı vize dosyalarından veya yüklediğiniz görsellerden hiçbiri eşleşmiyor</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredAll.map(item => {
+            if (item.kind === "visa") {
+              const file = item.file;
+              return (
+                <div key={`v-${file.id}`} className="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200">
                   <div className="relative aspect-[3/4] bg-slate-50 cursor-pointer overflow-hidden" onClick={() => setLightbox({ kind: "visa", file })}>
                     <img src={file.vize_gorseli!} alt={`${file.musteri_ad} - ${file.hedef_ulke}`} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -435,7 +459,8 @@ export default function VizeGorselleriPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute top-2 left-2 flex items-center gap-1">
+                      <span className="px-1.5 py-0.5 bg-blue-500/90 backdrop-blur text-white text-[9px] font-bold rounded uppercase tracking-wider">Vize</span>
                       <span className="px-2 py-1 bg-black/50 backdrop-blur text-white text-[10px] font-medium rounded-md">{file.hedef_ulke}</span>
                     </div>
                   </div>
@@ -450,85 +475,70 @@ export default function VizeGorselleriPage() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+              );
+            }
 
-      {/* Yüklenen Görseller Tab */}
-      {tab === "uploads" && (
-        <>
-          {filteredUploads.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-16 text-center">
-              <div className="w-16 h-16 bg-purple-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-7 h-7 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-              </div>
-              <p className="text-sm font-medium text-slate-600">Henüz görsel yüklenmedi</p>
-              <p className="text-xs text-slate-400 mt-1">Yukarıdaki "Görsel Yükle" butonuna tıklayarak görsel ekleyebilirsiniz</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredUploads.map(u => (
-                <div key={u.id} className="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200">
-                  <div className="relative aspect-[3/4] bg-slate-50 cursor-pointer overflow-hidden" onClick={() => setLightbox({ kind: "upload", upload: u })}>
-                    <img src={u.gorsel_url} alt={u.gorsel_adi} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg">
-                          <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
-                        </div>
+            const u = item.upload;
+            return (
+              <div key={`u-${u.id}`} className="group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200">
+                <div className="relative aspect-[3/4] bg-slate-50 cursor-pointer overflow-hidden" onClick={() => setLightbox({ kind: "upload", upload: u })}>
+                  <img src={u.gorsel_url} alt={u.gorsel_adi} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg">
+                        <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
                       </div>
-                    </div>
-                    <div className="absolute top-2 left-2">
-                      <span className="px-2 py-1 bg-purple-500/80 backdrop-blur text-white text-[10px] font-medium rounded-md">#{u.sira_no}</span>
                     </div>
                   </div>
-                  <div className="p-3">
-                    {editingId === u.id ? (
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editName}
-                          onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => { if (e.key === "Enter") handleRename(u.id, editName); if (e.key === "Escape") setEditingId(null); }}
-                          className="flex-1 px-2 py-1 text-sm border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500/30"
-                        />
-                        <button onClick={() => handleRename(u.id, editName)} className="p-1 rounded text-green-600 hover:bg-green-50">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="p-1 rounded text-slate-400 hover:bg-slate-50">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="text-sm font-semibold text-slate-800 truncate">{u.gorsel_adi}</p>
-                    )}
-                    <p className="text-[11px] text-slate-400 mt-0.5">{formatDate(u.created_at)}</p>
-                    <div className="flex items-center justify-between mt-2.5">
-                      <button
-                        onClick={() => { setEditingId(u.id); setEditName(u.gorsel_adi); }}
-                        className="p-1.5 rounded-md text-slate-400 hover:bg-purple-50 hover:text-purple-600 transition-colors"
-                        title="İsim Değiştir"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  <div className="absolute top-2 left-2 flex items-center gap-1">
+                    <span className="px-1.5 py-0.5 bg-purple-500/90 backdrop-blur text-white text-[9px] font-bold rounded uppercase tracking-wider">Yüklenen</span>
+                    <span className="px-2 py-1 bg-black/50 backdrop-blur text-white text-[10px] font-medium rounded-md">#{u.sira_no}</span>
+                  </div>
+                </div>
+                <div className="p-3">
+                  {editingId === u.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        ref={editInputRef}
+                        type="text"
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") handleRename(u.id, editName); if (e.key === "Escape") setEditingId(null); }}
+                        className="flex-1 px-2 py-1 text-sm border border-purple-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+                      />
+                      <button onClick={() => handleRename(u.id, editName)} className="p-1 rounded text-green-600 hover:bg-green-50">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                       </button>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => handleDownload(u.gorsel_url, u.gorsel_adi)} className="p-1.5 rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="İndir">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        </button>
-                        <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Sil">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
+                      <button onClick={() => setEditingId(null)} className="p-1 rounded text-slate-400 hover:bg-slate-50">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-800 truncate">{u.gorsel_adi}</p>
+                  )}
+                  <p className="text-[11px] text-slate-400 mt-0.5">{formatDate(u.created_at)}</p>
+                  <div className="flex items-center justify-between mt-2.5">
+                    <button
+                      onClick={() => { setEditingId(u.id); setEditName(u.gorsel_adi); }}
+                      className="p-1.5 rounded-md text-slate-400 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                      title="İsim Değiştir"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleDownload(u.gorsel_url, u.gorsel_adi)} className="p-1.5 rounded-md text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="İndir">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                      </button>
+                      <button onClick={() => handleDelete(u.id)} className="p-1.5 rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Sil">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Lightbox */}

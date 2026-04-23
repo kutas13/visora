@@ -18,6 +18,9 @@ const AIAssistant = dynamic(() => import("@/components/ai/AIAssistant"), {
 
 const ZAFER_ALLOWED_HREFS = ["/app/randevu-listesi", "/app/randevu-raporlari"];
 
+// Prim Takibi sadece bu 3 personele açık
+const PRIM_ALLOWED_NAMES = ["BAHAR", "ERCAN", "YUSUF"];
+
 const menuGroups = [
   {
     title: "Ana Menü",
@@ -47,6 +50,11 @@ const menuGroups = [
         href: "/app/files",
         label: "Vize Dosyaları",
         icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+      },
+      {
+        href: "/app/musteriler",
+        label: "Müşterilerim",
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
       },
       {
         href: "/app/vize-gorselleri",
@@ -118,6 +126,12 @@ const menuGroups = [
         label: "Randevu Raporları",
         icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
       },
+      {
+        href: "/app/prim-takibi",
+        label: "Prim Takibi",
+        restrictTo: PRIM_ALLOWED_NAMES,
+        icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+      },
     ],
   },
 ];
@@ -125,6 +139,7 @@ const menuGroups = [
 export default function StaffSidebar() {
   const pathname = usePathname();
   const [isZafer, setIsZafer] = useState(false);
+  const [userName, setUserName] = useState<string>("");
   const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
@@ -132,13 +147,23 @@ export default function StaffSidebar() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       supabase.from("profiles").select("name").eq("id", user.id).single().then(({ data }) => {
-        if (data?.name === "ZAFER") setIsZafer(true);
+        if (data?.name) {
+          setUserName(data.name);
+          if (data.name === "ZAFER") setIsZafer(true);
+        }
       });
     });
   }, []);
 
   const allItems = menuGroups.flatMap(g => g.items);
   const zaferItems = allItems.filter(item => ZAFER_ALLOWED_HREFS.includes(item.href));
+
+  const canSeeItem = (item: any) => {
+    if (item.restrictTo && Array.isArray(item.restrictTo)) {
+      return item.restrictTo.includes(userName);
+    }
+    return true;
+  };
 
   return (
     <aside className="h-full w-[260px] bg-[#0b1120] flex flex-col border-r border-white/[0.06]">
@@ -179,12 +204,15 @@ export default function StaffSidebar() {
             })}
           </div>
         ) : (
-          menuGroups.map((group, gi) => (
+          menuGroups.map((group, gi) => {
+            const visibleItems = group.items.filter(canSeeItem);
+            if (visibleItems.length === 0) return null;
+            return (
             <div key={gi} className={gi > 0 ? "mt-3" : ""}>
               <p className="px-2.5 mb-1 text-[9px] font-bold uppercase tracking-[0.15em] text-slate-600">
                 {group.title}
               </p>
-              {group.items.map((item) => {
+              {visibleItems.map((item) => {
                 const exact = "exact" in item && item.exact;
                 const isActive = exact ? pathname === item.href : pathname.startsWith(item.href);
                 return (
@@ -203,7 +231,8 @@ export default function StaffSidebar() {
                 );
               })}
             </div>
-          ))
+            );
+          })
         )}
       </nav>
 

@@ -89,8 +89,19 @@ export interface VisaFile {
   vize_gorseli: string | null;
   eski_pasaport: boolean;
   vize_bitisi_gizli?: boolean;
+  prim_tarihi?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Prim/Komisyon oranı (ülke bazlı)
+export interface CommissionRate {
+  id: string;
+  country: string;
+  amount: number;
+  currency: "EUR" | "USD" | "TL";
+  updated_at: string;
+  updated_by: string | null;
 }
 
 // Grup

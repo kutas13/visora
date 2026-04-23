@@ -25,6 +25,21 @@ function formatDate(date: Date | string): string {
   return d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function isChinaCountry(ulke: string | null | undefined): boolean {
+  if (!ulke) return false;
+  const normalized = String(ulke)
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/İ/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
+    .trim();
+  return normalized === "cin" || normalized === "china";
+}
+
 // Bildirim oluştur (unique_key ile idempotent)
 async function createNotification(data: {
   user_id: string;
@@ -207,8 +222,9 @@ export async function POST(request: NextRequest) {
 
       // ==========================================
       // KURAL 5: Vize bitiş hatırlatmaları (60, 50, 40, 30, 20, 10 gün)
+      // Çin dosyaları için bu bildirim gönderilmez
       // ==========================================
-      if (file.sonuc === "vize_onay" && file.vize_bitis_tarihi) {
+      if (file.sonuc === "vize_onay" && file.vize_bitis_tarihi && !isChinaCountry(file.hedef_ulke)) {
         const vizeBitisDate = new Date(file.vize_bitis_tarihi);
         const daysRemaining = diffDays(today, vizeBitisDate);
         const thresholds = [60, 50, 40, 30, 20, 10];

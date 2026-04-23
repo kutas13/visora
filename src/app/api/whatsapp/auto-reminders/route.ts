@@ -6,6 +6,22 @@ import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER } from "@/lib/consta
 
 export const dynamic = "force-dynamic";
 
+// Çin dosyalarını kontrol et (Çin, Cin, ÇİN, CHINA vs. tüm varyantlar)
+function isChinaCountry(ulke: string | null | undefined): boolean {
+  if (!ulke) return false;
+  const normalized = String(ulke)
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/İ/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
+    .trim();
+  return normalized === "cin" || normalized === "china";
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Origin ve rate limit kontrolü
@@ -145,9 +161,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Müşteri verileri alınamadı." }, { status: 500 });
       }
 
-      // Telefon numarası olan müşterileri filtrele
-      const customersWithPhone = (data || []).filter(f => f.musteri_telefon && f.musteri_telefon.length >= 10);
-      console.log(`Toplam vize bitiş: ${data?.length || 0}, telefon numarası olan: ${customersWithPhone.length}`);
+      // Çin dosyalarını hariç tut ve telefonu olanları filtrele
+      const withoutChina = (data || []).filter(f => !isChinaCountry(f.hedef_ulke));
+      const customersWithPhone = withoutChina.filter(f => f.musteri_telefon && f.musteri_telefon.length >= 10);
+      const chinaExcluded = (data?.length || 0) - withoutChina.length;
+      console.log(`Toplam vize bitiş: ${data?.length || 0}, Çin hariç: ${withoutChina.length} (atlanan Çin: ${chinaExcluded}), telefon numarası olan: ${customersWithPhone.length}`);
       
       // Her müşteriye kendi bilgisiyle mesaj gönder (5 günde bir limit)
       let sentCount = 0;
@@ -268,7 +286,8 @@ ${personelHitap} — ${personelTelefon}
         .lte("vize_bitis_tarihi", thirtyDaysLater.toISOString())
         .order("vize_bitis_tarihi", { ascending: true });
 
-      targetFiles = data || [];
+      // Çin dosyaları listeden hariç tut
+      targetFiles = (data || []).filter(f => !isChinaCountry(f.hedef_ulke));
 
       messageText = `🛂 *VİZE BİTİŞ TAKİBİ*\n`;
       messageText += `30 gün içinde süresi dolacak vizeler\n`;
