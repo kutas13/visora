@@ -18,6 +18,7 @@ const pageTitles: Record<string, string> = {
   "/admin/atamalar": "iDATA Atamaları",
   "/admin/cari-hesap": "Cari Hesap",
   "/admin/gunluk-raporlar": "Günlük Raporlar",
+  "/admin/aylik-ozet-rapor": "Aylık vize özeti",
   "/admin/logs": "Sistem Logları",
   "/admin/whatsapp": "WhatsApp Yönetimi",
 };

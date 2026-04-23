@@ -22,6 +22,7 @@ const pageTitles: Record<string, string> = {
   "/app/randevu-listesi": "Randevu Alınacak",
   "/app/randevu-raporlari": "Randevu Raporları",
   "/app/musteriler": "Müşterilerim",
+  "/app/aylik-ozet-rapor": "Aylık özet raporu",
 };
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
