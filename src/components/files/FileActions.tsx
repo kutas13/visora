@@ -502,7 +502,7 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
             <Button type="button" variant="outline" onClick={() => setShowIslemeGirdiModal(false)} className="flex-1" disabled={isLoading}>
               İptal
             </Button>
-            <Button type="button" onClick={handleIslemeGirdiKaydet} className="flex-1" disabled={isLoading || actionInProgress !== null}>
+            <Button type="button" onClick={() => handleIslemeGirdiKaydet()} className="flex-1" disabled={isLoading || actionInProgress !== null}>
               {isLoading ? "Kaydediliyor..." : "İşleme Al"}
             </Button>
           </div>
