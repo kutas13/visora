@@ -71,21 +71,32 @@ export default function LoginPage() {
     }
   }, [gateVisible, gateClosed]);
 
+  const openGate = useCallback(() => {
+    setGateError(false);
+    setGateClosing(true);
+    setTimeout(() => {
+      setGateClosed(true);
+      setGateVisible(false);
+    }, 700);
+  }, []);
+
   const handleGateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (gatePassword === "4750") {
-      setGateError(false);
-      setGateClosing(true);
-      setTimeout(() => {
-        setGateClosed(true);
-        setGateVisible(false);
-      }, 700);
+      openGate();
     } else {
       setGateError(true);
       setGatePassword("");
       gateInputRef.current?.focus();
     }
   };
+
+  // 4750 yazilinca Enter'a basmaya gerek kalmadan otomatik gec
+  useEffect(() => {
+    if (gatePassword === "4750" && !gateClosing && !gateClosed) {
+      openGate();
+    }
+  }, [gatePassword, gateClosing, gateClosed, openGate]);
 
   // Passport query state
   const [passportNo, setPassportNo] = useState("");
