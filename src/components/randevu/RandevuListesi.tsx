@@ -864,7 +864,7 @@ export default function RandevuListesi() {
             Randevu Alınacak
           </h1>
           <p className="text-navy-500 mt-1">
-            {filteredTalepler.length} {showArchived ? "arşivlenmiş" : "aktif"} randevu talebi
+            {filteredTalepler.length} {showArchived ? "alınan randevu" : "aktif"} randevu talebi
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -874,9 +874,9 @@ export default function RandevuListesi() {
             className="shadow-md"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            {showArchived ? "Aktif Talepleri Göster" : "Arşivi Göster"}
+            {showArchived ? "Aktif Talepleri Göster" : "Alınan Randevular"}
           </Button>
           <Button onClick={() => setShowCreateModal(true)} className="shadow-lg">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -929,10 +929,10 @@ export default function RandevuListesi() {
             <span className="text-5xl">📋</span>
           </div>
           <h3 className="text-xl font-bold text-navy-900 mb-2">
-            {showArchived ? "Arşivde Kayıt Yok" : "Henüz Randevu Talebi Yok"}
+            {showArchived ? "Alınan Randevu Yok" : "Henüz Randevu Talebi Yok"}
           </h3>
           <p className="text-navy-500">
-            {showArchived ? "Arşivlenmiş randevu talebi bulunmuyor." : "Yeni bir randevu talebi oluşturun."}
+            {showArchived ? "Henüz alınmış randevu bulunmuyor." : "Yeni bir randevu talebi oluşturun."}
           </p>
         </Card>
       ) : (
@@ -1325,18 +1325,22 @@ export default function RandevuListesi() {
                 <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/60 shadow-sm">
                   <p className="text-sm font-bold text-green-700 mb-3">📎 Randevu Mektubu ({detailDosyalar.length})</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {detailDosyalar.map((g, i) => (
-                      <div key={i} className="relative cursor-pointer group" onClick={() => g.includes("application/pdf") ? window.open(g, "_blank") : setViewerImage(g)}>
-                        {g.includes("application/pdf") || g.endsWith(".pdf") ? (
-                          <div className="w-full h-32 bg-red-50 rounded-xl border border-red-200 flex flex-col items-center justify-center text-red-500">
-                            <span className="text-3xl mb-1">📄</span>
-                            <span className="text-xs font-medium">PDF {i + 1}</span>
-                          </div>
-                        ) : (
-                          <img src={g} alt={`Randevu Dosya ${i + 1}`} className="w-full h-32 object-cover rounded-xl border border-green-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" loading="lazy" />
-                        )}
-                      </div>
-                    ))}
+                    {detailDosyalar.map((g, i) => {
+                      const isPdf = g.includes("application/pdf") || g.toLowerCase().includes(".pdf");
+                      return (
+                        <div key={i} className="relative cursor-pointer group" onClick={() => isPdf ? window.open(g, "_blank", "noopener,noreferrer") : setViewerImage(g)}>
+                          {isPdf ? (
+                            <div className="w-full h-32 bg-red-50 rounded-xl border border-red-200 flex flex-col items-center justify-center text-red-500 hover:bg-red-100 transition-colors">
+                              <span className="text-3xl mb-1">📄</span>
+                              <span className="text-xs font-medium">PDF {i + 1}</span>
+                              <span className="text-[10px] text-red-400 mt-0.5">Görüntülemek için tıkla</span>
+                            </div>
+                          ) : (
+                            <img src={g} alt={`Randevu Dosya ${i + 1}`} className="w-full h-32 object-cover rounded-xl border border-green-200 group-hover:shadow-lg group-hover:scale-[1.02] transition-all" loading="lazy" />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
