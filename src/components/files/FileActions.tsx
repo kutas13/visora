@@ -125,14 +125,22 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
     }
   };
 
+  // Çin + TBD kombinasyonunda tahmini çıkış tarihi sormadan direkt işleme girdi
+  const isChinaTBD = isChina && Array.isArray(file.vize_tipleri) && file.vize_tipleri.includes("TBD");
+
   const openIslemeGirdiModal = () => {
     if (isLoading || actionInProgress) return;
     setTahminiCikisTarihi("");
+    if (isChinaTBD) {
+      void handleIslemeGirdiKaydet("");
+      return;
+    }
     setShowIslemeGirdiModal(true);
   };
 
-  const handleIslemeGirdiKaydet = async () => {
+  const handleIslemeGirdiKaydet = async (overrideDate?: string) => {
     if (isLoading || actionInProgress) return;
+    const effectiveDate = overrideDate !== undefined ? overrideDate : tahminiCikisTarihi;
     setShowIslemeGirdiModal(false);
     setIsLoading(true);
     setActionInProgress("isleme_girdi");
@@ -149,11 +157,11 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       const updateData: Partial<VisaFile> = {
         basvuru_yapildi: true,
         basvuru_yapildi_at: timestamp,
-        tahmini_cikis_tarihi: tahminiCikisTarihi || null,
+        tahmini_cikis_tarihi: effectiveDate || null,
       };
 
-      const cikisText = tahminiCikisTarihi
-        ? ` (tahmini çıkış: ${new Date(tahminiCikisTarihi).toLocaleDateString("tr-TR")})`
+      const cikisText = effectiveDate
+        ? ` (tahmini çıkış: ${new Date(effectiveDate).toLocaleDateString("tr-TR")})`
         : "";
       const logMessage = `${file.musteri_ad} dosyası işleme girdi${cikisText}`;
 
