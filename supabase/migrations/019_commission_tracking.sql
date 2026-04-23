@@ -77,10 +77,14 @@ INSERT INTO public.commission_rates (country, amount, currency) VALUES
   ('Lüksemburg', 10, 'EUR'),
   ('İzlanda', 10, 'EUR'),
   ('Liechtenstein', 10, 'EUR'),
-  -- Diğer
-  ('Çin', 10, 'EUR'),
-  ('ABD', 10, 'EUR')
+  -- USD bazlı ülkeler
+  ('Çin', 10, 'USD'),
+  ('ABD', 10, 'USD')
 ON CONFLICT (country) DO NOTHING;
+
+-- Eğer daha önce Çin/ABD EUR olarak eklendiyse USD'ye çevir
+UPDATE public.commission_rates SET currency = 'USD'
+  WHERE country IN ('Çin', 'ABD') AND currency = 'EUR';
 
 -- 5) schema cache reload
 NOTIFY pgrst, 'reload schema';
