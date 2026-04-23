@@ -97,20 +97,32 @@ const styles = StyleSheet.create({
   },
   sectionDividerTitle: { fontSize: 10.5, fontWeight: "bold", color: COLORS.navy },
   sectionDividerSub: { fontSize: 7.5, color: COLORS.muted, marginTop: 2 },
-  tableFrame: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 2,
-    overflow: "hidden",
-  },
+  tableFrame: {},
   th: {
     flexDirection: "row",
     backgroundColor: COLORS.navyMid,
     paddingVertical: 6,
     paddingHorizontal: 5,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.navyMid,
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.navyMid,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.navyMid,
   },
   thText: { fontSize: 7.5, fontWeight: "bold", color: "#e2e8f0" },
-  row: { flexDirection: "row", paddingVertical: 4, paddingHorizontal: 5, borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" },
+  row: {
+    flexDirection: "row",
+    paddingVertical: 4,
+    paddingHorizontal: 5,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e2e8f0",
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.border,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
+  },
+  rowLast: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
   rowAlt: { backgroundColor: COLORS.stripe },
   cell: { fontSize: 7.5, color: COLORS.navy },
   cellNum: { fontSize: 7.5, color: COLORS.navy, textAlign: "right" },
@@ -173,7 +185,7 @@ function CountryTableRows({ rows, startIndex }: { rows: CountryRow[]; startIndex
       {rows.map((r, i) => {
         const globalI = startIndex + i;
         return (
-          <View key={r.key} style={[styles.row, globalI % 2 === 1 ? styles.rowAlt : {}]}>
+          <View key={r.key} style={[styles.row, globalI % 2 === 1 ? styles.rowAlt : {}]} wrap={false}>
             <Text style={[styles.cell, { width: "30%" }]}>{r.label}</Text>
             <Text style={[styles.cellNum, { width: "11%" }]}>{r.total}</Text>
             <Text style={[styles.cellNum, { width: "11%" }]}>{r.approved}</Text>
@@ -300,7 +312,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
                 <Text style={[styles.thText, { width: "18%", textAlign: "right" }]}>Ort. süre</Text>
               </View>
               {data.byStaff.map((r, i) => (
-                <View key={r.staffId} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]}>
+                <View key={r.staffId} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]} wrap={false}>
                   <Text style={[styles.cell, { width: "34%" }]}>{r.staffName}</Text>
                   <Text style={[styles.cellNum, { width: "11%" }]}>{r.total}</Text>
                   <Text style={[styles.cellNum, { width: "11%" }]}>{r.approved}</Text>
@@ -342,7 +354,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
                 <Text style={[styles.thText, { width: "68%" }]}>Tahsilat özeti</Text>
               </View>
               {data.byCountry.slice(0, 22).map((r, i) => (
-                <View key={`rev-${r.key}`} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]}>
+                <View key={`rev-${r.key}`} style={[styles.row, i % 2 === 1 ? styles.rowAlt : {}]} wrap={false}>
                   <Text style={[styles.cell, { width: "32%" }]}>{r.label}</Text>
                   <Text style={[styles.cell, { width: "68%", fontSize: 7 }]}>{fmtMoney(r.revenue)}</Text>
                 </View>
