@@ -45,6 +45,17 @@ export default function LoginPage() {
   const [gateClosed, setGateClosed] = useState(false);
   const gateInputRef = useRef<HTMLInputElement>(null);
 
+  // Bu tarayicida 4750 gate sifresini daha once girdiyse tekrar sorma.
+  // localStorage her tarayici/cihaz icin ayridir; kullanici bazli degildir.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("fox_gate_passed") === "1") {
+        setGateVisible(false);
+        setGateClosed(true);
+      }
+    } catch { /* localStorage erisim hatasi - gate aciliyor */ }
+  }, []);
+
   // Login state
   const [selectedUser, setSelectedUser] = useState<SelectedUser>(null);
   const [password, setPassword] = useState("");
@@ -72,6 +83,9 @@ export default function LoginPage() {
   }, [gateVisible, gateClosed]);
 
   const openGate = useCallback(() => {
+    try {
+      localStorage.setItem("fox_gate_passed", "1");
+    } catch { /* localStorage erisim hatasi - sadece bu oturum icin acilir */ }
     setGateError(false);
     setGateClosing(true);
     setTimeout(() => {
