@@ -49,6 +49,8 @@ function StaffAvatar({ name, size = 32 }: { name: string; size?: number }) {
   );
 }
 
+type ViewMode = "active" | "islemden_cikti";
+
 export default function AdminFilesPage() {
   const [files, setFiles] = useState<VisaFileWithProfile[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -63,20 +65,41 @@ export default function AdminFilesPage() {
   const [fileToDelete, setFileToDelete] = useState<VisaFileWithProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("active");
+  const [islemdenCiktiCount, setIslemdenCiktiCount] = useState<number>(0);
 
-  const loadData = async () => {
+  const loadData = async (mode: ViewMode = viewMode) => {
+    setLoading(true);
     const supabase = createClient();
 
-    const [filesRes, profilesRes] = await Promise.all([
-      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").is("sonuc", null).order("created_at", { ascending: false }),
+    const filesQuery =
+      mode === "islemden_cikti"
+        ? supabase
+            .from("visa_files")
+            .select("*, profiles:assigned_user_id(name)")
+            .eq("islemden_cikti", true)
+            .order("islemden_cikti_at", { ascending: false })
+        : supabase
+            .from("visa_files")
+            .select("*, profiles:assigned_user_id(name)")
+            .is("sonuc", null)
+            .order("created_at", { ascending: false });
+
+    const [filesRes, profilesRes, islemdenCiktiCountRes] = await Promise.all([
+      filesQuery,
       supabase.from("profiles").select("*").eq("role", "staff"),
+      supabase
+        .from("visa_files")
+        .select("id", { count: "exact", head: true })
+        .eq("islemden_cikti", true),
     ]);
     setFiles(filesRes.data || []);
     setProfiles(profilesRes.data || []);
+    setIslemdenCiktiCount(islemdenCiktiCountRes.count || 0);
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(viewMode); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [viewMode]);
 
   const handleTransfer = async () => {
     if (!selectedFile || !newAssignee) return;
@@ -98,7 +121,7 @@ export default function AdminFilesPage() {
       setShowTransferModal(false);
       setSelectedFile(null);
       setNewAssignee("");
-      loadData();
+      loadData(viewMode);
     } catch (err) {
       console.error(err);
       alert("Transfer sırasında hata oluştu");
@@ -119,7 +142,7 @@ export default function AdminFilesPage() {
       if (!res.ok) { const data = await res.json().catch(() => null); throw new Error(data?.error || "Dosya silinemedi."); }
       setShowDeleteModal(false);
       setFileToDelete(null);
-      loadData();
+      loadData(viewMode);
     } catch (err) {
       console.error("Silme hatası:", err);
       alert("Dosya silinirken hata oluştu");
@@ -154,7 +177,12 @@ export default function AdminFilesPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800">Vize Dosyaları</h1>
-            <p className="text-slate-500 text-sm">Tüm personellerin dosyalarını görüntüleyin, filtreleyin, düzenleyin ve işlem yapın &middot; {files.length} dosya</p>
+            <p className="text-slate-500 text-sm">
+              {viewMode === "islemden_cikti"
+                ? "İşlemden çıkmış dosyalar"
+                : "Tüm personellerin dosyalarını görüntüleyin, filtreleyin, düzenleyin ve işlem yapın"}
+              &nbsp;&middot;&nbsp;{files.length} dosya
+            </p>
           </div>
         </div>
         <input
@@ -166,6 +194,45 @@ export default function AdminFilesPage() {
         />
       </div>
 
+      {/* Görünüm filtresi */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setViewMode("active")}
+          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            viewMode === "active"
+              ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-600/20"
+              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+          }`}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Aktif Dosyalar
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("islemden_cikti")}
+          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            viewMode === "islemden_cikti"
+              ? "bg-purple-600 text-white border-purple-600 shadow-sm shadow-purple-600/20"
+              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+          }`}
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          İşlemden Çıkan Dosyalar
+          {islemdenCiktiCount > 0 && (
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              viewMode === "islemden_cikti" ? "bg-white/20 text-white" : "bg-purple-100 text-purple-700"
+            }`}>
+              {islemdenCiktiCount}
+            </span>
+          )}
+        </button>
+      </div>
+
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16">
@@ -173,7 +240,13 @@ export default function AdminFilesPage() {
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-slate-400 text-sm">{search ? "Sonuç bulunamadı" : "Henüz dosya yok"}</p>
+            <p className="text-slate-400 text-sm">
+              {search
+                ? "Sonuç bulunamadı"
+                : viewMode === "islemden_cikti"
+                  ? "İşlemden çıkmış dosya yok"
+                  : "Henüz dosya yok"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -218,7 +291,16 @@ export default function AdminFilesPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-slate-500 text-xs">{fmtDate(file.randevu_tarihi)}</td>
+                    <td className="py-3 px-4 text-slate-500 text-xs">
+                      {viewMode === "islemden_cikti" ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-400">Çıkış</span>
+                          <span className="text-slate-700 font-medium">{fmtDate(file.islemden_cikti_at || file.sonuc_tarihi)}</span>
+                        </div>
+                      ) : (
+                        fmtDate(file.randevu_tarihi)
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-center">{getStatusBadge(file)}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">

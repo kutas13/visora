@@ -3,7 +3,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { VisaFile, ParaBirimi, VizeSonucu } from "@/lib/supabase/types";
+import type { VisaFile, Profile, ParaBirimi, VizeSonucu } from "@/lib/supabase/types";
+
+type VisaFileWithProfile = VisaFile & { profiles: Pick<Profile, "id" | "name"> | null };
 
 type Customer = {
   pasaport_no: string;
@@ -23,18 +25,30 @@ type Customer = {
   lastUcret: number;
   lastUcretCurrency: ParaBirimi;
   lastUpdatedAt: string | null;
+  staffNames: string[];
+  lastStaffName: string | null;
 };
 
 function norm(s: string) {
-  return s.toLowerCase()
-    .replace(/ç/g, "c").replace(/ğ/g, "g").replace(/ı/g, "i")
-    .replace(/İ/g, "i").replace(/ö/g, "o").replace(/ş/g, "s").replace(/ü/g, "u")
+  return s
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/İ/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
     .trim();
 }
 
 function formatDate(d: string | null) {
   if (!d) return "-";
-  return new Date(d).toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(d).toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 function formatCurrency(amount: number, cur: ParaBirimi) {
@@ -60,12 +74,14 @@ function CustomerFlipCard({
   const router = useRouter();
   const initial = c.musteri_ad.charAt(0).toUpperCase();
   const isReturning = c.fileCount > 1;
-  const detailHref = `/app/musteriler/${encodeURIComponent(c.pasaport_no)}`;
+  const detailHref = `/admin/musteriler/${encodeURIComponent(c.pasaport_no)}`;
 
   const successBarClass =
-    c.successRate >= 70 ? "bg-emerald-500" :
-    c.successRate >= 40 ? "bg-navy-500" :
-    "bg-rose-500";
+    c.successRate >= 70
+      ? "bg-emerald-500"
+      : c.successRate >= 40
+        ? "bg-navy-500"
+        : "bg-rose-500";
 
   const openDetail = useCallback(
     (e: React.MouseEvent) => {
@@ -77,12 +93,12 @@ function CustomerFlipCard({
 
   return (
     <div
-      className="[perspective:1200px] group/card w-full min-h-[400px]"
+      className="[perspective:1200px] group/card w-full min-h-[420px]"
       role="region"
       aria-label={`Müşteri: ${c.musteri_ad}`}
     >
       <div
-        className={`relative h-full min-h-[400px] w-full transition-transform duration-700 ease-out [transform-style:preserve-3d] ${
+        className={`relative h-full min-h-[420px] w-full transition-transform duration-700 ease-out [transform-style:preserve-3d] ${
           flipped ? "[transform:rotateY(180deg)]" : ""
         }`}
       >
@@ -90,7 +106,7 @@ function CustomerFlipCard({
         <button
           type="button"
           onClick={onToggleFlip}
-          className="absolute inset-0 flex h-full min-h-[400px] w-full flex-col rounded-2xl border border-navy-200/80 bg-white p-5 text-left shadow-sm transition-all [backface-visibility:hidden] hover:border-navy-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-700 focus-visible:ring-offset-2"
+          className="absolute inset-0 flex h-full min-h-[420px] w-full flex-col rounded-2xl border border-navy-200/80 bg-white p-5 text-left shadow-sm transition-all [backface-visibility:hidden] hover:border-navy-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-700 focus-visible:ring-offset-2"
         >
           {isReturning && (
             <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-navy-200 bg-navy-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-navy-800">
@@ -146,6 +162,14 @@ function CustomerFlipCard({
               <span>Son ülke</span>
               <span className="max-w-[140px] truncate font-semibold text-navy-700">{c.lastCountry || "—"}</span>
             </div>
+            <div className="flex items-center justify-between gap-2">
+              <span>Personel</span>
+              <span className="max-w-[160px] truncate font-semibold text-navy-700">
+                {c.staffNames.length > 1
+                  ? `${c.lastStaffName || c.staffNames[0]} +${c.staffNames.length - 1}`
+                  : c.lastStaffName || c.staffNames[0] || "—"}
+              </span>
+            </div>
             {c.telefon && (
               <div className="flex items-center justify-between gap-2">
                 <span>Telefon</span>
@@ -160,7 +184,7 @@ function CustomerFlipCard({
         </button>
 
         {/* Arka yüz */}
-        <div className="absolute inset-0 flex min-h-[400px] flex-col rounded-2xl border border-navy-600 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 p-5 text-white shadow-xl [backface-visibility:hidden] [transform:rotateY(180deg)]">
+        <div className="absolute inset-0 flex min-h-[420px] flex-col rounded-2xl border border-navy-600 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 p-5 text-white shadow-xl [backface-visibility:hidden] [transform:rotateY(180deg)]">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-navy-300">Son işlem</p>
@@ -214,6 +238,12 @@ function CustomerFlipCard({
               <dt className="text-navy-300">Ücret</dt>
               <dd className="font-mono text-xs font-semibold">{formatCurrency(c.lastUcret, c.lastUcretCurrency)}</dd>
             </div>
+            <div className="flex justify-between gap-2">
+              <dt className="text-navy-300">Personel</dt>
+              <dd className="max-w-[55%] truncate text-right font-semibold">
+                {c.staffNames.length > 0 ? c.staffNames.join(", ") : "—"}
+              </dd>
+            </div>
             {c.lastUpdatedAt && (
               <div className="flex justify-between gap-2 border-t border-white/10 pt-2">
                 <dt className="text-navy-300">Güncellendi</dt>
@@ -230,7 +260,7 @@ function CustomerFlipCard({
             >
               Detay gör
             </button>
-            <p className="text-center text-[10px] text-navy-400">360° kart — Fox Turizm</p>
+            <p className="text-center text-[10px] text-navy-400">Admin görünümü · Fox Turizm</p>
           </div>
         </div>
       </div>
@@ -238,32 +268,44 @@ function CustomerFlipCard({
   );
 }
 
-export default function MusterilerPage() {
-  const [files, setFiles] = useState<VisaFile[]>([]);
+export default function AdminMusterilerPage() {
+  const [files, setFiles] = useState<VisaFileWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "count" | "name">("recent");
   const [filterStatus, setFilterStatus] = useState<"all" | "multi" | "approved" | "rejected">("all");
+  const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [flippedPasaport, setFlippedPasaport] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
       const { data } = await supabase
         .from("visa_files")
-        .select("*")
-        .eq("assigned_user_id", user.id)
+        .select("*, profiles:assigned_user_id(id, name)")
         .order("created_at", { ascending: false });
-      setFiles(data || []);
+      setFiles((data as VisaFileWithProfile[] | null) || []);
       setLoading(false);
     })();
   }, []);
 
-  const customers = useMemo<Customer[]>(() => {
-    const map = new Map<string, Customer>();
+  const staffList = useMemo(() => {
+    const set = new Map<string, string>();
     for (const f of files) {
+      if (f.profiles?.id && f.profiles?.name) {
+        set.set(f.profiles.id, f.profiles.name);
+      }
+    }
+    return Array.from(set.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  }, [files]);
+
+  const customers = useMemo<Customer[]>(() => {
+    const scoped = selectedStaff === "all" ? files : files.filter((f) => f.assigned_user_id === selectedStaff);
+
+    const map = new Map<string, Customer>();
+    for (const f of scoped) {
       if (!f.pasaport_no) continue;
       const key = f.pasaport_no.trim().toUpperCase();
       let c = map.get(key);
@@ -286,6 +328,8 @@ export default function MusterilerPage() {
           lastUcret: 0,
           lastUcretCurrency: "TL",
           lastUpdatedAt: null,
+          staffNames: [],
+          lastStaffName: null,
         };
         map.set(key, c);
       }
@@ -305,10 +349,13 @@ export default function MusterilerPage() {
         c.lastUcret = Number(f.ucret || 0);
         c.lastUcretCurrency = f.ucret_currency || "TL";
         c.lastUpdatedAt = f.updated_at;
+        c.lastStaffName = f.profiles?.name || null;
       }
       if (f.hedef_ulke && !c.countries.includes(f.hedef_ulke)) {
         c.countries.push(f.hedef_ulke);
       }
+      const sName = f.profiles?.name;
+      if (sName && !c.staffNames.includes(sName)) c.staffNames.push(sName);
       c.totalUcret += Number(f.ucret || 0);
     }
     const arr = Array.from(map.values());
@@ -317,26 +364,28 @@ export default function MusterilerPage() {
       c.successRate = decided > 0 ? (c.approved / decided) * 100 : 0;
     }
     return arr;
-  }, [files]);
+  }, [files, selectedStaff]);
 
   const filtered = useMemo(() => {
     let result = customers;
-    if (filterStatus === "multi") result = result.filter(c => c.fileCount > 1);
-    else if (filterStatus === "approved") result = result.filter(c => c.approved > 0);
-    else if (filterStatus === "rejected") result = result.filter(c => c.rejected > 0);
+    if (filterStatus === "multi") result = result.filter((c) => c.fileCount > 1);
+    else if (filterStatus === "approved") result = result.filter((c) => c.approved > 0);
+    else if (filterStatus === "rejected") result = result.filter((c) => c.rejected > 0);
 
     if (search.trim().length >= 2) {
       const term = norm(search.trim());
-      result = result.filter(c =>
-        norm(c.musteri_ad).includes(term) ||
-        norm(c.pasaport_no).includes(term) ||
-        (c.telefon && c.telefon.includes(term))
+      result = result.filter(
+        (c) =>
+          norm(c.musteri_ad).includes(term) ||
+          norm(c.pasaport_no).includes(term) ||
+          (c.telefon && c.telefon.includes(term)) ||
+          c.staffNames.some((s) => norm(s).includes(term))
       );
     }
 
     const sorted = [...result];
     if (sortBy === "recent") {
-      sorted.sort((a, b) => (a.lastDate && b.lastDate ? (b.lastDate.localeCompare(a.lastDate)) : 0));
+      sorted.sort((a, b) => (a.lastDate && b.lastDate ? b.lastDate.localeCompare(a.lastDate) : 0));
     } else if (sortBy === "count") {
       sorted.sort((a, b) => b.fileCount - a.fileCount);
     } else {
@@ -345,12 +394,15 @@ export default function MusterilerPage() {
     return sorted;
   }, [customers, search, filterStatus, sortBy]);
 
-  const stats = useMemo(() => ({
-    total: customers.length,
-    returning: customers.filter(c => c.fileCount > 1).length,
-    approved: customers.filter(c => c.approved > 0).length,
-    totalFiles: files.length,
-  }), [customers, files]);
+  const stats = useMemo(
+    () => ({
+      total: customers.length,
+      returning: customers.filter((c) => c.fileCount > 1).length,
+      approved: customers.filter((c) => c.approved > 0).length,
+      totalFiles: customers.reduce((sum, c) => sum + c.fileCount, 0),
+    }),
+    [customers]
+  );
 
   const toggleFlip = useCallback((pasaport: string) => {
     setFlippedPasaport((prev) => (prev === pasaport ? null : pasaport));
@@ -372,7 +424,7 @@ export default function MusterilerPage() {
       </div>
 
       <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-        {/* Hero — navy ağırlıklı, turuncu gradyan yok */}
+        {/* Hero */}
         <div className="overflow-hidden rounded-3xl border border-navy-200 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 shadow-xl shadow-navy-900/20">
           <div className="relative p-6 sm:p-8 text-white">
             <div className="absolute inset-0 opacity-40">
@@ -386,11 +438,11 @@ export default function MusterilerPage() {
                   <svg className="h-3.5 w-3.5 text-white/90" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                   </svg>
-                  Müşteri CRM
+                  Tüm Personel CRM
                 </p>
-                <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Müşterilerim</h1>
+                <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Tüm Müşteriler</h1>
                 <p className="mt-2 text-sm text-navy-200 sm:text-base">
-                  Pasaport bazlı kayıtlar, özet istatistikler ve detay için kartı çevirin.
+                  Tüm personelin müşteri kayıtları — pasaport bazlı birleştirilmiş görünüm.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
@@ -413,17 +465,51 @@ export default function MusterilerPage() {
           </div>
         </div>
 
+        {/* Personel filtresi */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSelectedStaff("all")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+              selectedStaff === "all"
+                ? "bg-navy-900 text-white"
+                : "border border-navy-200 bg-white text-navy-600 hover:bg-navy-50"
+            }`}
+          >
+            Tüm Personel
+          </button>
+          {staffList.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSelectedStaff(s.id)}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                selectedStaff === s.id
+                  ? "bg-navy-900 text-white"
+                  : "border border-navy-200 bg-white text-navy-600 hover:bg-navy-50"
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+
         {/* Filtreler */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1">
-            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-navy-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Ad, pasaport no veya telefon ara..."
+              placeholder="Ad, pasaport, telefon veya personel ara..."
               className="w-full rounded-xl border border-navy-200 bg-white py-2.5 pl-10 pr-4 text-sm text-navy-900 shadow-sm focus:border-navy-400 focus:outline-none focus:ring-2 focus:ring-navy-700/20"
             />
           </div>
