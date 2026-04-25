@@ -6,15 +6,21 @@ export function monthYearUpperTr(year: number, month: number) {
 }
 
 /**
- * Personel: YUSUF NİSAN 2026 AYLIK ÖZET.pdf
- * Davut: FOX TURIZM NİSAN 2026.pdf
+ * Genel ozet (admin/muhasebe/owner) -> VISORA NİSAN 2026.pdf
+ * Personel kendi raporu              -> Yusuf NİSAN 2026 AYLIK ÖZET.pdf
  */
-export function buildMonthlyPdfFilename(profileName: string, year: number, month: number) {
+export function buildMonthlyPdfFilename(
+  profileName: string,
+  year: number,
+  month: number,
+  mode: "org" | "staff" = "staff"
+) {
   const my = monthYearUpperTr(year, month);
-  if (profileName === "DAVUT") {
-    return `FOX TURIZM ${my}.pdf`;
+  if (mode === "org") {
+    return `VISORA ${my}.pdf`;
   }
-  return `${profileName} ${my} AYLIK ÖZET.pdf`;
+  const safeName = (profileName || "PERSONEL").trim() || "PERSONEL";
+  return `${safeName} ${my} AYLIK ÖZET.pdf`;
 }
 
 /** Eski tarayıcılar için ASCII yedek dosya adı */

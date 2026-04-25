@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,10 @@ async function sendWhatsApp(to: string, message: string, baseUrl: string): Promi
 }
 
 export async function POST(request: NextRequest) {
+  if (!isWhatsappEnabled()) {
+    return NextResponse.json({ ok: true, disabled: true, sent: 0, message: WHATSAPP_DISABLED_MESSAGE });
+  }
+
   // Secret kontrolü
   const secret = request.headers.get("x-cron-secret") || request.nextUrl.searchParams.get("secret");
   if (secret !== process.env.CRON_SECRET) {
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
         `📅 Randevu: *${randevuStr}*\n` +
         `👨‍💼 Personel: *${staffName}*\n\n` +
         `⏳ Randevuya *3 gün* kaldı.\n\n` +
-        `_Fox Turizm_`;
+        `_Visora_`;
 
       const sent = await sendWhatsApp(whatsappTo, message, baseUrl);
       if (sent) sentCount++;

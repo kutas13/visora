@@ -314,7 +314,7 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#1e293b] animate-pulse" />
             </div>
             <div>
-              <p className="font-bold text-white text-sm tracking-wide">FOX AI</p>
+              <p className="font-bold text-white text-sm tracking-wide">Visora AI</p>
               <p className="text-[10px] text-white/60 font-medium">
                 {isExpanded ? "Akıllı Asistanınız" : "Açmak için tıklayın"}
               </p>

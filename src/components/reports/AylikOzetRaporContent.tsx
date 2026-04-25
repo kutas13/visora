@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import type { MonthlySummary } from "@/lib/reports/buildMonthlySummary";
 import { sumStaffBuckets } from "@/lib/reports/buildMonthlySummary";
 
-const REPORT_ALLOWED = ["DAVUT", "YUSUF", "BAHAR", "ERCAN"] as const;
+// Visora SaaS: rapor erisimi role tabanli (admin/muhasebe/staff/platform_owner).
+// Eski sabit isim listesi kaldirildi.
+const ALLOWED_ROLES = ["admin", "muhasebe", "platform_owner", "staff"] as const;
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -30,7 +32,7 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [viewerName, setViewerName] = useState("");
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
-  const [reportMode, setReportMode] = useState<"davut" | "staff" | null>(null);
+  const [reportMode, setReportMode] = useState<"org" | "staff" | null>(null);
   const [rawCount, setRawCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +45,17 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
         router.push(loginRedirectPath);
         return;
       }
-      const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      const n = profile?.name || "";
-      if (!REPORT_ALLOWED.includes(n as (typeof REPORT_ALLOWED)[number])) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, role")
+        .eq("id", user.id)
+        .single();
+      const role = (profile?.role || "") as (typeof ALLOWED_ROLES)[number];
+      if (!ALLOWED_ROLES.includes(role)) {
         setAllowed(false);
         return;
       }
-      setViewerName(n);
+      setViewerName(profile?.name || "");
       setAllowed(true);
     })();
   }, [router, loginRedirectPath]);
@@ -69,7 +75,7 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
       }
       setSummary(j.summary as MonthlySummary);
       setRawCount(j.rawCount ?? 0);
-      setReportMode(j.mode === "davut" ? "davut" : "staff");
+      setReportMode(j.mode === "org" ? "org" : "staff");
     } catch {
       setError("Bağlantı hatası");
       setSummary(null);
@@ -99,7 +105,9 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-bold text-navy-900">Erişim yok</h1>
         <p className="mt-2 text-sm text-navy-600">
-          Bu sayfa yalnızca Davut veya BAHAR / ERCAN / YUSUF hesaplarına açıktır.
+          Bu sayfaya yalnızca Genel Müdür, Muhasebe ve atama yapılmış Personel
+          erişebilir. Yetkiniz bulunmuyorsa lütfen şirket yöneticinizle
+          iletişime geçin.
         </p>
       </div>
     );
@@ -264,7 +272,7 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
                       <td className="px-4 py-2 text-xs text-navy-600">{fmtMoney(r.revenue)}</td>
                     </tr>
                   ))}
-                  {reportMode === "davut" && summary.byStaff.length > 0 && (() => {
+                  {reportMode === "org" && summary.byStaff.length > 0 && (() => {
                     const t = sumStaffBuckets(summary.byStaff);
                     return (
                       <tr className="border-t-2 border-navy-300 bg-navy-100/80 font-bold">

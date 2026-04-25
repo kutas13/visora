@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import { StaffSidebar, TopBar } from "@/components/layout";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/supabase/types";
@@ -14,11 +15,8 @@ const pageTitles: Record<string, string> = {
   "/app/vize-bitisi": "Vize Bitiş Takibi",
   "/app/groups": "Gruplar",
   "/app/payments": "Ödemeler",
-  "/app/atamalar": "iDATA Atamalarım",
   "/app/cari-hesap": "Cari Hesabım",
   "/app/bildirimler": "Bildirimler",
-  "/app/whatsapp": "WhatsApp Bildirimler",
-  "/app/gunluk-rapor": "Günlük Rapor",
   "/app/randevu-listesi": "Randevu Alınacak",
   "/app/randevu-raporlari": "Randevu Raporları",
   "/app/musteriler": "Müşterilerim",
@@ -28,7 +26,7 @@ const pageTitles: Record<string, string> = {
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const title = pageTitles[pathname] || "Fox Turizm";
+  const title = pageTitles[pathname] || "Visora";
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,9 +57,6 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
       if (profileData) {
         setProfile(profileData);
-        if (profileData.name === "ZAFER" && window.location.pathname === "/app") {
-          router.replace("/app/randevu-listesi");
-        }
       }
     }
 
@@ -70,13 +65,13 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-navy-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/30 animate-pulse">
-            <span className="text-white font-bold text-2xl">F</span>
+      <div className="min-h-screen bg-gradient-to-br from-[#F1F5F9] via-white to-lilac-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-5">
+          <div className="relative w-20 h-20 animate-pulse drop-shadow-[0_8px_24px_rgba(37,99,235,0.35)]">
+            <Image src="/visora-logo.png" alt="Visora" fill priority className="object-contain" />
           </div>
           <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-          <p className="text-navy-500">{"Yükleniyor..."}</p>
+          <p className="text-navy-500 text-sm">Yükleniyor…</p>
         </div>
       </div>
     );

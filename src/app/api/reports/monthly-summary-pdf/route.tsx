@@ -33,16 +33,26 @@ export async function GET(req: NextRequest) {
 
   try {
     registerReportPdfFonts();
-    const files = await fetchMonthlyReportFiles(ym.year, ym.month);
+    const files = await fetchMonthlyReportFiles(
+      ym.year,
+      ym.month,
+      gate.organizationId ?? null
+    );
     const summary = buildMonthlySummary(ym.year, ym.month, files, {
       assignedUserId: gate.mode === "staff" ? gate.userId : undefined,
     });
     const pdfEl = createElement(MonthlySummaryPdfDocument, {
       data: summary,
-      showPersonelTotals: gate.mode === "davut",
+      // org modunda personel toplam kirilim gosteriliyor (admin / muhasebe / owner)
+      showPersonelTotals: gate.mode === "org",
     });
     const buffer = await renderToBuffer(pdfEl as any);
-    const fname = buildMonthlyPdfFilename(gate.profileName, ym.year, ym.month);
+    const fname = buildMonthlyPdfFilename(
+      gate.profileName,
+      ym.year,
+      ym.month,
+      gate.mode
+    );
     const ascii = asciiFilenameFallback(fname);
     const cd = `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fname)}`;
 

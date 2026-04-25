@@ -86,6 +86,11 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   const [onOdemeTutar, setOnOdemeTutar] = useState(file?.on_odeme_tutar?.toString() || "");
   const [onOdemeCurrency, setOnOdemeCurrency] = useState<ParaBirimi>(file?.on_odeme_currency || "TL");
   const [cariSahibi, setCariSahibi] = useState<string>(""); // Hangi kullanıcının carisi
+  // Sirket Genel Muduru (admin) cari secimi icin gosterilecek isim.
+  // null ise "Genel Mudur Cari" secenegi gizlenir.
+  const [orgAdminName, setOrgAdminName] = useState<string | null>(null);
+  // Mevcut kullanicinin rolu (cari secim ekraninda kullanilir)
+  const [userRole, setUserRole] = useState<string>("");
   
   // Firma cari
   const [companySearch, setCompanySearch] = useState("");
@@ -183,16 +188,36 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
     const loadUserName = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-        const name = profile?.name || "Kullanıcı";
-        setUserName(name);
-        if (!file) setCariSahibi(name);
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name, role, organization_id")
+        .eq("id", user.id)
+        .single();
+      const name = profile?.name || "Kullanıcı";
+      setUserName(name);
+      setUserRole((profile?.role as string) || "");
+      if (!file) setCariSahibi(name);
+
+      // Ayni sirketin (organization) Genel Muduru'nu (admin) bul.
+      // Personel ekraninda "Genel Mudur Cari" secenegini onun ismi
+      // ile gosteririz; admin ekraninda ek secenege gerek yok.
+      const orgId = profile?.organization_id as string | null;
+      if (orgId && profile?.role !== "admin") {
+        const { data: adminProfile } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("organization_id", orgId)
+          .eq("role", "admin")
+          .limit(1)
+          .maybeSingle();
+        if (adminProfile?.name) setOrgAdminName(adminProfile.name);
       }
     };
     loadUserName();
     fetch("/api/exchange-rates").then(r => r.json()).then(d => { if (d.rates) setExchangeRates(d.rates); }).catch(() => {});
-  }, []);
+  }, [file]);
 
   // Edit modunda cariSahibi'yi dosyadan yükle
   useEffect(() => {
@@ -1241,15 +1266,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
             <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Cari Detayları</p>
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid gap-2 ${orgAdminName && orgAdminName !== userName ? "grid-cols-2" : "grid-cols-1"}`}>
               <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${cariSahibi === userName ? "border-amber-500 bg-white text-amber-700 font-medium" : "border-navy-200 text-navy-600"}`}>
                 <input type="radio" checked={cariSahibi === userName} onChange={() => setCariSahibi(userName)} className="sr-only" />
-                {userName} Cari
+                {userRole === "admin" ? "Genel Müdür Cari" : `${userName} Cari (Personel)`}
               </label>
-              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${cariSahibi === "DAVUT" ? "border-amber-500 bg-white text-amber-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-                <input type="radio" checked={cariSahibi === "DAVUT"} onChange={() => setCariSahibi("DAVUT")} className="sr-only" />
-                Davut Cari
-              </label>
+              {orgAdminName && orgAdminName !== userName && (
+                <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${cariSahibi === orgAdminName ? "border-amber-500 bg-white text-amber-700 font-medium" : "border-navy-200 text-navy-600"}`}>
+                  <input type="radio" checked={cariSahibi === orgAdminName} onChange={() => setCariSahibi(orgAdminName)} className="sr-only" />
+                  Genel Müdür Cari
+                </label>
+              )}
             </div>
 
             <label className="flex items-center gap-2 mt-3">

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { rateLimit, validateOrigin } from "@/lib/security";
 import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER } from "@/lib/constants";
+import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 dakika
@@ -36,6 +37,13 @@ function isChinaCountry(ulke: string | null | undefined): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isWhatsappEnabled()) {
+    return NextResponse.json(
+      { ok: false, disabled: true, error: WHATSAPP_DISABLED_MESSAGE, sentCount: 0 },
+      { status: 410 }
+    );
+  }
+
   try {
     // Origin ve rate limit kontrolü
     const origin = request.headers.get("origin");
@@ -152,7 +160,7 @@ export async function POST(request: NextRequest) {
           messageText += `    🌍 ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
         });
       }
-      messageText += `_Fox Turizm_`;
+      messageText += `_Visora_`;
 
     } else if (type === "vize_bitis_customers") {
       // Müşterilere direkt vize bitiş mesajı (60 gün kala)
@@ -214,13 +222,12 @@ export async function POST(request: NextRequest) {
 
         const bitisDate = new Date(file.vize_bitis_tarihi!);
         const kalanGun = Math.ceil((bitisDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        const personelName = file.profiles?.name || "Fox Turizm";
-        
-        // Personel bilgilerini bul (hitap + telefon)
-        const allUsers = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER];
-        const personelInfo = allUsers.find(u => u.name === personelName);
-        const personelHitap = personelInfo?.hitap || personelName;
-        const personelTelefon = personelInfo?.phone || "0212 xxx xx xx";
+        const personelName = file.profiles?.name || "Visora";
+
+        // Eski Fox kullanici listesi kaldirildi; tenant bazli profile bilgileri
+        // ileride profiles tablosundan okunacak.
+        const personelHitap = personelName;
+        const personelTelefon = "";
         
         const personalMessage = `Sayın ${file.musteri_ad},
 
@@ -231,7 +238,7 @@ export async function POST(request: NextRequest) {
 📞 Bilgi ve randevu için:
 ${personelHitap} — ${personelTelefon}
 
-*Fox Turizm* Vize Hizmetleri`;
+*Visora* Vize Hizmetleri`;
 
         // Telefon numarasını WhatsApp formatına çevir (+90 ile başlamalı)
         const whatsappPhone = file.musteri_telefon.startsWith("90") 
@@ -334,7 +341,7 @@ ${personelHitap} — ${personelTelefon}
           messageText += `    🌍 ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
         });
       }
-      messageText += `_Fox Turizm_`;
+      messageText += `_Visora_`;
     }
 
     // WhatsApp mesajını çoklu alıcıya gönder

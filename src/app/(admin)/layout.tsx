@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import { AdminSidebar, TopBar } from "@/components/layout";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/supabase/types";
@@ -9,6 +10,7 @@ import type { Profile } from "@/lib/supabase/types";
 const pageTitles: Record<string, string> = {
   "/admin/dashboard": "Dashboard",
   "/admin/files": "Vize Dosyaları",
+  "/admin/files/new": "Yeni Vize Dosyası",
   "/admin/bildirimler": "Bildirimler",
   "/admin/calendar": "Randevu Takvimi",
   "/admin/musteriler": "Tüm Müşteriler",
@@ -16,13 +18,10 @@ const pageTitles: Record<string, string> = {
   "/admin/groups": "Gruplar",
   "/admin/raporlar": "Raporlar",
   "/admin/payments": "Ödemeler",
-  "/admin/atamalar": "iDATA Atamaları",
   "/admin/cari-hesap": "Cari Hesap",
   "/admin/prim-takibi": "Prim Takibi",
-  "/admin/gunluk-raporlar": "Günlük Raporlar",
   "/admin/aylik-ozet-rapor": "Aylık vize özeti",
   "/admin/logs": "Sistem Logları",
-  "/admin/whatsapp": "WhatsApp Yönetimi",
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -97,13 +96,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-navy-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/30 animate-pulse">
-            <span className="text-white font-bold text-2xl">F</span>
+      <div className="min-h-screen bg-gradient-to-br from-[#F1F5F9] via-white to-lilac-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-5">
+          <div className="relative w-20 h-20 animate-pulse drop-shadow-[0_8px_24px_rgba(37,99,235,0.35)]">
+            <Image src="/visora-logo.png" alt="Visora" fill priority className="object-contain" />
           </div>
           <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-          <p className="text-navy-500">{"Yükleniyor..."}</p>
+          <p className="text-navy-500 text-sm">Yükleniyor…</p>
         </div>
       </div>
     );

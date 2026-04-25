@@ -25,6 +25,9 @@ yarn-error.log*
 # Local env files
 .env*.local
 .env
+.env.vercel
+.env.*.backup
+.env.local.foxvize-backup
 
 # Vercel
 .vercel
@@ -41,6 +44,10 @@ next-env.d.ts
 whatsapp-service/auth_info/
 whatsapp-service/node_modules/
 whatsapp-service/sent_today.json
+whatsapp-service/start-all.bat
+wa_qr.png
+vps_*.py
+make_qr.py
 
 .vercel
 .env*.local

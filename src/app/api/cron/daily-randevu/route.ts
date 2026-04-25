@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
-const ALL_RECIPIENTS = [
-  "905435680874", // Davut
-  "905055623279", // Bahar
-  "905055623301", // Ercan
-  "905058937071", // Yusuf
-  "905055623170", // Fehmi
-  "905078015033", // Sırrı
-];
+// Eski hardcode telefon numaralari kaldirildi (Fox kalintisi).
+// Visora'da WhatsApp gonderimi tamamen kapali.
+const ALL_RECIPIENTS: string[] = [];
 
 export async function GET(request: NextRequest) {
   return POST(request);
 }
 
 export async function POST(request: NextRequest) {
+  if (!isWhatsappEnabled()) {
+    return NextResponse.json({ ok: true, disabled: true, sent: 0, message: WHATSAPP_DISABLED_MESSAGE });
+  }
+
   const secret = request.headers.get("x-cron-secret") || request.nextUrl.searchParams.get("secret");
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Yetkisiz erisim" }, { status: 401 });
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         messageText += `    🌍 ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;
       });
     }
-    messageText += `_Fox Turizm_`;
+    messageText += `_Visora_`;
 
     // WhatsApp bağlantı kontrolü
     let statusData: any = {};

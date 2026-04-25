@@ -101,7 +101,7 @@ Test email - ${new Date().toLocaleString('tr-TR')}
       randevu_baslangic: parsed.randevuBaslangic,
       randevu_bitis: parsed.randevuBitis,
       son_kayit_tarihi: parsed.sonKayitTarihi,
-      email_hesabi: "test@foxturizm.com",
+      email_hesabi: "test@visora.com.tr",
       email_uid: `test-${Date.now()}`,
       durum: "yeni" as const,
       whatsapp_bildirim: false, // Test'te WhatsApp gönderme

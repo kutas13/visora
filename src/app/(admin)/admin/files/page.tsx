@@ -185,13 +185,24 @@ export default function AdminFilesPage() {
             </p>
           </div>
         </div>
-        <input
-          type="text"
-          placeholder="Müşteri, pasaport, ülke veya personel ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full md:w-80 h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-        />
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <input
+            type="text"
+            placeholder="Müşteri, pasaport, ülke veya personel ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 md:w-80 h-9 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+          />
+          <a
+            href="/admin/files/new"
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-semibold shadow-sm shadow-orange-500/30 hover:from-orange-600 hover:to-amber-600 transition-all whitespace-nowrap"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
+            </svg>
+            Yeni Dosya
+          </a>
+        </div>
       </div>
 
       {/* Görünüm filtresi */}

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Button, Input, Card } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
@@ -66,18 +65,11 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8" variant="elevated">
-        {/* Logo */}
         <div className="text-center mb-6">
-          <div className="relative w-40 h-28 mx-auto mb-4">
-            <Image
-                src="/fox-logo.jpg"
-              alt="Fox Turizm"
-              fill
-              className="object-contain"
-              priority
-            />
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <span className="text-white font-extrabold text-2xl tracking-tight">V</span>
           </div>
           <h1 className="text-2xl font-bold text-navy-900">Şifre Sıfırlama</h1>
           <p className="text-navy-500 mt-1">Yeni şifrenizi belirleyin</p>

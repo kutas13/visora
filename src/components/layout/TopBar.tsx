@@ -115,7 +115,7 @@ export default function TopBar({ title, userName = "Kullanıcı", variant = "sta
           )}
           <div className="hidden sm:block">
             <p className="text-sm font-semibold text-navy-900">{userName}</p>
-            <p className="text-xs text-navy-500">{variant === "admin" ? "Yönetici" : "Personel"}</p>
+            <p className="text-xs text-navy-500">{variant === "admin" ? "Genel Müdür" : "Personel"}</p>
           </div>
           <button
             onClick={handleLogout}

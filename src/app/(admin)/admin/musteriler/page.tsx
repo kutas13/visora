@@ -260,7 +260,7 @@ function CustomerFlipCard({
             >
               Detay gör
             </button>
-            <p className="text-center text-[10px] text-navy-400">Admin görünümü · Fox Turizm</p>
+            <p className="text-center text-[10px] text-navy-400">Admin görünümü · Visora</p>
           </div>
         </div>
       </div>

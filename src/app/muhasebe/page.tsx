@@ -192,7 +192,7 @@ export default function MuhasebePage() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Muhasebe</h1>
-              <p className="text-xs text-gray-500">Fox Turizm</p>
+              <p className="text-xs text-gray-500">Visora</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

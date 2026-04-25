@@ -1,48 +1,32 @@
-// Kullanıcı listesi (email + telefon + hitap mapping ile)
-export const STAFF_USERS = [
-  { id: "bahar", name: "BAHAR", email: "vize@foxturizm.com", phone: "0505 562 32 79", hitap: "Bahar Hanım" },
-  { id: "ercan", name: "ERCAN", email: "ercan@foxturizm.com", phone: "0505 562 33 01", hitap: "Ercan Bey" },
-  { id: "yusuf", name: "YUSUF", email: "yusuf@foxturizm.com", phone: "0505 893 70 71", hitap: "Yusuf Bey" },
-] as const;
+// ----------------------------------------------------------------------
+// VISORA — SaaS modeli
+// ----------------------------------------------------------------------
+// Eski Fox Turizm hardcoded kullanici listesi kaldirildi. Artik tum
+// kullanici/personel bilgileri tenant bazli olarak `profiles` tablosundan
+// gelir. Bu sabitler geriye donuk uyumluluk icin BOS dizilerle birakildi
+// ki eski importlar build'i kirmasin.
+// ----------------------------------------------------------------------
 
-export const ADMIN_USER = { 
-  id: "davut", 
-  name: "DAVUT", 
-  email: "info@foxturizm.com",
-  phone: "0543 568 08 74",
-  hitap: "Davut Bey"
+export type LegacyUser = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  hitap: string;
 };
 
-export const MUHASEBE_USER = { 
-  id: "sirri", 
-  name: "SIRRI", 
-  email: "muhasebe@foxturizm.com",
-  phone: "0507 801 50 33",
-  hitap: "Sırrı Bey"
-};
+export const STAFF_USERS: readonly LegacyUser[] = [];
+export const ADMIN_USER: LegacyUser | null = null;
+export const MUHASEBE_USER: LegacyUser | null = null;
+export const FEHMI_USER: LegacyUser | null = null;
+export const ZAFER_USER: LegacyUser | null = null;
 
-export const FEHMI_USER = {
-  id: "fehmi",
-  name: "FEHMİ",
-  email: "",
-  phone: "0505 562 31 70",
-  hitap: "Fehmi Bey"
-};
+export const ALL_USERS: readonly LegacyUser[] = [];
 
-export const ZAFER_USER = {
-  id: "zafer",
-  name: "ZAFER",
-  email: "zafer@foxturizm.com",
-  phone: "0536 343 44 44",
-  hitap: "Zafer Bey"
-};
-
-// Tüm kullanıcılar
-export const ALL_USERS = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER, FEHMI_USER, ZAFER_USER];
-
-// Email'den kullanıcı bul
-export function getUserByEmail(email: string) {
-  return ALL_USERS.find(u => u.email === email);
+// Email'den kullanıcı bul — eski Fox listesi kaldirildi, her zaman undefined.
+// Yeni kod profiles tablosundan email -> profile cozer.
+export function getUserByEmail(_email: string): LegacyUser | undefined {
+  return undefined;
 }
 
 // İşlem tipleri

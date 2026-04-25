@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import ExcelJS from "exceljs";
 import { rateLimit } from "@/lib/security";
+import { isLegacyEmailEnabled, LEGACY_EMAIL_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
-const SMTP_PASSWORD_MAP: Record<string, string> = {
-  "vize@foxturizm.com": "SMTP_PASS_BAHAR",
-  "ercan@foxturizm.com": "SMTP_PASS_ERCAN",
-  "yusuf@foxturizm.com": "SMTP_PASS_YUSUF",
-  "info@foxturizm.com": "SMTP_PASS_DAVUT",
-};
+// Eski Fox SMTP haritasi kaldirildi. Visora'da sirket-bazli SMTP yapilandirmasi
+// gelene kadar bu endpoint default olarak ENABLE_LEGACY_EMAIL=true olmadan
+// calismaz; tum istekler 410 ile reddedilir.
+const SMTP_PASSWORD_MAP: Record<string, string> = {};
 
 const HEADERS = [
   "bilet no ",
@@ -62,7 +61,7 @@ function formatDateForExcel(dateStr: string): string {
 
 async function generateExcelBuffer(rows: ReportRowPayload[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Fox Turizm";
+  workbook.creator = "Visora";
   workbook.created = new Date();
   const sheet = workbook.addWorksheet("Sayfa1");
 
@@ -121,6 +120,10 @@ async function generateExcelBuffer(rows: ReportRowPayload[]): Promise<Buffer> {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isLegacyEmailEnabled()) {
+    return NextResponse.json({ ok: true, disabled: true, message: LEGACY_EMAIL_DISABLED_MESSAGE });
+  }
+
   try {
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { allowed } = rateLimit(`gunluk-rapor-email:${clientIp}`, 5, 60_000);
@@ -174,7 +177,7 @@ export async function POST(request: NextRequest) {
     const tarihGunAyYil = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : tarihFormatted;
     const revizeTag = isRevize ? " (REVİZE)" : "";
     const subject = `${tarihGunAyYil} GÜNLÜK RAPORUM${revizeTag}`;
-    const textBody = `${tarihGunAyYil} tarihli günlük rapor${revizeTag} ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).${personelNotu ? `\n\nPersonel Notu: ${personelNotu}` : ""}\n\nFox Turizm Vize Yönetim Sistemi`;
+    const textBody = `${tarihGunAyYil} tarihli günlük rapor${revizeTag} ektedir.\n\nToplam ${rows.length} kayıt (${vizCount} vize dosyası).${personelNotu ? `\n\nPersonel Notu: ${personelNotu}` : ""}\n\nVisora Vize Yönetim Sistemi`;
 
     const revizeBadge = isRevize
       ? `<div style="margin-top:8px;"><span style="display:inline-block;background:rgba(239,68,68,0.15);color:#ef4444;font-size:10px;font-weight:800;padding:5px 16px;border-radius:20px;letter-spacing:3px;">REVİZE</span></div>`
@@ -186,7 +189,7 @@ export async function POST(request: NextRequest) {
 <body style="margin:0;padding:0;background:#080d19;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
 <div style="max-width:500px;margin:0 auto;padding:40px 16px;">
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Fox Turizm</div>
+    <div style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Visora</div>
   </div>
   <div style="background:linear-gradient(145deg,#111827,#1e293b);border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);box-shadow:0 32px 64px rgba(0,0,0,0.5);">
     <div style="height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6,#6366f1);"></div>
@@ -240,17 +243,23 @@ export async function POST(request: NextRequest) {
   </div>
   <div style="text-align:center;padding:24px 0 8px;">
     <p style="margin:0 0 6px;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">
-      Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Fox Turizm Vize Yönetim Sistemi</span> tarafından otomatik gönderilmiştir.
+      Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Visora Vize Yönetim Sistemi</span> tarafından otomatik gönderilmiştir.
     </p>
-    <p style="margin:0;font-size:9px;color:rgba(255,255,255,0.25);">&copy; ${new Date().getFullYear()} Fox Turizm</p>
+    <p style="margin:0;font-size:9px;color:rgba(255,255,255,0.25);">&copy; ${new Date().getFullYear()} Visora</p>
   </div>
 </div>
 </body>
 </html>`;
 
+    const reportRecipients = (process.env.LEGACY_REPORT_RECIPIENTS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const toList = reportRecipients.length > 0 ? [...reportRecipients, senderEmail] : [senderEmail];
+
     await transporter.sendMail({
       from: { name: personel, address: senderEmail },
-      to: ["Muhasebe@foxturizm.com", "info@foxturizm.com", senderEmail],
+      to: toList,
       subject,
       text: textBody,
       html,

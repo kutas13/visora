@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 // Vercel serverless default 10s; fonksiyonun uzun sürmesine izin ver
@@ -107,7 +108,7 @@ async function runReviewMessaging() {
       ``,
       `Teşekkür eder, iyi yolculuklar dileriz! ✈️`,
       ``,
-      `*Fox Turizm*`,
+      `*Visora*`,
     ].join("\n");
 
     try {
@@ -168,6 +169,10 @@ async function runReviewMessaging() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isWhatsappEnabled()) {
+    return NextResponse.json({ ok: true, disabled: true, sent: 0, message: WHATSAPP_DISABLED_MESSAGE });
+  }
+
   const secret = request.headers.get("x-cron-secret") || request.nextUrl.searchParams.get("secret");
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Yetkisiz erişim" }, { status: 401 });

@@ -28,7 +28,7 @@ export default function SidebarAiPanel({ isAdmin = false }: Props) {
           onClick={() => setOpen(true)}
           className="w-full rounded-xl border border-navy-600 bg-navy-800/80 px-3 py-3 text-left text-sm font-medium text-navy-200 transition-colors hover:border-primary-500/40 hover:bg-navy-800 hover:text-white"
         >
-          <span className="block text-white">FOX AI Asistan</span>
+          <span className="block text-white">Visora AI Asistan</span>
           <span className="mt-0.5 block text-[11px] font-normal text-navy-400">İhtiyaç duyduğunuzda açın</span>
         </button>
       </div>

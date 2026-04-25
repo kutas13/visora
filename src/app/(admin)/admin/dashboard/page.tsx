@@ -142,7 +142,10 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-[3px] border-primary-100 border-t-primary-500 rounded-full animate-spin" />
+          <p className="text-sm text-navy-400 animate-pulse">Yükleniyor...</p>
+        </div>
       </div>
     );
   }
@@ -158,91 +161,103 @@ export default function AdminDashboard() {
     : 0;
 
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-          </div>
+    <div className="space-y-6">
+      {/* HERO — Visora */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-500 to-accent-600 p-7 sm:p-9 shadow-2xl shadow-primary-500/30">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full bg-white/15 blur-3xl" />
+          <div className="absolute -bottom-32 -left-10 w-72 h-72 rounded-full bg-accent-400/40 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_55%)]" />
+        </div>
+
+        <div className="relative grid md:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
-            <h1 className="text-xl font-bold text-slate-800">{timeGreeting}, {adminName}</h1>
-            <p className="text-slate-500 text-sm">Ofis genelinde {stats.totalActive} aktif dosya, {stats.todayAppointments} bugünkü randevu var.</p>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-[11px] font-semibold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+              Yönetim Paneli · {timeGreeting}
+            </div>
+            <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              {adminName}
+            </h1>
+            <p className="mt-2 text-white/85 text-sm">
+              Ofis genelinde <span className="font-semibold text-white">{stats.totalActive}</span> aktif dosya ·{" "}
+              <span className="font-semibold text-white">{stats.todayAppointments}</span> bugün randevu ·{" "}
+              <span className="font-semibold text-white">{stats.unpaidCari}</span> bekleyen tahsilat
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/15 border border-white/25 backdrop-blur px-5 py-4 text-center min-w-[120px]">
+            <p className="text-3xl font-extrabold text-white leading-none">{successRate}%</p>
+            <p className="mt-1.5 text-[10px] text-white/85 uppercase tracking-wider font-semibold">
+              Başarı oranı
+            </p>
           </div>
         </div>
-        <div className="hidden md:flex items-center gap-2">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-2 text-center">
-            <p className="text-2xl font-bold text-blue-600">{successRate}%</p>
-            <p className="text-[10px] text-slate-400 uppercase tracking-wide">Başarı Oranı</p>
-          </div>
-        </div>
-      </div>
+      </section>
 
       {/* KPI Kartları */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="relative overflow-hidden rounded-2xl bg-white border border-navy-100 p-5 shadow-sm hover:shadow-lg hover:border-primary-200 transition-all group">
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-primary-100/60 group-hover:bg-primary-100 transition-colors" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md shadow-primary-500/30">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
               </svg>
             </div>
-            <span className="text-[10px] font-medium text-blue-500 uppercase tracking-wide">AKTİF DOSYA</span>
+            <p className="mt-3 text-3xl font-extrabold text-navy-900">{stats.totalActive}</p>
+            <p className="text-[11px] text-navy-500 mt-0.5 font-medium uppercase tracking-wider">Aktif dosya</p>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.totalActive}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Devam Eden</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-              <svg className="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="relative overflow-hidden rounded-2xl bg-white border border-navy-100 p-5 shadow-sm hover:shadow-lg hover:border-accent-200 transition-all group">
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-accent-100/60 group-hover:bg-accent-100 transition-colors" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-accent-600 flex items-center justify-center shadow-md shadow-accent-500/30">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <span className="text-[10px] font-medium text-violet-500 uppercase tracking-wide">BUGÜN RANDEVU</span>
+            <p className="mt-3 text-3xl font-extrabold text-navy-900">{stats.todayAppointments}</p>
+            <p className="text-[11px] text-navy-500 mt-0.5 font-medium uppercase tracking-wider">Bugün randevu</p>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.todayAppointments}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Randevu</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
-              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="relative overflow-hidden rounded-2xl bg-white border border-navy-100 p-5 shadow-sm hover:shadow-lg hover:border-red-200 transition-all group">
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-red-100/60 group-hover:bg-red-100 transition-colors" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-md shadow-red-500/30">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <span className="text-[10px] font-medium text-red-500 uppercase tracking-wide">ÖDENMEMİŞ</span>
+            <p className="mt-3 text-3xl font-extrabold text-navy-900">{stats.unpaidCari}</p>
+            <p className="text-[11px] text-navy-500 mt-0.5 font-medium uppercase tracking-wider">Ödenmemiş cari</p>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.unpaidCari}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Cari Dosya</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="relative overflow-hidden rounded-2xl bg-white border border-navy-100 p-5 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all group">
+          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-emerald-100/60 group-hover:bg-emerald-100 transition-colors" />
+          <div className="relative">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-md shadow-emerald-500/30">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
-            <span className="text-[10px] font-medium text-green-500 uppercase tracking-wide">TOPLAM GELİR</span>
+            <div className="mt-3 space-y-0.5">
+              {Object.entries(stats.totalRevenue).map(([curr, val]) =>
+                val > 0 ? (
+                  <p key={curr} className="text-base font-extrabold text-navy-900 leading-tight">
+                    {val.toLocaleString("tr-TR")} {getCurrencySymbol(curr)}
+                  </p>
+                ) : null
+              )}
+              {Object.values(stats.totalRevenue).every((v) => v === 0) && (
+                <p className="text-3xl font-extrabold text-navy-900">—</p>
+              )}
+            </div>
+            <p className="text-[11px] text-navy-500 mt-0.5 font-medium uppercase tracking-wider">Toplam gelir</p>
           </div>
-          <div className="space-y-0.5">
-            {Object.entries(stats.totalRevenue).map(([curr, val]) => (
-              val > 0 && (
-                <p key={curr} className="text-sm font-bold text-slate-700">
-                  {val.toLocaleString("tr-TR")} {getCurrencySymbol(curr)}
-                </p>
-              )
-            ))}
-            {Object.values(stats.totalRevenue).every(v => v === 0) && (
-              <p className="text-2xl font-bold text-slate-900">-</p>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">Ödenen Toplam</p>
         </div>
       </div>
 

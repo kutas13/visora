@@ -28,8 +28,15 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id) ON DELETE SET NULL;
 
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+
+-- 022 platform_owner rolunu ekleyince geriye uyumlu olsun diye 4 deger
+UPDATE public.profiles
+   SET role = 'staff'
+ WHERE role IS NULL
+    OR role NOT IN ('admin', 'staff', 'muhasebe', 'platform_owner');
+
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check
-  CHECK (role IN ('admin', 'staff', 'muhasebe'));
+  CHECK (role IN ('admin', 'staff', 'muhasebe', 'platform_owner'));
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_one_admin_per_organization
   ON public.profiles (organization_id)
@@ -39,7 +46,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_one_admin_per_organization
 -- 3) Personel limiti (en fazla 3 staff / firma)
 -- ============================================
 CREATE OR REPLACE FUNCTION public.enforce_organization_staff_limit()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $eosl$
 DECLARE
   staff_count INTEGER;
 BEGIN
@@ -59,7 +66,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$eosl$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS enforce_organization_staff_limit ON public.profiles;
 CREATE TRIGGER enforce_organization_staff_limit
@@ -71,7 +78,7 @@ CREATE TRIGGER enforce_organization_staff_limit
 -- 4) Auth: yeni kullanıcı profili (metadata ile org)
 -- ============================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $hnu$
 DECLARE
   org UUID;
 BEGIN
@@ -86,7 +93,12 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$hnu$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
 -- 5) commission_rates: firma bazlı
@@ -105,6 +117,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS commission_rates_org_country_uidx
 
 DROP POLICY IF EXISTS "commission_rates_read" ON public.commission_rates;
 DROP POLICY IF EXISTS "commission_rates_write" ON public.commission_rates;
+DROP POLICY IF EXISTS "commission_rates_select_org" ON public.commission_rates;
+DROP POLICY IF EXISTS "commission_rates_mutate_org" ON public.commission_rates;
 
 CREATE POLICY "commission_rates_select_org" ON public.commission_rates
   FOR SELECT TO authenticated
@@ -136,9 +150,9 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $auo$
   SELECT organization_id FROM public.profiles WHERE id = auth.uid() LIMIT 1;
-$$;
+$auo$;
 
 REVOKE ALL ON FUNCTION public.auth_user_organization_id() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.auth_user_organization_id() TO authenticated;
@@ -146,6 +160,7 @@ GRANT EXECUTE ON FUNCTION public.auth_user_organization_id() TO service_role;
 
 DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_select_org" ON public.profiles;
 
 CREATE POLICY "profiles_select_org" ON public.profiles
   FOR SELECT USING (
@@ -170,6 +185,14 @@ DROP POLICY IF EXISTS "Staff can update own files" ON public.visa_files;
 DROP POLICY IF EXISTS "Admins can update all files" ON public.visa_files;
 DROP POLICY IF EXISTS "Staff can view cari files" ON public.visa_files;
 DROP POLICY IF EXISTS "Staff can update cari files" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_select_staff_own" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_select_staff_cari" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_select_admin_org" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_insert_staff" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_insert_admin_org" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_update_staff_own" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_update_staff_cari" ON public.visa_files;
+DROP POLICY IF EXISTS "visa_files_update_admin_org" ON public.visa_files;
 
 CREATE POLICY "visa_files_select_staff_own" ON public.visa_files
   FOR SELECT USING (assigned_user_id = auth.uid());
@@ -248,6 +271,10 @@ DROP POLICY IF EXISTS "Staff can view payments of own files" ON public.payments;
 DROP POLICY IF EXISTS "Admins can view all payments" ON public.payments;
 DROP POLICY IF EXISTS "Staff can insert payments for own files" ON public.payments;
 DROP POLICY IF EXISTS "Admins can insert any payment" ON public.payments;
+DROP POLICY IF EXISTS "payments_select_staff" ON public.payments;
+DROP POLICY IF EXISTS "payments_select_admin_org" ON public.payments;
+DROP POLICY IF EXISTS "payments_insert_staff" ON public.payments;
+DROP POLICY IF EXISTS "payments_insert_admin_org" ON public.payments;
 
 CREATE POLICY "payments_select_staff" ON public.payments
   FOR SELECT USING (
@@ -297,6 +324,9 @@ CREATE POLICY "payments_insert_admin_org" ON public.payments
 DROP POLICY IF EXISTS "Staff can view own logs" ON public.activity_logs;
 DROP POLICY IF EXISTS "Admins can view all logs" ON public.activity_logs;
 DROP POLICY IF EXISTS "Users can insert own logs" ON public.activity_logs;
+DROP POLICY IF EXISTS "activity_logs_select_staff" ON public.activity_logs;
+DROP POLICY IF EXISTS "activity_logs_select_admin_org" ON public.activity_logs;
+DROP POLICY IF EXISTS "activity_logs_insert" ON public.activity_logs;
 
 CREATE POLICY "activity_logs_select_staff" ON public.activity_logs
   FOR SELECT USING (
@@ -348,6 +378,9 @@ DROP POLICY IF EXISTS "Admins can view all notifications" ON public.notification
 DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Staff can insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_select" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_update_own" ON public.notifications;
+DROP POLICY IF EXISTS "notifications_insert" ON public.notifications;
 
 CREATE POLICY "notifications_select" ON public.notifications
   FOR SELECT USING (
@@ -383,6 +416,9 @@ CREATE POLICY "notifications_insert" ON public.notifications
 DROP POLICY IF EXISTS "Users can view own messages" ON public.internal_messages;
 DROP POLICY IF EXISTS "Users can send messages" ON public.internal_messages;
 DROP POLICY IF EXISTS "Users can update received messages" ON public.internal_messages;
+DROP POLICY IF EXISTS "internal_messages_select" ON public.internal_messages;
+DROP POLICY IF EXISTS "internal_messages_insert" ON public.internal_messages;
+DROP POLICY IF EXISTS "internal_messages_update" ON public.internal_messages;
 
 CREATE POLICY "internal_messages_select" ON public.internal_messages
   FOR SELECT USING (
@@ -405,6 +441,7 @@ CREATE POLICY "internal_messages_update" ON public.internal_messages
 -- 12) DAILY_REPORTS RLS
 -- ============================================
 DROP POLICY IF EXISTS "Admins can view all reports" ON public.daily_reports;
+DROP POLICY IF EXISTS "daily_reports_select_admin_org" ON public.daily_reports;
 
 CREATE POLICY "daily_reports_select_admin_org" ON public.daily_reports
   FOR SELECT USING (
@@ -430,14 +467,14 @@ FROM public.profiles p
 WHERE rt.created_by = p.id AND rt.organization_id IS NULL;
 
 CREATE OR REPLACE FUNCTION public.set_randevu_organization_from_creator()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $srfn$
 BEGIN
   IF NEW.organization_id IS NULL AND NEW.created_by IS NOT NULL THEN
     SELECT organization_id INTO NEW.organization_id FROM public.profiles WHERE id = NEW.created_by;
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$srfn$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS trg_randevu_set_org ON public.randevu_talepleri;
 CREATE TRIGGER trg_randevu_set_org
@@ -449,6 +486,10 @@ DROP POLICY IF EXISTS "randevu_talepleri_select" ON public.randevu_talepleri;
 DROP POLICY IF EXISTS "randevu_talepleri_insert" ON public.randevu_talepleri;
 DROP POLICY IF EXISTS "randevu_talepleri_update" ON public.randevu_talepleri;
 DROP POLICY IF EXISTS "randevu_talepleri_delete" ON public.randevu_talepleri;
+DROP POLICY IF EXISTS "randevu_talepleri_select_org" ON public.randevu_talepleri;
+DROP POLICY IF EXISTS "randevu_talepleri_insert_org" ON public.randevu_talepleri;
+DROP POLICY IF EXISTS "randevu_talepleri_update_org" ON public.randevu_talepleri;
+DROP POLICY IF EXISTS "randevu_talepleri_delete_org" ON public.randevu_talepleri;
 
 CREATE POLICY "randevu_talepleri_select_org" ON public.randevu_talepleri
   FOR SELECT USING (
@@ -495,6 +536,13 @@ DROP POLICY IF EXISTS "staff_delete_own" ON public.vize_gorselleri_uploads;
 DROP POLICY IF EXISTS "admin_select_all" ON public.vize_gorselleri_uploads;
 DROP POLICY IF EXISTS "admin_delete_all" ON public.vize_gorselleri_uploads;
 DROP POLICY IF EXISTS "admin_update_all" ON public.vize_gorselleri_uploads;
+DROP POLICY IF EXISTS "vize_gors_staff_own" ON public.vize_gorselleri_uploads;
+DROP POLICY IF EXISTS "vize_gors_staff_insert" ON public.vize_gorselleri_uploads;
+DROP POLICY IF EXISTS "vize_gors_staff_update" ON public.vize_gorselleri_uploads;
+DROP POLICY IF EXISTS "vize_gors_staff_delete" ON public.vize_gorselleri_uploads;
+DROP POLICY IF EXISTS "vize_gors_admin_select_org" ON public.vize_gorselleri_uploads;
+DROP POLICY IF EXISTS "vize_gors_admin_update_org" ON public.vize_gorselleri_uploads;
+DROP POLICY IF EXISTS "vize_gors_admin_delete_org" ON public.vize_gorselleri_uploads;
 
 CREATE POLICY "vize_gors_staff_own" ON public.vize_gorselleri_uploads
   FOR SELECT USING (auth.uid() = user_id);
@@ -544,7 +592,7 @@ CREATE POLICY "vize_gors_admin_delete_org" ON public.vize_gorselleri_uploads
 -- ============================================
 -- 15) VISA_GROUPS (varsa)
 -- ============================================
-DO $$
+DO $vg$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables
@@ -576,6 +624,10 @@ BEGIN
     DROP POLICY IF EXISTS "visa_groups_insert" ON public.visa_groups;
     DROP POLICY IF EXISTS "visa_groups_update" ON public.visa_groups;
     DROP POLICY IF EXISTS "visa_groups_delete" ON public.visa_groups;
+    DROP POLICY IF EXISTS "visa_groups_select_org" ON public.visa_groups;
+    DROP POLICY IF EXISTS "visa_groups_insert_org" ON public.visa_groups;
+    DROP POLICY IF EXISTS "visa_groups_update_org" ON public.visa_groups;
+    DROP POLICY IF EXISTS "visa_groups_delete_org" ON public.visa_groups;
 
     CREATE POLICY "visa_groups_select_org" ON public.visa_groups
       FOR SELECT TO authenticated USING (
@@ -601,9 +653,9 @@ BEGIN
         AND organization_id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid())
       );
   END IF;
-END $$;
+END $vg$;
 
-DO $$
+DO $vgm$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables
@@ -612,6 +664,9 @@ BEGIN
     DROP POLICY IF EXISTS "visa_group_members_select" ON public.visa_group_members;
     DROP POLICY IF EXISTS "visa_group_members_insert" ON public.visa_group_members;
     DROP POLICY IF EXISTS "visa_group_members_delete" ON public.visa_group_members;
+    DROP POLICY IF EXISTS "visa_group_members_select_org" ON public.visa_group_members;
+    DROP POLICY IF EXISTS "visa_group_members_insert_org" ON public.visa_group_members;
+    DROP POLICY IF EXISTS "visa_group_members_delete_org" ON public.visa_group_members;
 
     CREATE POLICY "visa_group_members_select_org" ON public.visa_group_members
       FOR SELECT TO authenticated USING (
@@ -640,12 +695,12 @@ BEGIN
         )
       );
   END IF;
-END $$;
+END $vgm$;
 
 -- ============================================
 -- 16) companies tablosu (cari firmalar) — tenant sütunu
 -- ============================================
-DO $$
+DO $cmp$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.tables
@@ -653,6 +708,6 @@ BEGIN
   ) THEN
     ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES public.organizations(id);
   END IF;
-END $$;
+END $cmp$;
 
 NOTIFY pgrst, 'reload schema';

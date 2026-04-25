@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { isLegacyEmailEnabled, LEGACY_EMAIL_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
-const RECIPIENTS = [
-  "ercan@foxturizm.com",
-  "vize@foxturizm.com",    // Bahar
-  "info@foxturizm.com",    // Davut
-  "yusuf@foxturizm.com",
-  "muhasebe@foxturizm.com" // Sırrı
-];
+// Eski Fox alici listesi (artik kullanilmiyor; fallback default).
+// Visora'da sirket-bazli email yapilandirmasi gelene kadar bu endpoint
+// ENABLE_LEGACY_EMAIL=true olmadan calismaz.
+const RECIPIENTS: string[] = [];
 
 export async function POST(request: NextRequest) {
+  if (!isLegacyEmailEnabled()) {
+    return NextResponse.json({ ok: true, disabled: true, message: LEGACY_EMAIL_DISABLED_MESSAGE });
+  }
+
   try {
     const body = await request.json();
     const { dosyaAdi, ulkeler, vizeTipi, randevuTarihi, alanKisi } = body;
@@ -25,11 +27,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "SMTP şifresi tanımlı değil" }, { status: 500 });
     }
 
+    const smtpFrom = process.env.SMTP_FROM_EMAIL;
+    const smtpUser = process.env.SMTP_USER || smtpFrom;
+    if (!smtpUser || !smtpFrom) {
+      return NextResponse.json({ error: "SMTP_USER / SMTP_FROM_EMAIL tanimli degil" }, { status: 500 });
+    }
     const transporter = nodemailer.createTransport({
-      host: "smtp.yandex.com",
-      port: 465,
-      secure: true,
-      auth: { user: "info@foxturizm.com", pass: smtpPass },
+      host: process.env.SMTP_HOST || "smtp.yandex.com",
+      port: Number(process.env.SMTP_PORT || 465),
+      secure: (process.env.SMTP_SECURE || "true").toLowerCase() !== "false",
+      auth: { user: smtpUser, pass: smtpPass },
       connectionTimeout: 8000,
       greetingTimeout: 5000,
       socketTimeout: 10000,
@@ -50,7 +57,7 @@ export async function POST(request: NextRequest) {
 <body style="margin:0;padding:0;background:#080d19;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
 <div style="max-width:500px;margin:0 auto;padding:40px 16px;">
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Fox Turizm</div>
+    <div style="display:inline-block;background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Visora</div>
   </div>
   <div style="background:linear-gradient(145deg,#111827,#1e293b);border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);box-shadow:0 32px 64px rgba(0,0,0,0.5);">
     <div style="height:3px;background:linear-gradient(90deg,#10b981,#059669,#10b981);"></div>
@@ -80,12 +87,12 @@ export async function POST(request: NextRequest) {
     <div style="height:2px;background:linear-gradient(90deg,#10b981,#059669,#10b981);opacity:0.3;"></div>
   </div>
   <div style="text-align:center;padding:24px 0 8px;">
-    <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">Fox Turizm Vize Yönetim Sistemi</p>
+    <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">Visora Vize Yönetim Sistemi</p>
   </div>
 </div></body></html>`;
 
     await transporter.sendMail({
-      from: { name: "Fox Turizm", address: "info@foxturizm.com" },
+      from: { name: "Visora", address: smtpFrom },
       to: RECIPIENTS,
       subject,
       text: `Randevu Alındı - ${dosyaAdi} - ${ulkeler?.join(", ")} - Tarih: ${tarih} - Alan: ${alanKisi}`,

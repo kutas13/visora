@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
 /**
  * WhatsApp mesaj gönderme - Baileys servisi üzerinden.
- * Ayrı çalışan whatsapp-service'e HTTP isteği yollar.
- *
- * Baileys servisi: node whatsapp-service/index.js
- * Varsayılan adres: http://localhost:3001
+ * Visora'da kapatildi: dis numaralara mesaj gitmesi tamamen devre disi.
  */
 export async function POST(request: NextRequest) {
+  if (!isWhatsappEnabled()) {
+    return NextResponse.json(
+      { ok: false, disabled: true, error: WHATSAPP_DISABLED_MESSAGE },
+      { status: 410 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { to, message } = body;

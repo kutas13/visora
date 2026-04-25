@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { rateLimit } from "@/lib/security";
+import { isLegacyEmailEnabled, LEGACY_EMAIL_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
-const SMTP_PASSWORD_MAP: Record<string, string> = {
-  "vize@foxturizm.com": "SMTP_PASS_BAHAR",
-  "ercan@foxturizm.com": "SMTP_PASS_ERCAN",
-  "yusuf@foxturizm.com": "SMTP_PASS_YUSUF",
-  "info@foxturizm.com": "SMTP_PASS_DAVUT",
-};
+// Eski Fox SMTP haritasi kaldirildi. Visora'da sirket-bazli SMTP yapilandirmasi
+// gelene kadar bu endpoint default olarak ENABLE_LEGACY_EMAIL=true olmadan
+// calismaz; tum istekler 410 ile reddedilir.
+const SMTP_PASSWORD_MAP: Record<string, string> = {};
 
 function cText(c: string) {
   return ({ USD: "dolar", EUR: "euro", TL: "TL" } as Record<string, string>)[c] || c;
@@ -30,6 +29,10 @@ function posOdemeCumlesi(tlTutar: number, dosyaTutar: unknown, dosyaCurrency: un
 }
 
 export async function POST(request: NextRequest) {
+  if (!isLegacyEmailEnabled()) {
+    return NextResponse.json({ ok: true, disabled: true, message: LEGACY_EMAIL_DISABLED_MESSAGE });
+  }
+
   try {
     // Rate limiting: dakikada max 10 email
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest) {
 <body style="margin:0;padding:0;background:#080d19;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
 <div style="max-width:500px;margin:0 auto;padding:40px 16px;">
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:linear-gradient(135deg,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Fox Turizm</div>
+    <div style="display:inline-block;background:linear-gradient(135deg,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Visora</div>
   </div>
   <div style="background:linear-gradient(145deg,#111827,#1e293b);border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);box-shadow:0 32px 64px rgba(0,0,0,0.5);">
     <div style="height:3px;background:linear-gradient(90deg,#f97316,#ef4444,#f97316);"></div>
@@ -154,11 +157,15 @@ export async function POST(request: NextRequest) {
     <div style="height:2px;background:linear-gradient(90deg,#f97316,#ef4444,#f97316);opacity:0.3;"></div>
   </div>
   <div style="text-align:center;padding:24px 0 8px;">
-    <p style="margin:0 0 6px;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Fox Turizm Vize Y\u00f6netim Sistemi</span> taraf\u0131ndan otomatik g\u00f6nderilmi\u015ftir.</p>
+    <p style="margin:0 0 6px;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Visora Vize Y\u00f6netim Sistemi</span> taraf\u0131ndan otomatik g\u00f6nderilmi\u015ftir.</p>
   </div>
 </div></body></html>`;
 
-      const toMuhasebe = body.testTo || "Muhasebe@foxturizm.com";
+      const toMuhasebe =
+        body.testTo || process.env.MUHASEBE_EMAIL || "";
+      if (!toMuhasebe) {
+        return NextResponse.json({ error: "MUHASEBE_EMAIL tanimli degil" }, { status: 500 });
+      }
       const bulkAttachments: any[] = [];
       if (dekontBase64 && dekontName) {
         const matches = dekontBase64.match(/^data:(.+);base64,(.+)$/);
@@ -273,7 +280,7 @@ export async function POST(request: NextRequest) {
 
   <!-- Brand -->
   <div style="text-align:center;margin-bottom:32px;">
-    <div style="display:inline-block;background:linear-gradient(135deg,${grad1},${grad2});-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Fox Turizm</div>
+    <div style="display:inline-block;background:linear-gradient(135deg,${grad1},${grad2});-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:11px;font-weight:800;letter-spacing:4px;text-transform:uppercase;">Visora</div>
   </div>
 
   <!-- Main Card -->
@@ -433,9 +440,9 @@ export async function POST(request: NextRequest) {
   <!-- Footer -->
   <div style="text-align:center;padding:24px 0 8px;">
     <p style="margin:0 0 6px;font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:1px;">
-      Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Fox Turizm Vize Y\u00f6netim Sistemi</span> taraf\u0131ndan otomatik g\u00f6nderilmi\u015ftir.
+      Bu e-posta <span style="color:rgba(255,255,255,0.75);font-weight:600;">Visora Vize Y\u00f6netim Sistemi</span> taraf\u0131ndan otomatik g\u00f6nderilmi\u015ftir.
     </p>
-    <p style="margin:0;font-size:9px;color:rgba(255,255,255,0.25);">\u00a9 ${new Date().getFullYear()} Fox Turizm</p>
+    <p style="margin:0;font-size:9px;color:rgba(255,255,255,0.25);">\u00a9 ${new Date().getFullYear()} Visora</p>
   </div>
 
 </div>
@@ -443,7 +450,11 @@ export async function POST(request: NextRequest) {
 </html>`;
 
     // Alıcılar: Muhasebe + gönderen kullanıcının kendisi
-    const toMuhasebe = body.testTo || "Muhasebe@foxturizm.com";
+    const toMuhasebe =
+      body.testTo || process.env.MUHASEBE_EMAIL || "";
+    if (!toMuhasebe) {
+      return NextResponse.json({ error: "MUHASEBE_EMAIL tanimli degil" }, { status: 500 });
+    }
     const recipients = [toMuhasebe, senderEmail];
 
     const attachments: any[] = [];

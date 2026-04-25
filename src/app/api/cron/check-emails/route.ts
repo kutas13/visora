@@ -10,12 +10,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Email hesaplari ve sifre mapping (Davut/info hesabi haric)
-const EMAIL_ACCOUNTS = [
-  { email: "yusuf@foxturizm.com", passKey: "SMTP_PASS_YUSUF" },
-  { email: "vize@foxturizm.com", passKey: "SMTP_PASS_BAHAR" },
-  { email: "ercan@foxturizm.com", passKey: "SMTP_PASS_ERCAN" },
-];
+// Eski Fox email hesaplari kaldirildi. Visora'da iDATA mail kontrolunu
+// kullanmak isteyen sirketler ortam degiskenleri ile kendi hesaplarini
+// tanimlar:
+//   IDATA_INBOX_EMAILS=...,...
+//   IDATA_INBOX_PASS_KEYS=...,...   (her email icin ENV anahtari)
+const EMAIL_ACCOUNTS: { email: string; passKey: string }[] = (() => {
+  const emails = (process.env.IDATA_INBOX_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const keys = (process.env.IDATA_INBOX_PASS_KEYS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (emails.length === 0 || emails.length !== keys.length) return [];
+  return emails.map((email, i) => ({ email, passKey: keys[i] }));
+})();
 
 // Ayni PNR icin 3 gun icinde gelen mailleri yoksay
 const PNR_COOLDOWN_DAYS = 3;
@@ -301,7 +312,7 @@ async function processEmails(request: NextRequest) {
                   ? `⏰ Son Kayıt: *${formatDateTimeTr(parsed.sonKayitTarihi)}*\n`
                   : "") +
                 `📧 Hesap: *${account.email}*\n\n` +
-                `_Fox Turizm_`;
+                `_Visora_`;
 
               const sent = await sendWhatsApp(whatsappTo, whatsappMsg, baseUrl);
 

@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = "Fox Turizm";
+    workbook.creator = "Visora";
     workbook.created = new Date();
 
     const sheet = workbook.addWorksheet("Sayfa1");

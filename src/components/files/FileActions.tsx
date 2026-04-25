@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button, Modal, Input, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileStatusChanged } from "@/lib/notifications";
-import { STAFF_USERS, ADMIN_USER } from "@/lib/constants";
 import { uploadBase64ToStorage } from "@/lib/supabase/storage";
 import type { VisaFile, VizeSonucu } from "@/lib/supabase/types";
 
@@ -272,83 +271,9 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
 
       await notifyFileStatusChanged(file.id, file.musteri_ad, `İşlemden Çıktı - ${sonucText}`, logMessage, user.id, userName);
 
-      const cleanPhone = musteriTelefon ? musteriTelefon.replace(/\D/g, "") : "";
-      if (cleanPhone.length >= 10 && sonuc === "vize_onay") {
-        try {
-          const staffInfo = [...STAFF_USERS, ADMIN_USER].find(
-            s => s.name.toUpperCase() === userName.toUpperCase()
-          );
-          const staffPhone = staffInfo?.phone || "";
-          const staffHitap = staffInfo?.hitap || userName;
-          const bitisTarihStr = vizeBitisTarihi
-            ? new Date(vizeBitisTarihi).toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" })
-            : "";
-
-          const message = [
-            `Sayın ${file.musteri_ad},`,
-            ``,
-            `${file.hedef_ulke} vize başvurunuzla ilgili sevindirici haberimiz var! 🎉`,
-            ``,
-            `Vize başvurunuz *onaylanmıştır*. ✅`,
-            ``,
-            `📅 Vize Geçerlilik: ${bitisTarihStr} tarihine kadar`,
-            `🛂 Hedef Ülke: ${file.hedef_ulke}`,
-            ``,
-            `Pasaportunuzu en kısa sürede ofisimizden teslim alabilirsiniz.`,
-            ``,
-            `⏰ Çalışma Saatlerimiz:`,
-            `Hafta içi 09:00 - 18:00`,
-            ``,
-            `📌 Önemli Hatırlatma: Vize bitiş tarihiniz yaklaştığında tarafınıza tekrar bilgilendirme yapılacaktır. Yeniden başvuru için bizimle iletişime geçebilirsiniz.`,
-            ``,
-            `Bizi tercih ettiğiniz için teşekkür eder, iyi yolculuklar dileriz! 🙏✈️`,
-            ``,
-            `*Fox Turizm*`,
-            `${staffHitap}`,
-            staffPhone ? `📞 ${staffPhone}` : ``,
-          ].filter(Boolean).join("\n");
-
-          let phone = cleanPhone;
-          if (phone.startsWith("0")) phone = "90" + phone.slice(1);
-          if (!phone.startsWith("90")) phone = "90" + phone;
-          phone = "+" + phone;
-
-          console.log("WhatsApp müşteri mesajı gönderiliyor:", { phone, musteriAd: file.musteri_ad });
-
-          const wpRes = await fetch("/api/whatsapp/send-direct", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone, message }),
-          });
-
-          const wpData = await wpRes.json().catch(() => ({}));
-          console.log("WhatsApp müşteri sonuç:", wpRes.status, wpData);
-
-          if (wpRes.ok) {
-            if (gorselUrl) {
-              try {
-                await fetch("/api/whatsapp/send-image", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ phone, image: gorselUrl, caption: `${file.musteri_ad} - ${file.hedef_ulke} Vizesi` }),
-                });
-              } catch (imgErr) {
-                console.error("WhatsApp görsel gönderilemedi:", imgErr);
-              }
-            }
-            setToast({ message: `${file.musteri_ad} müşterinize WhatsApp bilgilendirme mesajı gönderildi ✅`, type: "success" });
-            setTimeout(() => setToast(null), 4000);
-          } else {
-            console.error("WhatsApp müşteri hata:", wpData);
-            setToast({ message: "WhatsApp mesajı gönderilemedi", type: "error" });
-            setTimeout(() => setToast(null), 4000);
-          }
-        } catch (wpErr) {
-          console.error("Müşteri WhatsApp gönderilemedi:", wpErr);
-          setToast({ message: "WhatsApp mesajı gönderilemedi", type: "error" });
-          setTimeout(() => setToast(null), 4000);
-        }
-      }
+      // Visora politikasi: dis numaralara WhatsApp mesaji gonderimi devre disi.
+      // Eski "vize onay" mesajlari kaldirildi. Musteri telefon bilgisi DB'de
+      // tutulmaya devam eder; dis kanallara hicbir veri iletilmez.
 
       setShowSonucModal(false);
 

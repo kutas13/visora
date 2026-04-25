@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -72,6 +73,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isWhatsappEnabled()) {
+    return NextResponse.json({ ok: true, disabled: true, sent: 0, message: WHATSAPP_DISABLED_MESSAGE });
+  }
+
   const secret = request.headers.get("x-cron-secret") || request.nextUrl.searchParams.get("secret");
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Yetkisiz erisim" }, { status: 401 });
@@ -131,7 +136,7 @@ export async function POST(request: NextRequest) {
         `Evraklarınızı *${formatTrDate(evrakBaslangic)}* tarihinden itibaren hazırlamaya başlamanız gerekmektedir.\n\n` +
         `Evraklarınızın en geç *${formatTrDate(teslimTarih)}* tarihine kadar ofisimizde olması gerekmektedir.\n\n` +
         `Gerekli evrak listesi aşağıda gönderilecektir.\n\n` +
-        `Fox Turizm Randevu Takip Sistemi`;
+        `Visora Randevu Takip Sistemi`;
 
       try {
         await sendWpMsg(serviceUrl, musteriPhone, mesaj);
@@ -179,7 +184,7 @@ export async function POST(request: NextRequest) {
           `Ercan Bey: 0505 562 33 01\n` +
           `Bahar Hanım: 0505 562 32 79\n\n` +
           `Herhangi bir sorunuz olursa yukarıdaki numaralardan bize ulaşabilirsiniz.\n\n` +
-          `Fox Turizm`;
+          `Visora`;
 
         await sendWpMsg(serviceUrl, musteriPhone, iletisimMesaj);
 

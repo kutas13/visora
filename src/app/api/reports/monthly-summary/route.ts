@@ -26,7 +26,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const files = await fetchMonthlyReportFiles(ym.year, ym.month);
+    const files = await fetchMonthlyReportFiles(
+      ym.year,
+      ym.month,
+      gate.organizationId ?? null
+    );
     const summary = buildMonthlySummary(ym.year, ym.month, files, {
       assignedUserId: gate.mode === "staff" ? gate.userId : undefined,
     });

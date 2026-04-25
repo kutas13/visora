@@ -218,10 +218,10 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
   const countryRows = data.byCountry.slice(0, 28);
 
   return (
-    <Document title={`Fox Turizm — Aylık vize özeti ${data.monthLabelTr}`} author="Fox Turizm">
+    <Document title={`Visora — Aylık vize özeti ${data.monthLabelTr}`} author="Visora">
       <Page size="A4" style={styles.page}>
         <View style={styles.headerBand} wrap={false}>
-          <Text style={styles.headerBrand}>FOX TURİZM · VİZE OPERASYON</Text>
+          <Text style={styles.headerBrand}>VISORA · VİZE OPERASYON</Text>
           <Text style={styles.headerTitle}>Aylık vize özeti</Text>
           <Text style={styles.headerSub}>{data.monthLabelTr}</Text>
         </View>
@@ -372,7 +372,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
           style={styles.footerFixed}
           fixed
           render={({ pageNumber, totalPages }) =>
-            `Fox Turizm · Gizli / iç kullanım · Oluşturulma: ${generated} · Sayfa ${pageNumber} / ${totalPages ?? "—"}`
+            `Visora · Gizli / iç kullanım · Oluşturulma: ${generated} · Sayfa ${pageNumber} / ${totalPages ?? "—"}`
           }
         />
       </Page>

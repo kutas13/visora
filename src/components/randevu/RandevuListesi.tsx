@@ -524,7 +524,7 @@ export default function RandevuListesi() {
           `📋 Vize Tipi: *${vizeTipiLabel}*\n` +
           (formNot.trim() ? `📝 Not: ${formNot.trim()}\n` : ``) +
           `👤 Oluşturan: *${currentUser?.name || "-"}*\n\n` +
-          `_Fox Turizm Randevu Takip Sistemi_`;
+          `_Visora Randevu Takip Sistemi_`;
 
         const davutPhone = "+905435680874";
         const zaferPhone = "+905363434444";
@@ -550,24 +550,14 @@ export default function RandevuListesi() {
     }
   };
 
-  const sendWpMsg = async (phone: string, message: string) => {
-    try {
-      await fetch("/api/whatsapp/send-direct", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, message }),
-      });
-    } catch { /* sessiz */ }
+  // Visora politikasi: dis numaralara WhatsApp gonderimi tamamen kapali.
+  // Eski fonksiyonlar geriye donuk uyumluluk icin no-op olarak biraktilmistir.
+  const sendWpMsg = async (_phone: string, _message: string) => {
+    /* whatsapp disabled */
   };
 
-  const sendWpImage = async (phone: string, image: string, caption?: string) => {
-    try {
-      await fetch("/api/whatsapp/send-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, image, caption: caption || "" }),
-      });
-    } catch { /* sessiz */ }
+  const sendWpImage = async (_phone: string, _image: string, _caption?: string) => {
+    /* whatsapp disabled */
   };
 
   const handleRandevuAl = async () => {
@@ -591,10 +581,9 @@ export default function RandevuListesi() {
         .eq("id", selectedTalep.id);
 
       if (!error) {
-        const allStaff = [...STAFF_USERS, ADMIN_USER, MUHASEBE_USER];
-        const staffInfo = allStaff.find(s => s.name.toUpperCase() === currentUser.name.toUpperCase());
-        const staffHitap = staffInfo?.hitap || currentUser.name;
-        const staffPhone = staffInfo?.phone || "";
+        // Eski Fox staff listesi kaldirildi; hitap/telefon yerine kullanici adini kullan.
+        const staffHitap = currentUser.name;
+        const staffPhone = "";
         const ulkelerStr = randevuUlke || selectedTalep.ulkeler.join(", ");
         const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === selectedTalep.vize_tipi)?.label || selectedTalep.vize_tipi;
         const randevuStr = new Date(randevuTarihi).toLocaleDateString("tr-TR", {
@@ -669,7 +658,7 @@ export default function RandevuListesi() {
           ``,
           `Bizi tercih ettiğiniz için teşekkür ederiz! 🙏`,
           ``,
-          `*Fox Turizm*`,
+          `*Visora*`,
           `${staffHitap}`,
           staffPhone ? `📞 ${staffPhone}` : ``,
         ].filter(Boolean).join("\n");
@@ -684,7 +673,7 @@ export default function RandevuListesi() {
           `📋 Vize Tipi: *${vizeTipiLabel}*\n` +
           `📅 Randevu: *${randevuStr}*\n` +
           `👤 Alan: *${currentUser.name}*\n\n` +
-          `_Fox Turizm_`;
+          `_Visora_`;
 
         const ekipPhoneList = Array.from(ekipPhones);
         for (const phone of ekipPhoneList) {
@@ -716,7 +705,7 @@ export default function RandevuListesi() {
               `Evraklarınızı *${fmtTr(evrakBaslangic)}* tarihinden itibaren hazırlamaya başlamanız gerekmektedir.\n\n` +
               `Evraklarınızın en geç *${fmtTr(teslimTarih)}* tarihine kadar ofisimizde olması gerekmektedir.\n\n` +
               `Gerekli evrak listesi aşağıda gönderilecektir.\n\n` +
-              `Fox Turizm Randevu Takip Sistemi`;
+              `Visora Randevu Takip Sistemi`;
             await new Promise(r => setTimeout(r, 2000));
             await sendWpMsg(musteriPhone, evrakMsg);
             await new Promise(r => setTimeout(r, 2000));
@@ -747,7 +736,7 @@ export default function RandevuListesi() {
               `Ercan Bey: 0505 562 33 01\n` +
               `Bahar Hanım: 0505 562 32 79\n\n` +
               `Herhangi bir sorunuz olursa yukarıdaki numaralardan bize ulaşabilirsiniz.\n\n` +
-              `Fox Turizm`
+              `Visora`
             );
 
             await supabase.from("randevu_talepleri").update({ evrak_hatirlatma_gonderildi: true }).eq("id", selectedTalep.id);

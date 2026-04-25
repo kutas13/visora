@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  if (!isWhatsappEnabled()) {
+    return NextResponse.json(
+      { ok: false, disabled: true, error: WHATSAPP_DISABLED_MESSAGE },
+      { status: 410 }
+    );
+  }
+
   try {
     const { phone, message } = await request.json();
 

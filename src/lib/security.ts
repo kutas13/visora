@@ -1,5 +1,5 @@
 /**
- * Fox Turizm - Güvenlik Yardımcıları
+ * Visora - Güvenlik Yardımcıları
  * Rate limiting, input sanitization, origin kontrolü
  */
 

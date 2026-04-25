@@ -2,10 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { validateOrigin, sanitizeInput } from "@/lib/security";
+import { explainAuthAdminError, SERVICE_KEY_SETUP_HINT } from "@/lib/platform/auth";
 
 export const dynamic = "force-dynamic";
 
 const STAFF_LIMIT = 3;
+
+function isLikelyServiceRoleKey(key: string): boolean {
+  const parts = key.split(".");
+  if (parts.length !== 3) return true;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
+    );
+    return payload?.role === "service_role";
+  } catch {
+    return true;
+  }
+}
 
 /**
  * Genel müdür (admin): firmaya en fazla 3 personel (staff) ekler.
@@ -68,8 +82,8 @@ export async function POST(request: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
-    return NextResponse.json({ error: "Sunucu yapılandırması eksik." }, { status: 500 });
+  if (!supabaseUrl || !serviceKey || !isLikelyServiceRoleKey(serviceKey)) {
+    return NextResponse.json({ error: SERVICE_KEY_SETUP_HINT }, { status: 500 });
   }
 
   const admin = createClient(supabaseUrl, serviceKey, {
@@ -88,8 +102,25 @@ export async function POST(request: NextRequest) {
   });
 
   if (createErr || !created?.user?.id) {
-    const msg = createErr?.message || "Kullanıcı oluşturulamadı.";
+    const msg = explainAuthAdminError(createErr?.message || "Kullanıcı oluşturulamadı.");
     return NextResponse.json({ error: msg }, { status: 400 });
+  }
+
+  // Profile'ı garantili olarak staff yap (trigger'a guvenmek yerine zorla).
+  const { error: profUpsertErr } = await admin.from("profiles").upsert(
+    {
+      id: created.user.id,
+      name,
+      role: "staff",
+      organization_id: me.organization_id,
+    },
+    { onConflict: "id" }
+  );
+  if (profUpsertErr) {
+    return NextResponse.json(
+      { error: `Personel profili yazılamadı: ${profUpsertErr.message}` },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({
