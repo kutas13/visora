@@ -70,6 +70,12 @@ export default function VisoraCompaniesPage() {
   const [eBusy, setEBusy] = useState(false);
   const [eMsg, setEMsg] = useState<string | null>(null);
 
+  // reset (tum sirketleri sil) modal
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetText, setResetText] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
@@ -111,6 +117,48 @@ export default function VisoraCompaniesPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const doReset = useCallback(async () => {
+    if (resetText !== "TUMUNU SIL") {
+      setResetMsg("Onay metni hatali: 'TUMUNU SIL' yazmalisin.");
+      return;
+    }
+    setResetBusy(true);
+    setResetMsg(null);
+    try {
+      const res = await fetch("/api/visora/reset-organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "VISORA_RESET" }),
+      });
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        setResetMsg((data as { error?: string }).error || `Hata: HTTP ${res.status}`);
+        return;
+      }
+      const d = data as {
+        deletedProfiles?: number;
+        deletedAuthUsers?: number;
+        failedAuthUsers?: string[];
+      };
+      setResetMsg(
+        `Tamam. ${d.deletedProfiles ?? 0} profil silindi, ${d.deletedAuthUsers ?? 0} auth kullanici silindi.${
+          (d.failedAuthUsers?.length ?? 0) > 0 ? ` ${d.failedAuthUsers!.length} auth silinemedi.` : ""
+        }`
+      );
+      setResetText("");
+      await load();
+      setTimeout(() => {
+        setResetOpen(false);
+        setResetMsg(null);
+      }, 1800);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Bilinmeyen hata";
+      setResetMsg(msg);
+    } finally {
+      setResetBusy(false);
+    }
+  }, [resetText, load]);
 
   const filtered = rows.filter((r) =>
     !search.trim()
@@ -229,9 +277,22 @@ export default function VisoraCompaniesPage() {
             className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
           />
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-primary-500 hover:bg-primary-600 shadow-primary-500/30">
-          + Yeni Şirket
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => {
+              setResetOpen(true);
+              setResetText("");
+              setResetMsg(null);
+            }}
+            variant="ghost"
+            className="text-red-600 hover:bg-red-50 border border-red-200"
+          >
+            Tümünü Sıfırla
+          </Button>
+          <Button onClick={() => setCreateOpen(true)} className="bg-primary-500 hover:bg-primary-600 shadow-primary-500/30">
+            + Yeni Şirket
+          </Button>
+        </div>
       </div>
 
       {err && <Card className="p-4 text-red-600 text-sm">{err}</Card>}
@@ -427,6 +488,69 @@ export default function VisoraCompaniesPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* TUMUNU SIFIRLA — TEHLIKELI */}
+      <Modal
+        isOpen={resetOpen}
+        onClose={() => {
+          if (!resetBusy) {
+            setResetOpen(false);
+            setResetText("");
+            setResetMsg(null);
+          }
+        }}
+        title="Tüm Şirketleri Sıfırla"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            Bu işlem <b>geri alınamaz</b>. Tüm şirketler, genel müdür ve personel
+            hesapları, dosyalar, ödemeler, raporlar, cari kayıtları ve aktivite
+            günlükleri silinecek. Senin Platform Owner hesabın korunur.
+          </div>
+          <div className="text-sm text-slate-700">
+            Onaylamak için aşağıya <code className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-xs">TUMUNU SIL</code> yaz:
+          </div>
+          <input
+            value={resetText}
+            onChange={(e) => setResetText(e.target.value)}
+            placeholder="TUMUNU SIL"
+            className="w-full px-3 py-2 rounded-lg border border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-mono"
+            disabled={resetBusy}
+          />
+          {resetMsg && (
+            <p
+              className={`text-sm ${
+                resetMsg.startsWith("Tamam") ? "text-emerald-700" : "text-red-600"
+              }`}
+            >
+              {resetMsg}
+            </p>
+          )}
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setResetOpen(false);
+                setResetText("");
+                setResetMsg(null);
+              }}
+              disabled={resetBusy}
+            >
+              Vazgeç
+            </Button>
+            <Button
+              type="button"
+              onClick={doReset}
+              disabled={resetBusy || resetText !== "TUMUNU SIL"}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {resetBusy ? "Siliniyor…" : "Tümünü Sil"}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
