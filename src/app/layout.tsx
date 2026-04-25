@@ -8,15 +8,48 @@ const inter = Inter({
   preload: true,
 });
 
+/** Kanonik site adresi: Vercel’de `NEXT_PUBLIC_SITE_URL` ile ezilebilir (örn. preview). */
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://visora.com.tr";
+
+const shareDescription =
+  "Visora — vize dosyası takip, randevu ve operasyon yönetimi.";
+
 export const metadata: Metadata = {
-  title: "Fox Turizm - Vize Yönetim Sistemi",
-  description: "Fox Turizm Vize Dosyası Takip ve Yönetim Sistemi",
-  applicationName: "Fox Turizm",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Visora — Vize Yönetim Sistemi",
+    template: "%s | Visora",
+  },
+  description: shareDescription,
+  applicationName: "Visora",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Fox Turizm",
+    title: "Visora",
     statusBarStyle: "default",
+  },
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    url: siteUrl,
+    siteName: "Visora",
+    title: "Visora — Vize Yönetim Sistemi",
+    description: shareDescription,
+    images: [
+      {
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Visora",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Visora — Vize Yönetim Sistemi",
+    description: shareDescription,
+    images: ["/icon-512.png"],
   },
   icons: {
     icon: [

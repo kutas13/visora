@@ -1,7 +1,7 @@
 {
-  "name": "Fox Turizm - Vize Yönetim Sistemi",
-  "short_name": "Fox Turizm",
-  "description": "Fox Turizm Vize Dosyası Takip ve Yönetim Sistemi",
+  "name": "Visora — Vize Yönetim Sistemi",
+  "short_name": "Visora",
+  "description": "Visora ile vize dosyası takip ve operasyon yönetimi.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

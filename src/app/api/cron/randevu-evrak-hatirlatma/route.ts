@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const serviceUrl = process.env.WHATSAPP_SERVICE_URL || "http://localhost:3001";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://foxvize.com";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://visora.com.tr";
 
   if (!supabaseUrl || !serviceKey) {
     return NextResponse.json({ error: "Supabase yapilandirmasi eksik" }, { status: 500 });

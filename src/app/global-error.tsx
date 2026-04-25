@@ -10,7 +10,7 @@ export default function GlobalError({
   return (
     <html lang="tr">
       <head>
-        <title>Hata - Fox Turizm</title>
+        <title>Hata - Visora</title>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>

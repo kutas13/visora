@@ -35,7 +35,14 @@ if (fs.existsSync(envPath)) {
     const eqIdx = trimmed.indexOf("=");
     if (eqIdx === -1) return;
     const key = trimmed.slice(0, eqIdx).trim();
-    const val = trimmed.slice(eqIdx + 1).trim();
+    let val = trimmed.slice(eqIdx + 1).trim();
+    // Vercel CLI values start with " or ' - strip surrounding quotes
+    if (
+      (val.startsWith("\"") && val.endsWith("\"")) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
     if (!process.env[key]) {
       process.env[key] = val;
     }
