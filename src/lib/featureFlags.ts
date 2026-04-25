@@ -24,11 +24,11 @@ export function isWhatsappEnabled(): boolean {
 }
 
 /**
- * Eski Fox SMTP'sine bagli email endpoint'leri (gunluk-rapor / tahsilat /
- * randevu mail) Visora'ya gecirilmeden once foxturizm.com hesabi uzerinden
+ * Legacy SMTP'ye bagli email endpoint'leri (gunluk-rapor / tahsilat /
+ * randevu mail) eski monolitik kurulumda tek SMTP hesabi uzerinden
  * mail gonderiyordu. SaaS modelinde her sirketin kendi SMTP yapilandirmasi
  * olmali. Henuz multi-tenant SMTP yokken bu endpoint'ler default olarak
- * KAPALIDIR, boylece Fox'a ait hicbir adresten mail gitmez.
+ * KAPALIDIR, boylece eski hesaplardan disariya mail gitmez.
  *
  * Acmak icin: ENABLE_LEGACY_EMAIL=true
  */

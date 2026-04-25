@@ -1,5 +1,5 @@
 @echo off
-:: Fox Turizm - WhatsApp Servisi Otomatik Baslatici
+:: Visora - WhatsApp Servisi Otomatik Baslatici
 :: Bu dosya Windows Baslangiç klasörüne kısayol olarak eklenir.
 :: Arka planda calısır, terminal penceresi gizlenir.
 

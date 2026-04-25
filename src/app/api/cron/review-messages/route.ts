@@ -28,7 +28,7 @@ async function runReviewMessaging() {
   // Tercihen direkt yorum linki (g.page/r/XXX/review veya search.google.com/local/writereview?placeid=XXX)
   const reviewUrl =
     process.env.GOOGLE_REVIEW_URL ||
-    "https://www.google.com/search?q=foxturizm";
+    "https://www.google.com/search?q=visora";
 
   if (!supabaseUrl || !serviceKey) {
     return { error: "Supabase yapılandırması eksik.", status: 500 };

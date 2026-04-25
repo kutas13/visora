@@ -7,14 +7,7 @@ import { Card, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile, ActivityLog, Payment } from "@/lib/supabase/types";
 
-const USER_AVATARS: Record<string, string> = {
-  YUSUF: "/yusuf-avatar.png",
-  DAVUT: "/davut-avatar.png",
-  SIRRI: "/sirri-avatar.png",
-  ZAFER: "/zafer-avatar.png",
-  ERCAN: "/ercan-avatar.png",
-  BAHAR: "/bahar-avatar.jpg",
-};
+const USER_AVATARS: Record<string, string> = {};
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", {

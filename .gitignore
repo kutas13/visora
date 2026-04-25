@@ -27,7 +27,6 @@ yarn-error.log*
 .env
 .env.vercel
 .env.*.backup
-.env.local.foxvize-backup
 
 # Vercel
 .vercel

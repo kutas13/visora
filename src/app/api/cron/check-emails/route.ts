@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Eski Fox email hesaplari kaldirildi. Visora'da iDATA mail kontrolunu
+// Eski hardcoded email hesaplari kaldirildi. Visora'da iDATA mail kontrolunu
 // kullanmak isteyen sirketler ortam degiskenleri ile kendi hesaplarini
 // tanimlar:
 //   IDATA_INBOX_EMAILS=...,...

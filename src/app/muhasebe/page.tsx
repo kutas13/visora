@@ -8,12 +8,8 @@ import MuhasebeFileDetailModal from "@/components/muhasebe/MuhasebeFileDetailMod
 import type { Profile, VisaFile } from "@/lib/supabase/types";
 
 type VisaFileWithProfile = VisaFile & { profiles?: { name: string } | null };
-const MUHASEBE_FILTERS = [
-  { value: "all", label: "Hepsi" },
-  { value: "BAHAR", label: "BAHAR" },
-  { value: "ERCAN", label: "ERCAN" },
-  { value: "YUSUF", label: "YUSUF" },
-] as const;
+type MuhasebeFilter = { value: string; label: string };
+const ALL_FILTER: MuhasebeFilter = { value: "all", label: "Hepsi" };
 
 const STATUS_FILTERS = [
   { value: "all", label: "Hepsi", icon: "📁" },
@@ -21,14 +17,7 @@ const STATUS_FILTERS = [
   { value: "sonuclanan", label: "Sonuçlananlar", icon: "✅" },
 ] as const;
 
-const USER_AVATARS: Record<string, string> = {
-  YUSUF: "/yusuf-avatar.png",
-  DAVUT: "/davut-avatar.png",
-  SIRRI: "/sirri-avatar.png",
-  ZAFER: "/zafer-avatar.png",
-  ERCAN: "/ercan-avatar.png",
-  BAHAR: "/bahar-avatar.jpg",
-};
+const USER_AVATARS: Record<string, string> = {};
 
 function getCurrencySymbol(c: string) {
   const s: Record<string, string> = { TL: "₺", EUR: "€", USD: "$" };
@@ -106,6 +95,23 @@ export default function MuhasebePage() {
     if (f.cari_sahibi) return f.cari_sahibi.toUpperCase();
     const prof = profiles.find(p => p.id === f.assigned_user_id);
     return prof?.name?.toUpperCase() || "";
+  }, [profiles]);
+
+  const muhasebeFilters = useMemo<MuhasebeFilter[]>(() => {
+    const dynamic = profiles
+      .filter(p => p.role !== "muhasebe")
+      .map(p => {
+        const upper = (p.name || "").toUpperCase();
+        return { value: upper, label: upper };
+      })
+      .filter(p => !!p.value);
+    const seen = new Set<string>();
+    const unique = dynamic.filter(p => {
+      if (seen.has(p.value)) return false;
+      seen.add(p.value);
+      return true;
+    });
+    return [ALL_FILTER, ...unique];
   }, [profiles]);
 
   const countryOptions = useMemo(() => {
@@ -214,7 +220,6 @@ export default function MuhasebePage() {
               </svg>
             </button>
             <div className="h-6 w-px bg-gray-200" />
-            <span className="text-sm font-medium text-gray-700">SIRRI</span>
             <Button variant="outline" size="sm" onClick={handleLogout} className="text-xs">
               Çıkış
             </Button>
@@ -254,7 +259,7 @@ export default function MuhasebePage() {
           <div className="flex flex-wrap items-center gap-3">
             {/* Personel Filtreleri */}
             <div className="flex items-center gap-1.5">
-              {MUHASEBE_FILTERS.map((f) => {
+              {muhasebeFilters.map((f) => {
                 const isActive = filterStaff === f.value;
                 const avatarKey = f.value !== "all" ? f.value : "";
                 return (

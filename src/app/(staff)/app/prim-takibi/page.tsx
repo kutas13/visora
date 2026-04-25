@@ -6,7 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, Input, Select, Modal } from "@/components/ui";
 import type { VisaFile, CommissionRate } from "@/lib/supabase/types";
 
-const ALLOWED_NAMES = ["BAHAR", "ERCAN", "YUSUF"];
+// Eski hardcoded personel listesi kaldirildi.
+// SaaS modelinde tum staff role'undeki kullanicilar prim takibine erisebilir;
+// liste artik dinamik olarak profiles tablosundan gelir.
+const ALLOWED_NAMES: string[] = [];
 
 const MONTH_NAMES = [
   "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",

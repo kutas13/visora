@@ -51,7 +51,6 @@ export async function GET(request: NextRequest) {
       ownerToFiles.get(key)!.push(f);
     });
 
-    const order = ["BAHAR", "ERCAN", "YUSUF", "DAVUT"];
     const staffList = Array.from(ownerToFiles.entries())
       .map(([key, userFiles]) => {
         const firstFile = userFiles[0] as { assigned_user_id: string };
@@ -63,12 +62,7 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => {
         const aKey = a.profile.name?.toUpperCase() || "";
         const bKey = b.profile.name?.toUpperCase() || "";
-        const ai = order.indexOf(aKey);
-        const bi = order.indexOf(bKey);
-        if (ai >= 0 && bi >= 0) return ai - bi;
-        if (ai >= 0) return -1;
-        if (bi >= 0) return 1;
-        return aKey.localeCompare(bKey);
+        return aKey.localeCompare(bKey, "tr");
       });
 
     return NextResponse.json({ staffList });

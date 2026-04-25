@@ -7,7 +7,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
  * - staff                              -> "staff" modu: sadece kendi
  *                                         atadigi dosyalar
  *
- * Eski Fox kalintisi (DAVUT/YUSUF/BAHAR/ERCAN isim kontrolu) kaldirildi.
+ * Eski isim-tabanli erisim kontrolu kaldirildi.
  */
 export type MonthlyReportMode = "org" | "staff";
 

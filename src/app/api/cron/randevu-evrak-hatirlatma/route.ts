@@ -166,25 +166,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        try {
-          const adresUrl = `${siteUrl}/fox-adres.png`;
-          const adresRes = await fetch(adresUrl, { signal: AbortSignal.timeout(15000) });
-          if (adresRes.ok) {
-            const adresBuffer = await adresRes.arrayBuffer();
-            const adresBase64 = Buffer.from(adresBuffer).toString("base64");
-            await sendWpImage(serviceUrl, musteriPhone, adresBase64, "image/png", "Adresimiz");
-            await new Promise(r => setTimeout(r, 2000));
-          }
-        } catch {
-          // Adres gorseli gonderilemezse devam et
-        }
-
         const iletisimMesaj =
-          `*İletişim Bilgilerimiz:*\n\n` +
-          `Ercan Bey: 0505 562 33 01\n` +
-          `Bahar Hanım: 0505 562 32 79\n\n` +
-          `Herhangi bir sorunuz olursa yukarıdaki numaralardan bize ulaşabilirsiniz.\n\n` +
-          `Visora`;
+          `Sorulariniz icin lutfen ofisimizle iletisime geciniz.\n\n` +
+          `Visora Randevu Takip Sistemi`;
 
         await sendWpMsg(serviceUrl, musteriPhone, iletisimMesaj);
 

@@ -65,23 +65,12 @@ const ULKE_RENKLERI: Record<string, { bg: string; text: string }> = {
   "Liechtenstein": { bg: "linear-gradient(180deg, #002B7F 0%, #002B7F 50%, #CE1126 50%, #CE1126 100%)", text: "text-white" },
 };
 
-const AVATAR_MAP: Record<string, string> = {
-  DAVUT: "/davut-avatar.png",
-  BAHAR: "/bahar-avatar.jpg",
-  ERCAN: "/ercan-avatar.png",
-  YUSUF: "/yusuf-avatar.png",
-  SIRRI: "/sirri-avatar.png",
-  ZAFER: "/zafer-avatar.png",
-};
+// Eski hardcoded avatar/telefon listesi kaldirildi.
+// SaaS modelinde personel bilgileri profiles tablosundan dinamik gelir
+// ve WhatsApp gonderimi varsayilan KAPALI'dir.
+const AVATAR_MAP: Record<string, string> = {};
 
-const WP_NUMARALARI = [
-  { name: "DAVUT", phone: "905435680874" },
-  { name: "BAHAR", phone: "905055623279" },
-  { name: "ERCAN", phone: "905055623301" },
-  { name: "YUSUF", phone: "905058937071" },
-  { name: "SIRRI", phone: "905078015033" },
-  { name: "ZAFER", phone: "905363434444" },
-];
+const WP_NUMARALARI: Array<{ name: string; phone: string }> = [];
 
 interface RandevuRow extends RandevuTalebi {
   profiles: { name: string } | null;
@@ -581,7 +570,7 @@ export default function RandevuListesi() {
         .eq("id", selectedTalep.id);
 
       if (!error) {
-        // Eski Fox staff listesi kaldirildi; hitap/telefon yerine kullanici adini kullan.
+        // Eski hardcoded staff listesi kaldirildi; hitap/telefon yerine kullanici adini kullan.
         const staffHitap = currentUser.name;
         const staffPhone = "";
         const ulkelerStr = randevuUlke || selectedTalep.ulkeler.join(", ");
@@ -728,15 +717,9 @@ export default function RandevuListesi() {
               await new Promise(r => setTimeout(r, 2000));
             }
 
-            await sendWpImage(musteriPhone, `${siteOrigin}/fox-adres.png`, "Adresimiz");
-            await new Promise(r => setTimeout(r, 2000));
-
             await sendWpMsg(musteriPhone,
-              `*İletişim Bilgilerimiz:*\n\n` +
-              `Ercan Bey: 0505 562 33 01\n` +
-              `Bahar Hanım: 0505 562 32 79\n\n` +
-              `Herhangi bir sorunuz olursa yukarıdaki numaralardan bize ulaşabilirsiniz.\n\n` +
-              `Visora`
+              `Sorulariniz icin lutfen ofisimizle iletisime geciniz.\n\n` +
+              `Visora Randevu Takip Sistemi`
             );
 
             await supabase.from("randevu_talepleri").update({ evrak_hatirlatma_gonderildi: true }).eq("id", selectedTalep.id);

@@ -38,6 +38,7 @@ const menuGroups: { title: string; items: Item[] }[] = [
       { href: "/app/files", label: "Vize Dosyaları", icon: <Icon d="M7 4h7l5 5v11a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1zM14 4v5h5" /> },
       { href: "/app/musteriler", label: "Müşterilerim", icon: <Icon d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM5 21a7 7 0 0114 0" /> },
       { href: "/app/vize-gorselleri", label: "Vize Görselleri", icon: <Icon d="M4 16l4.5-4.5a2 2 0 012.8 0L16 16m-2-2l1.5-1.5a2 2 0 012.8 0L20 14M4 6h16v14H4z" /> },
+      { href: "/app/vize-sonuc-takip", label: "Vize Sonuç Takip", icon: <Icon d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /> },
     ],
   },
   {

@@ -18,14 +18,7 @@ const RechartsCharts = dynamic(() => import("@/components/reports/ReportsCharts"
 
 type Period = "week" | "month" | "quarter" | "year" | "custom";
 
-const USER_AVATARS: Record<string, string> = {
-  YUSUF: "/yusuf-avatar.png",
-  DAVUT: "/davut-avatar.png",
-  SIRRI: "/sirri-avatar.png",
-  ZAFER: "/zafer-avatar.png",
-  ERCAN: "/ercan-avatar.png",
-  BAHAR: "/bahar-avatar.jpg",
-};
+const USER_AVATARS: Record<string, string> = {};
 
 function getCurrencySymbol(c: string) {
   return ({ TL: "₺", EUR: "€", USD: "$" } as Record<string, string>)[c] || c;

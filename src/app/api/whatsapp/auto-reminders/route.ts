@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
         const kalanGun = Math.ceil((bitisDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         const personelName = file.profiles?.name || "Visora";
 
-        // Eski Fox kullanici listesi kaldirildi; tenant bazli profile bilgileri
+        // Eski hardcoded kullanici listesi kaldirildi; tenant bazli profile bilgileri
         // ileride profiles tablosundan okunacak.
         const personelHitap = personelName;
         const personelTelefon = "";

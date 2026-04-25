@@ -1,7 +1,7 @@
 {
-  "name": "fox-turizm-whatsapp-service",
+  "name": "visora-whatsapp-service",
   "version": "1.0.0",
-  "description": "Fox Turizm WhatsApp Bildirim Servisi (Baileys)",
+  "description": "Visora WhatsApp Bildirim Servisi (Baileys) — varsayilan KAPALI",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

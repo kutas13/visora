@@ -6,18 +6,12 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileTransferred } from "@/lib/notifications";
 import FileDetailModal from "@/components/files/FileDetailModal";
+import FileActions from "@/components/files/FileActions";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
 
 type VisaFileWithProfile = VisaFile & { profiles: Pick<Profile, "name"> | null };
 
-const USER_AVATARS: Record<string, string> = {
-  YUSUF: "/yusuf-avatar.png",
-  DAVUT: "/davut-avatar.png",
-  SIRRI: "/sirri-avatar.png",
-  ZAFER: "/zafer-avatar.png",
-  ERCAN: "/ercan-avatar.png",
-  BAHAR: "/bahar-avatar.jpg",
-};
+const USER_AVATARS: Record<string, string> = {};
 
 function getStatusBadge(file: VisaFile) {
   const isChina = file.hedef_ulke === "Çin";
@@ -72,6 +66,18 @@ export default function AdminFilesPage() {
     setLoading(true);
     const supabase = createClient();
 
+    // Admin'in kendi organization_id'sini al — staff listesini buna göre çek.
+    const { data: { user } } = await supabase.auth.getUser();
+    let orgId: string | null = null;
+    if (user) {
+      const { data: me } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", user.id)
+        .maybeSingle<{ organization_id: string | null }>();
+      orgId = me?.organization_id ?? null;
+    }
+
     const filesQuery =
       mode === "islemden_cikti"
         ? supabase
@@ -85,9 +91,20 @@ export default function AdminFilesPage() {
             .is("sonuc", null)
             .order("created_at", { ascending: false });
 
+    // Atama sırasında dropdown'da gosterilecek personel listesi:
+    // ayni organizasyondaki staff (genel mudur kendi sirketinin
+    // personellerini gormeli, baska firma personeli gozukmemeli).
+    let profilesQuery = supabase
+      .from("profiles")
+      .select("*")
+      .eq("role", "staff");
+    if (orgId) {
+      profilesQuery = profilesQuery.eq("organization_id", orgId);
+    }
+
     const [filesRes, profilesRes, islemdenCiktiCountRes] = await Promise.all([
       filesQuery,
-      supabase.from("profiles").select("*").eq("role", "staff"),
+      profilesQuery,
       supabase
         .from("visa_files")
         .select("id", { count: "exact", head: true })
@@ -103,28 +120,77 @@ export default function AdminFilesPage() {
 
   const handleTransfer = async () => {
     if (!selectedFile || !newAssignee) return;
+    if (newAssignee === selectedFile.assigned_user_id) {
+      alert("Dosya zaten bu personele atanmış.");
+      return;
+    }
     setTransferring(true);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Oturum bulunamadı");
-      const { data: adminProfile } = await supabase.from("profiles").select("name").eq("id", user.id).single<{ name: string }>();
-      const adminName = adminProfile?.name || "Admin";
+
+      const { data: adminProfile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", user.id)
+        .maybeSingle<{ name: string }>();
+      const adminName = adminProfile?.name || "Yönetici";
+
       const oldAssigneeId = selectedFile.assigned_user_id;
-      const newProfile = profiles.find(p => p.id === newAssignee);
+      const newProfile = profiles.find((p) => p.id === newAssignee);
       const newOwnerName = newProfile?.name || "Personel";
 
-      await (supabase as any).from("visa_files").update({ assigned_user_id: newAssignee }).eq("id", selectedFile.id);
-      await (supabase as any).from("activity_logs").insert({ type: "transfer", message: `${selectedFile.musteri_ad} dosyasını ${newOwnerName} personeline atadı`, file_id: selectedFile.id, actor_id: user.id });
-      await notifyFileTransferred(selectedFile.id, selectedFile.musteri_ad, selectedFile.hedef_ulke, oldAssigneeId, newAssignee, newOwnerName, user.id, adminName);
+      // 1) Asıl atama — error'u açıkça yakalıyoruz, ayrıca .select() ile dönüş
+      //    alıp gerçekten satırın değişip değişmediğini kontrol ediyoruz.
+      const { data: updatedRows, error: updateError } = await supabase
+        .from("visa_files")
+        .update({ assigned_user_id: newAssignee })
+        .eq("id", selectedFile.id)
+        .select("id, assigned_user_id");
+
+      if (updateError) {
+        throw new Error(updateError.message || "Atama veritabanına yazılamadı.");
+      }
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error(
+          "Atama yetkiniz bulunmuyor olabilir (RLS). Yöneticiyle iletişime geçin."
+        );
+      }
+
+      // 2) Aktivite log'u — hata olursa transferi geri almıyoruz, sadece konsola düşür
+      const { error: logError } = await supabase.from("activity_logs").insert({
+        type: "transfer",
+        message: `${selectedFile.musteri_ad} dosyasını ${newOwnerName} personeline atadı`,
+        file_id: selectedFile.id,
+        actor_id: user.id,
+      });
+      if (logError) console.warn("activity_logs insert error:", logError.message);
+
+      // 3) Bildirim
+      try {
+        await notifyFileTransferred(
+          selectedFile.id,
+          selectedFile.musteri_ad,
+          selectedFile.hedef_ulke,
+          oldAssigneeId,
+          newAssignee,
+          newOwnerName,
+          user.id,
+          adminName
+        );
+      } catch (notifErr) {
+        console.warn("notifyFileTransferred failed:", notifErr);
+      }
 
       setShowTransferModal(false);
       setSelectedFile(null);
       setNewAssignee("");
-      loadData(viewMode);
+      await loadData(viewMode);
     } catch (err) {
-      console.error(err);
-      alert("Transfer sırasında hata oluştu");
+      console.error("Transfer error:", err);
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      alert(`Atama yapılamadı: ${msg}`);
     } finally {
       setTransferring(false);
     }
@@ -321,6 +387,10 @@ export default function AdminFilesPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex gap-1 justify-end items-center flex-wrap">
+                        {/* Genel Müdür de personel gibi 1/2/3 adımlarını ilerletebilir */}
+                        <div className="mr-1 min-w-[140px]">
+                          <FileActions file={file} onUpdate={() => loadData(viewMode)} isAdmin />
+                        </div>
                         <button
                           type="button"
                           onClick={() => { setDetailFileId(file.id); setShowDetailModal(true); }}

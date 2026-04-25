@@ -99,6 +99,8 @@ export interface VisaFile {
   eski_pasaport: boolean;
   vize_bitisi_gizli?: boolean;
   prim_tarihi?: string | null;
+  takip_no: string | null;
+  dogum_tarihi: string | null;
   created_at: string;
   updated_at: string;
 }

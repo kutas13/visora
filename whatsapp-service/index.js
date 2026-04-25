@@ -1,5 +1,7 @@
 /**
- * Fox Turizm - WhatsApp Bildirim Servisi (Baileys)
+ * Visora - WhatsApp Bildirim Servisi (Baileys)
+ * NOT: Visora SaaS modelinde WhatsApp varsayilan KAPALI'dir.
+ * Bu servis sadece eski VPS kurulumlarinda kullanilir.
  *
  * - Bilgisayar açıldığında otomatik başlar
  * - WhatsApp'a bağlanır (ilk seferde QR kod taratırsınız, sonra otomatik)
@@ -211,7 +213,7 @@ async function checkAppointments() {
         `📅 Randevu: *${randevuStr}*\n` +
         `👨‍💼 Çalışan: *${staffName}*\n\n` +
         `⏰ Randevuya *${daysText}* kaldı.\n\n` +
-        `_Fox Turizm_`;
+        `_Visora_`;
 
       try {
         await sendMessage(NOTIFY_NUMBER, message);
@@ -513,7 +515,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200);
     res.end(
       JSON.stringify({
-        service: "Fox Turizm WhatsApp Servisi",
+        service: "Visora WhatsApp Servisi",
         status: isConnected ? "connected" : "disconnected",
         supabase: !!supabase,
         notifyNumber: NOTIFY_NUMBER ? NOTIFY_NUMBER.slice(0, 4) + "****" : "tanimli degil",
@@ -537,7 +539,7 @@ const server = http.createServer(async (req, res) => {
 async function main() {
   console.log("");
   console.log("╔══════════════════════════════════════════════════╗");
-  console.log("║  🦊 Fox Turizm - WhatsApp Bildirim Servisi       ║");
+  console.log("║  Visora - WhatsApp Bildirim Servisi              ║");
   console.log("║  Baileys + Otomatik Randevu Hatirlatma            ║");
   console.log("╚══════════════════════════════════════════════════╝");
   console.log("");

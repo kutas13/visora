@@ -67,7 +67,7 @@ const config: Config = {
           800: "#3730a3",
           900: "#312e81",
         },
-        // Eski Fox turuncu sınıflarını otomatik olarak Visora moruna eşle
+        // Eski monolitik kurulumdaki turuncu sınıflarını otomatik olarak Visora moruna eşle
         // (Uygulama genelinde 'orange-*' kullanan onlarca dosyayı tek tek
         //  değiştirmek yerine paleti yerinde değiştiriyoruz.)
         orange: {

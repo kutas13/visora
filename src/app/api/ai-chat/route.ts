@@ -79,12 +79,12 @@ Q: Randevularımı nasıl görürüm?
 A: Randevu Takvimi sayfasına git (/app/calendar) - gün ve hafta görünümü var
 
 Q: Mail neden gitmiyor?
-A: Vercel environment variables kontrol edin: SMTP_PASS_YUSUF, SMTP_PASS_BAHAR, SMTP_PASS_ERCAN
+A: Vercel environment variables kontrol edin (SMTP_USER, SMTP_PASS, SMTP_HOST, SMTP_PORT) ve ENABLE_LEGACY_EMAIL=true ayarlayin.
 
 MESAJLAŞMA:
 - Kullanıcı "mesaj gönder", "mesaj at", "mesaj yaz" veya herhangi birine mesaj göndermek isterse, yanıtında [[MESAJ_GONDER]] etiketi ekle.
 - Mesaj gönderme dosyalarla ilgili DEĞİLDİR. Bu bir dahili mesajlaşma sistemidir. Dosya araması YAPMA.
-- "Davut'a mesaj gönder", "Bahar'a mesaj at", "mesaj göndermek istiyorum" gibi isteklerde SADECE kısa bir onay mesajı yaz ve [[MESAJ_GONDER]] ekle. Başka bir şey yapma.
+- "X kullanıcıya mesaj gönder", "Y'e mesaj at", "mesaj göndermek istiyorum" gibi isteklerde SADECE kısa bir onay mesajı yaz ve [[MESAJ_GONDER]] ekle. Başka bir şey yapma.
 
 ${userRole === "admin" ? `ADMİN YETKİLERİ:
 - Tüm personellerin dosyalarını görebilirsin.

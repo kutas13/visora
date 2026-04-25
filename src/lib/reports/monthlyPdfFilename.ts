@@ -7,7 +7,7 @@ export function monthYearUpperTr(year: number, month: number) {
 
 /**
  * Genel ozet (admin/muhasebe/owner) -> VISORA NİSAN 2026.pdf
- * Personel kendi raporu              -> Yusuf NİSAN 2026 AYLIK ÖZET.pdf
+ * Personel kendi raporu              -> {Personel Adi} NİSAN 2026 AYLIK ÖZET.pdf
  */
 export function buildMonthlyPdfFilename(
   profileName: string,

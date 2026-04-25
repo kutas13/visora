@@ -5,7 +5,7 @@ import { isLegacyEmailEnabled, LEGACY_EMAIL_DISABLED_MESSAGE } from "@/lib/featu
 
 export const dynamic = "force-dynamic";
 
-// Eski Fox SMTP haritasi kaldirildi. Visora'da sirket-bazli SMTP yapilandirmasi
+// Eski hardcoded SMTP haritasi kaldirildi. Visora'da sirket-bazli SMTP yapilandirmasi
 // gelene kadar bu endpoint default olarak ENABLE_LEGACY_EMAIL=true olmadan
 // calismaz; tum istekler 410 ile reddedilir.
 const SMTP_PASSWORD_MAP: Record<string, string> = {};

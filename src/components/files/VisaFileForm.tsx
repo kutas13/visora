@@ -52,6 +52,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   
   const [musteriAd, setMusteriAd] = useState(file?.musteri_ad || "");
   const [pasaportNo, setPasaportNo] = useState(file?.pasaport_no || "");
+  const [takipNo, setTakipNo] = useState(file?.takip_no || "");
+  const [dogumTarihi, setDogumTarihi] = useState(file?.dogum_tarihi || "");
   const [hedefUlke, setHedefUlke] = useState(file?.hedef_ulke || "");
   const [ulkeManuelMi, setUlkeManuelMi] = useState(file?.ulke_manuel_mi || false);
   const [manuelUlke, setManuelUlke] = useState(file?.ulke_manuel_mi ? file.hedef_ulke : "");
@@ -431,6 +433,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
         on_odeme_currency: onOdemeVar ? onOdemeCurrency : null,
         kalan_tutar: kalanTutar,
         vize_tipleri: vizeTipleri,
+        takip_no: takipNo.trim() || null,
+        dogum_tarihi: dogumTarihi || null,
         ...(eskiPasaport ? { eski_pasaport: true } : {}),
       };
 
@@ -780,6 +784,20 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input label="Ad Soyad" value={musteriAd} onChange={(e) => setMusteriAd(e.target.value)} placeholder="Ahmet Yılmaz" required />
           <Input label="Pasaport No" value={pasaportNo} onChange={(e) => setPasaportNo(e.target.value)} placeholder="U12345678" required />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+          <Input
+            label="Takip No"
+            value={takipNo}
+            onChange={(e) => setTakipNo(e.target.value)}
+            placeholder="Vize merkezi takip numarası (opsiyonel)"
+          />
+          <Input
+            label="Doğum Tarihi"
+            type="date"
+            value={dogumTarihi}
+            onChange={(e) => setDogumTarihi(e.target.value)}
+          />
         </div>
         <label className="flex items-center gap-2 mt-2">
           <input type="checkbox" checked={eskiPasaport} onChange={(e) => setEskiPasaport(e.target.checked)} className="w-4 h-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500" />

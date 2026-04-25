@@ -43,14 +43,9 @@ export async function POST(request: NextRequest) {
     const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
     let sent = 0;
 
-    const STAFF_PHONES: Record<string, string> = {
-      DAVUT: "905435680874",
-      BAHAR: "905055623279",
-      ERCAN: "905055623301",
-      YUSUF: "905058937071",
-      SIRRI: "905078015033",
-      ZAFER: "905363434444",
-    };
+    // Eski hardcoded personel telefonlari kaldirildi. Cron WhatsApp gated;
+    // tenant bazli personel telefonlari ileride profiles tablosundan gelecek.
+    const STAFF_PHONES: Record<string, string> = {};
 
     for (const talep of talepler) {
       const hesap = talep.hesap_bilgileri as Record<string, { hesap_var: boolean }> | null;

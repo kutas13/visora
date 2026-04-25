@@ -141,10 +141,9 @@ export function validateEnvSecurity(): string[] {
   const sensitiveKeys = [
     "SUPABASE_SERVICE_ROLE_KEY",
     "OPENAI_API_KEY",
-    "SMTP_PASS_YUSUF",
-    "SMTP_PASS_BAHAR",
-    "SMTP_PASS_ERCAN",
-    "SMTP_PASS_DAVUT",
+    "VISORA_PLATFORM_SETUP_SECRET",
+    "SMTP_PASS",
+    "SMTP_USER",
     "CRON_SECRET",
   ];
 

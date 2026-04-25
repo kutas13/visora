@@ -5,15 +5,10 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
-// Profil fotosu olan kullanicilar
-const USER_AVATARS: Record<string, string> = {
-  YUSUF: "/yusuf-avatar.png",
-  DAVUT: "/davut-avatar.png",
-  SIRRI: "/sirri-avatar.png",
-  ZAFER: "/zafer-avatar.png",
-  ERCAN: "/ercan-avatar.png",
-  BAHAR: "/bahar-avatar.jpg",
-};
+// Eski hardcoded avatar listesi kaldirildi.
+// SaaS modelinde her kullanici default initial avatar kullanir; ileride
+// profile.avatar_url eklenecek.
+const USER_AVATARS: Record<string, string> = {};
 
 interface TopBarProps {
   title: string;

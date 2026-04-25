@@ -4,7 +4,7 @@ import { isLegacyEmailEnabled, LEGACY_EMAIL_DISABLED_MESSAGE } from "@/lib/featu
 
 export const dynamic = "force-dynamic";
 
-// Eski Fox alici listesi (artik kullanilmiyor; fallback default).
+// Eski hardcoded alici listesi (artik kullanilmiyor; fallback default).
 // Visora'da sirket-bazli email yapilandirmasi gelene kadar bu endpoint
 // ENABLE_LEGACY_EMAIL=true olmadan calismaz.
 const RECIPIENTS: string[] = [];

@@ -16,14 +16,7 @@ type UnpaidFileWithProfile = VisaFile & {
   profiles: Pick<Profile, "name"> | null;
 };
 
-const USER_AVATARS: Record<string, string> = {
-  YUSUF: "/yusuf-avatar.png",
-  DAVUT: "/davut-avatar.png",
-  SIRRI: "/sirri-avatar.png",
-  ZAFER: "/zafer-avatar.png",
-  ERCAN: "/ercan-avatar.png",
-  BAHAR: "/bahar-avatar.jpg",
-};
+const USER_AVATARS: Record<string, string> = {};
 
 function StaffAvatar({ name, size = 28 }: { name: string; size?: number }) {
   const src = USER_AVATARS[name.toUpperCase()];

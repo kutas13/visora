@@ -4,7 +4,7 @@ import { isWhatsappEnabled, WHATSAPP_DISABLED_MESSAGE } from "@/lib/featureFlags
 
 export const dynamic = "force-dynamic";
 
-// Eski hardcode telefon numaralari kaldirildi (Fox kalintisi).
+// Eski hardcoded telefon numaralari kaldirildi (legacy kurulum kalintisi).
 // Visora'da WhatsApp gonderimi tamamen kapali.
 const ALL_RECIPIENTS: string[] = [];
 

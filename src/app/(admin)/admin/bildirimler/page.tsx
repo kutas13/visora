@@ -122,7 +122,7 @@ export default function AdminBildirimlerPage() {
     setCronRunning(true);
     setCronResult(null);
     try {
-      const response = await fetch(`/api/cron/notify?secret=fox-turizm-cron-secret-2024`);
+      const response = await fetch(`/api/cron/notify?secret=visora-cron-secret`);
       const data = await response.json();
       setCronResult(data.message || JSON.stringify(data));
       loadNotifications();

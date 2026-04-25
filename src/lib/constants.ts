@@ -1,10 +1,10 @@
 // ----------------------------------------------------------------------
 // VISORA — SaaS modeli
 // ----------------------------------------------------------------------
-// Eski Fox Turizm hardcoded kullanici listesi kaldirildi. Artik tum
-// kullanici/personel bilgileri tenant bazli olarak `profiles` tablosundan
-// gelir. Bu sabitler geriye donuk uyumluluk icin BOS dizilerle birakildi
-// ki eski importlar build'i kirmasin.
+// Eski monolitik kurulumdaki hardcoded kullanici listesi kaldirildi.
+// Artik tum kullanici/personel bilgileri tenant bazli olarak `profiles`
+// tablosundan gelir. Bu sabitler geriye donuk uyumluluk icin BOS
+// dizilerle birakildi ki eski importlar build'i kirmasin.
 // ----------------------------------------------------------------------
 
 export type LegacyUser = {
@@ -23,7 +23,7 @@ export const ZAFER_USER: LegacyUser | null = null;
 
 export const ALL_USERS: readonly LegacyUser[] = [];
 
-// Email'den kullanıcı bul — eski Fox listesi kaldirildi, her zaman undefined.
+// Email'den kullanıcı bul — eski hardcoded liste kaldirildi, her zaman undefined.
 // Yeni kod profiles tablosundan email -> profile cozer.
 export function getUserByEmail(_email: string): LegacyUser | undefined {
   return undefined;

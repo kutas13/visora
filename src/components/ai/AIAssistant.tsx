@@ -89,7 +89,7 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
     setMessages([{
       id: "greeting",
       type: "ai",
-      content: `${greeting}, ${name}! 🦊`,
+      content: `${greeting}, ${name}!`,
       timestamp: new Date(),
     }]);
   };
@@ -309,7 +309,7 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="w-9 h-9 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center ring-1 ring-white/20">
-                <span className="text-lg">🦊</span>
+                <span className="text-sm font-bold text-white tracking-tight">V</span>
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#1e293b] animate-pulse" />
             </div>
@@ -355,7 +355,7 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
                           ? "bg-amber-500/20 ring-1 ring-amber-500/30"
                           : "bg-gradient-to-br from-primary-500/30 to-violet-500/30 ring-1 ring-primary-500/20"
                       }`}>
-                        {msg.type === "system" ? "⚡" : "🦊"}
+                        {msg.type === "system" ? "⚡" : "V"}
                       </div>
                     </div>
                   )}
@@ -518,8 +518,8 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
             {isLoading && (
               <div className="flex justify-start">
                 <div className="flex gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary-500/30 to-violet-500/30 ring-1 ring-primary-500/20 flex items-center justify-center text-[10px] flex-shrink-0">
-                    🦊
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary-500/30 to-violet-500/30 ring-1 ring-primary-500/20 flex items-center justify-center text-[10px] flex-shrink-0 font-bold text-white">
+                    V
                   </div>
                   <div className="bg-white/[0.06] border border-white/[0.06] rounded-2xl px-4 py-3">
                     <div className="flex gap-1.5 items-center">

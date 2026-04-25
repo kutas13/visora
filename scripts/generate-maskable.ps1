@@ -2,7 +2,7 @@ Add-Type -AssemblyName System.Drawing
 
 $ErrorActionPreference = "Stop"
 $publicDir = Join-Path $PSScriptRoot "..\public"
-$src = Join-Path $publicDir "fox-logo.jpg"
+$src = Join-Path $publicDir "visora-logo.png"
 $srcImg = [System.Drawing.Image]::FromFile($src)
 
 function Save-Maskable([int]$size, [string]$outName, [string]$bg) {

@@ -1,4 +1,4 @@
--- Fox Turizm Vize Yönetim Sistemi - Veritabanı Şeması
+-- Visora — Vize Yönetim Sistemi - Veritabanı Şeması (ilk surum)
 -- Bu dosyayı Supabase SQL Editor'da çalıştırın
 
 -- ============================================
