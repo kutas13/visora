@@ -80,10 +80,12 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <head>
-        {/* DNS prefetch for Supabase */}
-        {/* DNS prefetch for Supabase */}
-        <link rel="dns-prefetch" href="https://hqfyouklljanwhyopwjz.supabase.co" />
-        <link rel="preconnect" href="https://hqfyouklljanwhyopwjz.supabase.co" crossOrigin="anonymous" />
+        {process.env.NEXT_PUBLIC_SUPABASE_URL ? (
+          <>
+            <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+            <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" />
+          </>
+        ) : null}
       </head>
       <body className={inter.className}>{children}</body>
     </html>

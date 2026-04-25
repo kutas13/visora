@@ -32,6 +32,14 @@ export interface Profile {
   id: string;
   name: string;
   role: "admin" | "staff" | "muhasebe";
+  organization_id: string | null;
+  created_at: string;
+}
+
+/** Visora kiracısı (vize acentası firması) */
+export interface Organization {
+  id: string;
+  name: string;
   created_at: string;
 }
 
@@ -39,6 +47,7 @@ export interface Profile {
 export interface Company {
   id: string;
   firma_adi: string;
+  organization_id?: string | null;
   created_at: string;
   created_by: string;
 }
@@ -97,6 +106,7 @@ export interface VisaFile {
 // Prim/Komisyon oranı (ülke bazlı)
 export interface CommissionRate {
   id: string;
+  organization_id: string;
   country: string;
   amount: number;
   currency: "EUR" | "USD" | "TL";

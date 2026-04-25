@@ -31,9 +31,21 @@ export async function GET(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    const { data: profile } = await authClient
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    const orgId = profile?.organization_id as string | null | undefined;
+    if (!orgId) {
+      return NextResponse.json({ data: [] });
+    }
+
     const { data, error } = await supabase
       .from("companies")
       .select("*")
+      .eq("organization_id", orgId)
       .order("firma_adi", { ascending: true });
 
     if (error) {
@@ -90,11 +102,23 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    const { data: profile } = await authClient
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    const orgId = profile?.organization_id as string | null | undefined;
+    if (!orgId) {
+      return NextResponse.json({ error: "Firma bağlamı bulunamadı." }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from("companies")
       .insert({
         firma_adi: firmaAdi,
         created_by: user.id,
+        organization_id: orgId,
       })
       .select()
       .single();
