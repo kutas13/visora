@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       ad,
       soyad,
       iletisim_no: iletisimNo,
-      not: note || null,
+      note: note || null,
       ip_adresi: clientIp,
       user_agent: userAgent,
       durum: "yeni",

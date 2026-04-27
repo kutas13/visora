@@ -10,7 +10,7 @@ interface Lead {
   ad: string;
   soyad: string;
   iletisim_no: string;
-  not: string | null;
+  note: string | null;
   durum: LeadStatus;
   ip_adresi: string | null;
   user_agent: string | null;
@@ -93,7 +93,7 @@ export default function FormsPage() {
     return leads.filter((l) => {
       if (filter !== "all" && l.durum !== filter) return false;
       if (!q) return true;
-      const blob = `${l.ad} ${l.soyad} ${l.iletisim_no} ${l.not || ""}`.toLocaleLowerCase("tr");
+      const blob = `${l.ad} ${l.soyad} ${l.iletisim_no} ${l.note || ""}`.toLocaleLowerCase("tr");
       return blob.includes(q);
     });
   }, [leads, filter, search]);
@@ -214,8 +214,8 @@ export default function FormsPage() {
                       <span>•</span>
                       <span>{relativeTime(lead.created_at)}</span>
                     </div>
-                    {lead.not && (
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-1 italic">"{lead.not}"</p>
+                    {lead.note && (
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-1 italic">"{lead.note}"</p>
                     )}
                   </div>
                   <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,11 +264,11 @@ export default function FormsPage() {
                 </a>
               </div>
 
-              {activeLead.not && (
+              {activeLead.note && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Mesaj</p>
                   <p className="text-sm text-slate-700 mt-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    {activeLead.not}
+                    {activeLead.note}
                   </p>
                 </div>
               )}

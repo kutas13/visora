@@ -6,7 +6,7 @@ create table if not exists public.landing_leads (
   ad text not null,
   soyad text not null,
   iletisim_no text not null,
-  not text,
+  note text,
   durum text not null default 'yeni' check (durum in ('yeni', 'iletisim_kuruldu', 'kapatildi')),
   ip_adresi text,
   user_agent text,
