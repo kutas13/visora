@@ -40,7 +40,7 @@ interface UserOption {
   role: string;
 }
 
-export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) {
+export default function AIAssistant({ isAdmin = false, embedded = false }: { isAdmin?: boolean; embedded?: boolean }) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -294,11 +294,14 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
     return date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
   };
 
+  const showHeader = !embedded;
+  const isOpen = embedded ? true : isExpanded;
   return (
-    <div className={`bg-gradient-to-b from-[#0f172a] to-[#1e293b] border border-white/[0.06] rounded-2xl overflow-hidden flex flex-col shadow-2xl transition-all duration-300 ease-in-out ${
-      isExpanded ? "h-full" : "h-auto mt-auto"
+    <div className={`bg-gradient-to-b from-[#0f172a] to-[#1e293b] ${embedded ? "" : "border border-white/[0.06] rounded-2xl shadow-2xl"} overflow-hidden flex flex-col transition-all duration-300 ease-in-out ${
+      isOpen ? "h-full" : "h-auto mt-auto"
     }`}>
       {/* Header */}
+      {showHeader && (
       <div
         className="relative overflow-hidden flex-shrink-0 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
@@ -340,8 +343,9 @@ export default function AIAssistant({ isAdmin = false }: { isAdmin?: boolean }) 
           </div>
         </div>
       </div>
+      )}
 
-      {isExpanded && (
+      {isOpen && (
         <>
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">

@@ -698,24 +698,27 @@ export default function TopNav({ variant, userName = "Kullanıcı", orgName = ""
 
       {/* AI Asistan modal */}
       {aiOpen && variant !== "platform" && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 bg-slate-950/70 backdrop-blur-md">
-          <div className="w-full md:max-w-2xl bg-white rounded-t-3xl md:rounded-2xl shadow-2xl ring-1 ring-slate-200/70 max-h-[85vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-violet-50 to-fuchsia-50">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white">
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 lg:p-6 bg-slate-950/70 backdrop-blur-md">
+          <div className="w-full md:max-w-3xl lg:max-w-4xl bg-white rounded-t-3xl md:rounded-2xl shadow-2xl ring-1 ring-slate-200/70 h-[92vh] md:h-[85vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-violet-50 to-fuchsia-50 flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-sm">
                   <Icon d="M13 10V3L4 14h7v7l9-11h-7z" className="w-4 h-4" />
                 </span>
-                <p className="text-sm font-extrabold text-slate-900">Visora AI</p>
+                <div>
+                  <p className="text-sm font-extrabold text-slate-900 leading-tight">Visora AI</p>
+                  <p className="text-[10.5px] text-slate-500 leading-tight">Akıllı asistan</p>
+                </div>
               </div>
               <button
                 onClick={() => setAiOpen(false)}
-                className="p-2 rounded-lg text-slate-500 hover:bg-white"
+                className="p-2 rounded-lg text-slate-500 hover:bg-white hover:text-slate-700 transition-colors"
               >
                 <Icon d="M6 18L18 6M6 6l12 12" className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <AIAssistant isAdmin={variant === "admin"} />
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <AIAssistant isAdmin={variant === "admin"} embedded />
             </div>
           </div>
         </div>
