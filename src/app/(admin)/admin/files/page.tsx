@@ -101,7 +101,7 @@ export default function AdminFilesPage() {
     let profilesQuery = supabase
       .from("profiles")
       .select("*")
-      .eq("role", "staff");
+      .in("role", ["staff", "admin"]);
     if (orgId) {
       profilesQuery = profilesQuery.eq("organization_id", orgId);
     }
@@ -130,51 +130,35 @@ export default function AdminFilesPage() {
     }
     setTransferring(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Oturum bulunamadı");
+      const res = await fetch("/api/transfer-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileId: selectedFile.id,
+          newAssigneeId: newAssignee,
+        }),
+      });
 
-      const { data: adminProfile } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", user.id)
-        .maybeSingle<{ name: string }>();
-      const adminName = adminProfile?.name || "Yönetici";
-
-      const oldAssigneeId = selectedFile.assigned_user_id;
-      const newProfile = profiles.find((p) => p.id === newAssignee);
-      const newOwnerName = newProfile?.name || "Personel";
-
-      const { data: updatedRows, error: updateError } = await supabase
-        .from("visa_files")
-        .update({ assigned_user_id: newAssignee })
-        .eq("id", selectedFile.id)
-        .select("id, assigned_user_id");
-
-      if (updateError) throw new Error(updateError.message || "Atama veritabanına yazılamadı.");
-      if (!updatedRows || updatedRows.length === 0) {
-        throw new Error("Atama yetkiniz bulunmuyor olabilir (RLS). Yöneticiyle iletişime geçin.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Atama yapılamadı");
       }
 
-      const { error: logError } = await supabase.from("activity_logs").insert({
-        type: "transfer",
-        message: `${selectedFile.musteri_ad} dosyasını ${newOwnerName} personeline atadı`,
-        file_id: selectedFile.id,
-        actor_id: user.id,
-      });
-      if (logError) console.warn("activity_logs insert error:", logError.message);
-
       try {
-        await notifyFileTransferred(
-          selectedFile.id,
-          selectedFile.musteri_ad,
-          selectedFile.hedef_ulke,
-          oldAssigneeId,
-          newAssignee,
-          newOwnerName,
-          user.id,
-          adminName
-        );
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await notifyFileTransferred(
+            selectedFile.id,
+            data.musteriAd || selectedFile.musteri_ad,
+            data.hedefUlke || selectedFile.hedef_ulke,
+            data.oldAssigneeId || selectedFile.assigned_user_id,
+            data.newAssigneeId || newAssignee,
+            data.newAssigneeName || "Personel",
+            user.id,
+            data.adminName || "Yönetici"
+          );
+        }
       } catch (notifErr) {
         console.warn("notifyFileTransferred failed:", notifErr);
       }
@@ -229,7 +213,16 @@ export default function AdminFilesPage() {
     (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
   );
 
-  const staffOptions = profiles.map(p => ({ value: p.id, label: p.name }));
+  const staffOptions = profiles
+    .slice()
+    .sort((a, b) => {
+      if (a.role === b.role) return (a.name || "").localeCompare(b.name || "");
+      return a.role === "admin" ? -1 : 1;
+    })
+    .map(p => ({
+      value: p.id,
+      label: p.role === "admin" ? `${p.name} (Genel Müdür)` : p.name,
+    }));
 
   const totalActive = files.filter(f => !f.sonuc && !f.islemden_cikti).length;
 
@@ -418,9 +411,9 @@ export default function AdminFilesPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                         <button
-                          onClick={() => { setSelectedFile(file); setNewAssignee(file.assigned_user_id); setShowTransferModal(true); }}
+                          onClick={() => { setSelectedFile(file); setNewAssignee(file.assigned_user_id || ""); setShowTransferModal(true); }}
                           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="Ata"
+                          title="Personele Ata"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         </button>
@@ -442,15 +435,26 @@ export default function AdminFilesPage() {
       </div>
 
       {/* Transfer Modal */}
-      <Modal isOpen={showTransferModal} onClose={() => { setShowTransferModal(false); setSelectedFile(null); }} title="Dosya Atama" size="sm">
+      <Modal isOpen={showTransferModal} onClose={() => { setShowTransferModal(false); setSelectedFile(null); }} title="Dosyayı Personele Ata" size="sm">
         {selectedFile && (
           <div className="space-y-4">
             <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100 p-3.5">
               <p className="font-bold text-slate-900 text-sm">{selectedFile.musteri_ad}</p>
               <p className="text-[11.5px] text-slate-500 mt-0.5">{selectedFile.hedef_ulke} · {selectedFile.pasaport_no}</p>
-              <p className="text-[11.5px] text-slate-500 mt-1.5">Mevcut: <strong className="text-slate-700">{selectedFile.profiles?.name || "-"}</strong></p>
+              <p className="text-[11.5px] text-slate-500 mt-1.5">Mevcut: <strong className="text-slate-700">{selectedFile.profiles?.name || "Atanmamış"}</strong></p>
             </div>
-            <Select label="Personel Seçin" options={staffOptions} value={newAssignee} onChange={(e) => setNewAssignee(e.target.value)} />
+
+            {staffOptions.length === 0 ? (
+              <div className="rounded-xl bg-amber-50 ring-1 ring-amber-200 p-3.5 text-sm text-amber-800">
+                Şirketinizde atanabilir personel bulunamadı. Önce <a href="/admin/personel" className="font-bold underline">Personel</a> sayfasından personel ekleyin.
+              </div>
+            ) : (
+              <>
+                <Select label="Personel Seçin" options={[{ value: "", label: "Seçiniz..." }, ...staffOptions]} value={newAssignee} onChange={(e) => setNewAssignee(e.target.value)} />
+                <p className="text-[11px] text-slate-500 -mt-1">{staffOptions.length} kişi listede</p>
+              </>
+            )}
+
             <div className="flex gap-3 pt-2">
               <button onClick={() => setShowTransferModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 ring-1 ring-slate-200 transition-colors">İptal</button>
               <button onClick={handleTransfer} disabled={transferring || !newAssignee || newAssignee === selectedFile.assigned_user_id} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-500/25">
