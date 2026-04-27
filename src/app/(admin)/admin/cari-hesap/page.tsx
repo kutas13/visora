@@ -167,6 +167,59 @@ export default function AdminCariHesapPage() {
       })
       .join("");
 
+    // Ödenmemiş dosya detay listesi (her personel için)
+    const unpaidSections = staffList
+      .map((s) => {
+        const unpaid = s.files.filter((f) => f.odeme_durumu !== "odendi");
+        if (unpaid.length === 0) return "";
+        const rows = unpaid
+          .map((f) => {
+            const ucret = fmtCell(Number(f.ucret) || 0, f.ucret_currency || "TL");
+            const tarih = formatDate(f.created_at);
+            const ulke = f.hedef_ulke || "—";
+            return `<tr>
+              <td><strong>${escapeHtml(f.musteri_ad || "—")}</strong></td>
+              <td>${escapeHtml(ulke)}</td>
+              <td class="num">${ucret}</td>
+              <td class="muted">${tarih}</td>
+            </tr>`;
+          })
+          .join("");
+
+        const owedTotals = Object.entries(s.totals)
+          .filter(([, t]) => t.kalan > 0)
+          .map(([c, t]) => `<span class="pill">${fmtCell(t.kalan, c)} ${c}</span>`)
+          .join("");
+
+        return `
+          <div class="unpaid-block">
+            <div class="unpaid-head">
+              <div class="unpaid-title">
+                <div class="avatar sm">${escapeHtml(s.profile.name.charAt(0).toUpperCase())}</div>
+                <div>
+                  <strong>${escapeHtml(s.profile.name)}</strong>
+                  <span class="muted">· ${unpaid.length} ödenmemiş dosya</span>
+                </div>
+              </div>
+              <div class="unpaid-totals">${owedTotals}</div>
+            </div>
+            <table class="sub-table">
+              <thead>
+                <tr>
+                  <th>Müşteri</th>
+                  <th>Hedef Ülke</th>
+                  <th class="num">Ücret</th>
+                  <th>Açılış Tarihi</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      })
+      .filter(Boolean)
+      .join("");
+
     const html = `<!doctype html>
 <html lang="tr">
 <head>
@@ -213,6 +266,23 @@ export default function AdminCariHesapPage() {
   td.cell .line span { color: #64748b; }
   .green { color: #059669; }
   .red { color: #dc2626; }
+  .muted { color: #94a3b8; font-weight: 500; font-size: 10.5px; }
+
+  /* Ödenmemiş dosya detayı */
+  .unpaid-section { margin-top: 28px; }
+  .unpaid-block { margin-top: 14px; border: 1px solid #fecaca; border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, #fff8f8, #fff); page-break-inside: avoid; }
+  .unpaid-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #fee2e2; background: linear-gradient(90deg, #fef2f2, #fff7ed); flex-wrap: wrap; gap: 8px; }
+  .unpaid-title { display: flex; gap: 10px; align-items: center; }
+  .avatar { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #c026d3); color: #fff; display:flex; align-items:center; justify-content:center; font-weight: 800; font-size: 12px; }
+  .avatar.sm { width: 24px; height: 24px; font-size: 11px; background: linear-gradient(135deg, #ef4444, #dc2626); }
+  .unpaid-totals { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pill { padding: 3px 10px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-weight: 800; font-size: 10.5px; letter-spacing: .03em; }
+  .sub-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .sub-table th { background: #fff7ed; color: #92400e; font-weight: 800; font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em; padding: 8px 12px; text-align: left; border-bottom: 1px solid #fee2e2; }
+  .sub-table th.num, .sub-table td.num { text-align: right; }
+  .sub-table td { padding: 7px 12px; border-bottom: 1px solid #fef2f2; vertical-align: top; }
+  .sub-table tr:last-child td { border-bottom: none; }
+  .sub-table tbody tr:nth-child(even) { background: #fffbf7; }
   .footer { margin-top: 22px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display:flex; justify-content: space-between; font-size: 10px; color: #94a3b8; }
   @page { size: A4 portrait; margin: 14mm; }
   @media print {
@@ -262,6 +332,13 @@ export default function AdminCariHesapPage() {
         ${staffRows || `<tr><td colspan="4" class="muted" style="text-align:center; padding:20px;">Carisi olan personel bulunamadı.</td></tr>`}
       </tbody>
     </table>
+
+    ${unpaidSections ? `
+      <div class="unpaid-section">
+        <h2 style="color:#dc2626;">Ödenmemiş Dosyalar (Detaylı)</h2>
+        ${unpaidSections}
+      </div>
+    ` : ""}
 
     <div class="footer">
       <span>Bu rapor Visora panelinden otomatik oluşturulmuştur.</span>
