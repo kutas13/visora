@@ -1041,6 +1041,53 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => setUcretCurrency(e.target.value as ParaBirimi)} />
         </div>
 
+        {/* ANLIK DÖVİZLİ KARŞILIK (TCMB) */}
+        {ucret && parseFloat(ucret) > 0 && (
+          (() => {
+            const u = parseFloat(ucret) || 0;
+            const r = (c: string) => (c === "TL" ? 1 : Number(exchangeRates[c]) || 0);
+            const rUcret = r(ucretCurrency);
+            if (rUcret <= 0) return null;
+            const tlValue = ucretCurrency === "TL" ? u : Math.round(u * rUcret);
+            const usdValue = ucretCurrency === "USD" ? null : exchangeRates.USD > 0 ? (tlValue / exchangeRates.USD) : null;
+            const eurValue = ucretCurrency === "EUR" ? null : exchangeRates.EUR > 0 ? (tlValue / exchangeRates.EUR) : null;
+
+            return (
+              <div className="rounded-lg bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-200 px-3 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-1.5 flex items-center gap-1.5">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Anlık Karşılığı (TCMB)
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ucretCurrency !== "TL" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white ring-1 ring-emerald-200 text-[12px] font-bold text-slate-800">
+                      <span className="text-emerald-600">₺</span>
+                      <span className="tabular-nums">{tlValue.toLocaleString("tr-TR")}</span>
+                      <span className="text-slate-400 font-medium text-[10px]">TL aldım</span>
+                    </span>
+                  )}
+                  {ucretCurrency !== "USD" && usdValue && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white ring-1 ring-emerald-200 text-[12px] font-bold text-slate-800">
+                      <span className="text-emerald-600">$</span>
+                      <span className="tabular-nums">{usdValue.toLocaleString("tr-TR", { maximumFractionDigits: 0 })}</span>
+                      <span className="text-slate-400 font-medium text-[10px]">USD aldım</span>
+                    </span>
+                  )}
+                  {ucretCurrency !== "EUR" && eurValue && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white ring-1 ring-emerald-200 text-[12px] font-bold text-slate-800">
+                      <span className="text-emerald-600">€</span>
+                      <span className="tabular-nums">{eurValue.toLocaleString("tr-TR", { maximumFractionDigits: 0 })}</span>
+                      <span className="text-slate-400 font-medium text-[10px]">EUR aldım</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })()
+        )}
+
         {isChinaSelected && (
           <div className="space-y-3">
             {!showDavetiyeUcreti ? (

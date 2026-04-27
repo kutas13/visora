@@ -110,24 +110,178 @@ export default function AdminCariHesapPage() {
 
   const selectedData = staffList.find((s) => s.profile.id === selectedStaff);
 
-  const exportToExcel = () => {
-    // CSV formatında export (Excel açabilir)
-    let csvContent = "Personel,Borç (TL),Tahsilat (TL),Kalan (TL),Borç (EUR),Tahsilat (EUR),Kalan (EUR),Borç (USD),Tahsilat (USD),Kalan (USD)\n";
-    
-    staffList.forEach(staff => {
-      const tlData = staff.totals["TL"] || { borc: 0, tahsilat: 0, kalan: 0 };
-      const eurData = staff.totals["EUR"] || { borc: 0, tahsilat: 0, kalan: 0 };
-      const usdData = staff.totals["USD"] || { borc: 0, tahsilat: 0, kalan: 0 };
-      
-      csvContent += `${staff.profile.name},${tlData.borc},${tlData.tahsilat},${tlData.kalan},${eurData.borc},${eurData.tahsilat},${eurData.kalan},${usdData.borc},${usdData.tahsilat},${usdData.kalan}\n`;
-    });
+  const exportToPDF = () => {
+    const today = new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
+    const time = new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 
-    // CSV dosyası oluştur ve indir
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `cari_hesap_raporu_${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
+    const escapeHtml = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+    const fmtCell = (n: number, c: string) =>
+      `${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${getCurrencySymbol(c)}`;
+
+    const generalRows = Object.keys(generalTotals)
+      .sort()
+      .map((c) => {
+        const t = generalTotals[c];
+        const oran = t.borc > 0 ? Math.min(Math.round((t.tahsilat / t.borc) * 100), 100) : 0;
+        return `
+          <div class="kpi">
+            <div class="kpi-head">
+              <span class="kpi-label">Genel ${c} Toplam</span>
+              <span class="kpi-symbol">${getCurrencySymbol(c)}</span>
+            </div>
+            <div class="kpi-row"><span>Borç</span><strong>${fmtCell(t.borc, c)}</strong></div>
+            <div class="kpi-row"><span>Tahsilat</span><strong class="green">${fmtCell(t.tahsilat, c)}</strong></div>
+            <div class="kpi-divider"></div>
+            <div class="kpi-row"><span class="bold">Kalan</span><strong class="${t.kalan > 0 ? "red" : "green"} big">${fmtCell(t.kalan, c)}</strong></div>
+            <div class="kpi-bar"><span style="width:${oran}%"></span></div>
+            <div class="kpi-foot">Tahsilat oranı: %${oran}</div>
+          </div>
+        `;
+      })
+      .join("");
+
+    const staffRows = staffList
+      .map((s) => {
+        const currs = Object.keys(s.totals).sort();
+        const cells = currs
+          .map((c) => {
+            const t = s.totals[c];
+            return `
+              <td class="cell">
+                <div class="curlbl">${c}</div>
+                <div class="line"><span>Borç</span><b>${fmtCell(t.borc, c)}</b></div>
+                <div class="line"><span>Tahs.</span><b class="green">${fmtCell(t.tahsilat, c)}</b></div>
+                <div class="line"><span>Kalan</span><b class="${t.kalan > 0 ? "red" : "green"}">${fmtCell(t.kalan, c)}</b></div>
+              </td>
+            `;
+          })
+          .join("");
+        return `
+          <tr>
+            <td class="staff-name"><div class="avatar">${escapeHtml(s.profile.name.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(s.profile.name)}</strong><div class="muted">${s.files.length} dosya · ${s.payments.length} tahsilat</div></div></td>
+            ${cells || '<td class="cell muted">—</td>'}
+          </tr>
+        `;
+      })
+      .join("");
+
+    const html = `<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<title>Cari Hesap Raporu — ${today}</title>
+<style>
+  *,*::before,*::after { box-sizing: border-box; }
+  html,body { margin:0; padding:0; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color:#0f172a; background:#fff; }
+  .page { padding: 28px 32px; max-width: 1024px; margin: 0 auto; }
+  .header { display:flex; justify-content:space-between; align-items:flex-end; padding-bottom:16px; border-bottom: 2px solid #6366f1; margin-bottom: 22px; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .brand .logo { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #4f46e5, #c026d3); color:#fff; font-weight: 900; display:flex; align-items:center; justify-content:center; font-size: 18px; }
+  .brand h1 { font-size: 22px; margin:0 0 2px 0; letter-spacing: -0.02em; }
+  .brand .sub { color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; }
+  .meta { text-align: right; font-size: 11px; color: #475569; }
+  .meta strong { color: #0f172a; font-size: 13px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .14em; color: #6366f1; margin: 0 0 10px 0; font-weight: 800; }
+  .kpi-grid { display:grid; grid-template-columns: repeat(${Math.max(Object.keys(generalTotals).length || 1, 1)}, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .kpi { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; background: linear-gradient(180deg, #ffffff, #f8fafc); }
+  .kpi-head { display:flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; }
+  .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: #64748b; font-weight: 800; }
+  .kpi-symbol { font-size: 18px; font-weight: 900; color: #4f46e5; }
+  .kpi-row { display:flex; justify-content:space-between; font-size: 12px; padding: 3px 0; color: #334155; }
+  .kpi-row .bold { font-weight: 700; color: #0f172a; }
+  .kpi-row strong.big { font-size: 16px; }
+  .kpi-divider { height: 1px; background:#e2e8f0; margin: 6px 0; }
+  .kpi-bar { height: 5px; background:#f1f5f9; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .kpi-bar span { display:block; height: 100%; background: linear-gradient(90deg, #10b981, #059669); }
+  .kpi-foot { font-size: 10px; color: #94a3b8; margin-top: 4px; text-align: right; }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11.5px; }
+  thead th { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: #64748b; font-weight: 800; background: #f8fafc; padding: 10px 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  thead th:first-child { border-top-left-radius: 10px; }
+  thead th:last-child { border-top-right-radius: 10px; text-align: right; }
+  tbody tr { background: #fff; }
+  tbody tr:nth-child(even) { background: #fbfbfd; }
+  tbody td { padding: 10px 12px; vertical-align: top; border-bottom: 1px solid #f1f5f9; }
+  td.staff-name { display:flex; gap: 10px; align-items: center; min-width: 180px; }
+  td.staff-name .avatar { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #c026d3); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+  td.staff-name .muted { font-size: 10px; color: #94a3b8; }
+  td.cell { font-size: 11px; min-width: 130px; }
+  td.cell .curlbl { display:inline-block; padding: 1px 7px; border-radius: 999px; background: #eef2ff; color: #4338ca; font-weight: 800; font-size: 9.5px; letter-spacing: .1em; margin-bottom: 4px; }
+  td.cell .line { display: flex; justify-content: space-between; padding: 1px 0; }
+  td.cell .line span { color: #64748b; }
+  .green { color: #059669; }
+  .red { color: #dc2626; }
+  .footer { margin-top: 22px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display:flex; justify-content: space-between; font-size: 10px; color: #94a3b8; }
+  @page { size: A4 portrait; margin: 14mm; }
+  @media print {
+    .noprint { display: none !important; }
+    .page { padding: 0; }
+  }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 16px; }
+  .btn { padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; border: 1px solid #e2e8f0; background: #fff; color: #0f172a; cursor: pointer; }
+  .btn.primary { background: linear-gradient(135deg, #4f46e5, #c026d3); color: #fff; border-color: transparent; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="actions noprint">
+      <button class="btn" onclick="window.close()">Kapat</button>
+      <button class="btn primary" onclick="window.print()">PDF Olarak Kaydet / Yazdır</button>
+    </div>
+    <div class="header">
+      <div class="brand">
+        <div class="logo">V</div>
+        <div>
+          <div class="sub">Visora · Cari Hesap Raporu</div>
+          <h1>Personel Cari Hesap Özeti</h1>
+        </div>
+      </div>
+      <div class="meta">
+        <div>Rapor Tarihi</div>
+        <strong>${today}</strong>
+        <div style="margin-top:3px">${time}</div>
+      </div>
+    </div>
+
+    ${Object.keys(generalTotals).length > 0 ? `
+      <h2>Genel Toplam</h2>
+      <div class="kpi-grid">${generalRows}</div>
+    ` : ""}
+
+    <h2>Personel Detayı</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Personel</th>
+          ${["TL", "EUR", "USD"].filter((c) => Object.keys(generalTotals).includes(c)).map((c) => `<th>${c}</th>`).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${staffRows || `<tr><td colspan="4" class="muted" style="text-align:center; padding:20px;">Carisi olan personel bulunamadı.</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="footer">
+      <span>Bu rapor Visora panelinden otomatik oluşturulmuştur.</span>
+      <span>visora · ${today}</span>
+    </div>
+  </div>
+  <script>
+    window.addEventListener('load', () => { setTimeout(() => window.print(), 350); });
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank", "width=1100,height=820");
+    if (!w) {
+      alert("Açılır pencere engellendi. Lütfen tarayıcı izinlerini kontrol edin.");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
   };
 
   if (loading) {
@@ -165,12 +319,12 @@ export default function AdminCariHesapPage() {
               Firma Cari Hesapları
             </button>
             <button
-              onClick={() => exportToExcel()}
-              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 hover:shadow-xl transition">
+              onClick={() => exportToPDF()}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white text-sm font-bold shadow-lg shadow-rose-500/25 hover:shadow-xl transition">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Excel&apos;e Aktar
+              PDF Olarak İndir
             </button>
           </div>
       </div>
