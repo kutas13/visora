@@ -1015,6 +1015,25 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           </label>
         </div>
 
+        {/* TCMB Anlık Kur — bilgi banner */}
+        {(exchangeRates.USD > 0 || exchangeRates.EUR > 0) && (
+          <div className="rounded-lg bg-gradient-to-r from-indigo-50 via-violet-50 to-fuchsia-50 border border-indigo-100 px-3 py-2 flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">TCMB</span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-slate-700 font-semibold">
+              <span>1 EUR = <strong className="tabular-nums text-slate-900">₺{exchangeRates.EUR?.toFixed(2) || "—"}</strong></span>
+              <span className="w-1 h-1 rounded-full bg-slate-300" />
+              <span>1 USD = <strong className="tabular-nums text-slate-900">₺{exchangeRates.USD?.toFixed(2) || "—"}</strong></span>
+            </div>
+            <span className="ml-auto text-[10px] text-slate-500">Kur otomatik TCMB'den çekilir</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
             <Input label="Ücret" type="number" placeholder="0" value={ucret} onChange={(e) => setUcret(e.target.value)} required />

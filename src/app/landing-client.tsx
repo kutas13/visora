@@ -303,36 +303,119 @@ export default function LandingClient() {
             </div>
           </div>
 
-          {/* HERO CARD */}
-          <div className="relative">
-            <div className="absolute -inset-8 bg-gradient-to-br from-indigo-200/50 via-fuchsia-200/40 to-pink-200/30 rounded-[3rem] blur-3xl" />
-            <div className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl shadow-indigo-500/10 p-6 sm:p-8">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-2.5 h-2.5 rounded-full bg-rose-400" />
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                <span className="ml-3 text-[11px] text-slate-400 font-mono">visora.app/admin/dashboard</span>
+          {/* HERO — MULTI-DEVICE MOCKUP */}
+          <div className="relative h-[460px] sm:h-[520px] lg:h-[560px]">
+            {/* Soft glow */}
+            <div className="absolute -inset-10 bg-gradient-to-br from-indigo-300/40 via-fuchsia-300/30 to-pink-200/30 rounded-[3rem] blur-3xl" />
+
+            {/* Reflection floor */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[88%] h-32 bg-gradient-to-b from-indigo-500/15 to-transparent blur-2xl rounded-full" />
+
+            {/* TABLET — left back */}
+            <div className="absolute top-6 sm:top-10 left-[2%] sm:left-[4%] w-[42%] sm:w-[44%] -rotate-[8deg] z-10 drop-shadow-2xl">
+              <div className="relative rounded-[1.6rem] bg-gradient-to-br from-slate-800 to-slate-950 p-1.5 ring-1 ring-white/10 shadow-2xl shadow-indigo-900/40">
+                <div className="rounded-[1.2rem] overflow-hidden bg-slate-900 aspect-[16/11]">
+                  <Image
+                    src="/visora-dashboard.png"
+                    alt="Visora panel — tablet"
+                    width={1024}
+                    height={484}
+                    priority
+                    className="w-full h-full object-cover object-top"
+                  />
+                </div>
+                <div className="absolute top-1/2 -translate-y-1/2 right-1 w-1 h-6 rounded-full bg-white/20" />
               </div>
-              <Image
-                src="/visora-banner.png"
-                alt="Visora — Vize süreçlerinizi ekibinizle birlikte yönetin"
-                width={900}
-                height={420}
-                priority
-                className="w-full h-auto rounded-2xl"
-              />
-              <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3">
-                  <p className="text-[10px] text-indigo-600 font-semibold uppercase tracking-wide">Bugün</p>
-                  <p className="text-base font-extrabold text-indigo-700 mt-0.5">12 dosya</p>
+            </div>
+
+            {/* LAPTOP — center foreground */}
+            <div className="absolute top-2 sm:top-6 left-1/2 -translate-x-1/2 w-[78%] sm:w-[78%] z-20">
+              <div className="relative">
+                <div className="rounded-t-2xl bg-gradient-to-br from-slate-800 to-slate-950 px-3 pt-3 pb-2 ring-1 ring-white/10 shadow-2xl shadow-indigo-900/30">
+                  {/* Camera bar */}
+                  <div className="flex items-center justify-center mb-1.5">
+                    <div className="w-2 h-2 rounded-full bg-slate-700/80" />
+                  </div>
+                  <div className="rounded-lg overflow-hidden bg-slate-900 aspect-[16/9] ring-1 ring-white/5">
+                    <Image
+                      src="/visora-dashboard.png"
+                      alt="Visora panel — laptop"
+                      width={1024}
+                      height={484}
+                      priority
+                      className="w-full h-full object-cover object-top"
+                    />
+                  </div>
                 </div>
-                <div className="rounded-xl bg-fuchsia-50 border border-fuchsia-100 p-3">
-                  <p className="text-[10px] text-fuchsia-600 font-semibold uppercase tracking-wide">Bekleyen</p>
-                  <p className="text-base font-extrabold text-fuchsia-700 mt-0.5">4 randevu</p>
+                {/* Laptop base */}
+                <div className="relative">
+                  <div className="h-2 bg-gradient-to-b from-slate-700 to-slate-900 rounded-b-lg" />
+                  <div className="h-3 -mx-3 bg-gradient-to-b from-slate-300 to-slate-500 rounded-b-[1.4rem] relative shadow-2xl shadow-slate-900/30">
+                    <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-1 bg-slate-600/60 rounded-full" />
+                  </div>
                 </div>
-                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
-                  <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">Tahsilat</p>
-                  <p className="text-base font-extrabold text-emerald-700 mt-0.5">₺ 28.4K</p>
+              </div>
+            </div>
+
+            {/* PHONE — right foreground */}
+            <div className="absolute bottom-2 sm:bottom-4 right-[2%] sm:right-[6%] w-[24%] sm:w-[24%] rotate-[6deg] z-30 drop-shadow-2xl">
+              <div className="relative rounded-[1.4rem] bg-gradient-to-br from-slate-900 to-slate-950 p-1.5 ring-1 ring-white/10 shadow-2xl shadow-fuchsia-900/40">
+                <div className="rounded-[1.1rem] overflow-hidden bg-slate-900 aspect-[9/19]">
+                  {/* Notch */}
+                  <div className="relative h-5 bg-slate-950 flex items-center justify-center">
+                    <span className="w-12 h-3 bg-black rounded-full" />
+                  </div>
+                  {/* Phone screen content — mini-dashboard */}
+                  <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 p-2.5 space-y-2 h-full">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-md bg-gradient-to-br from-indigo-500 to-fuchsia-500" />
+                      <span className="text-[8px] font-bold text-white">Visora</span>
+                    </div>
+                    <div className="rounded-md bg-white/10 ring-1 ring-white/10 p-1.5 backdrop-blur">
+                      <p className="text-[7px] text-white/60 font-semibold uppercase tracking-wider">Bugün</p>
+                      <p className="text-[10px] font-black text-white mt-0.5">12 dosya</p>
+                    </div>
+                    <div className="rounded-md bg-white/10 ring-1 ring-white/10 p-1.5 backdrop-blur">
+                      <p className="text-[7px] text-white/60 font-semibold uppercase tracking-wider">Tahsilat</p>
+                      <p className="text-[10px] font-black text-emerald-300 mt-0.5">₺ 28.4K</p>
+                    </div>
+                    <div className="rounded-md bg-white/10 ring-1 ring-white/10 p-1.5 backdrop-blur">
+                      <p className="text-[7px] text-white/60 font-semibold uppercase tracking-wider">Randevu</p>
+                      <p className="text-[10px] font-black text-fuchsia-300 mt-0.5">4 bekleyen</p>
+                    </div>
+                    <div className="rounded-md bg-gradient-to-r from-indigo-500 to-fuchsia-500 p-1.5 text-center">
+                      <span className="text-[8px] font-bold text-white">+ Yeni Dosya</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating mini-stats badges */}
+            <div className="hidden lg:block absolute top-2 -right-2 z-40 px-3 py-2 rounded-2xl bg-white shadow-xl shadow-indigo-500/20 ring-1 ring-slate-200 animate-float">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Tahsilat</p>
+                  <p className="text-xs font-black text-slate-900 -mt-0.5">+ ₺ 4.200</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden lg:block absolute bottom-12 -left-2 z-40 px-3 py-2 rounded-2xl bg-white shadow-xl shadow-fuchsia-500/20 ring-1 ring-slate-200 animate-float" style={{ animationDelay: "1.5s" }}>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-500 flex items-center justify-center text-white">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Yarın</p>
+                  <p className="text-xs font-black text-slate-900 -mt-0.5">3 randevu</p>
                 </div>
               </div>
             </div>
@@ -481,13 +564,13 @@ export default function LandingClient() {
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                   <span className="ml-3 text-[11px] text-white/40 font-mono">visora.app/admin/dashboard</span>
                 </div>
-                <div className="rounded-2xl overflow-hidden border border-white/10">
+                <div className="rounded-2xl overflow-hidden border border-white/10 aspect-[16/9] bg-slate-900">
                   <Image
-                    src="/visora-banner.png"
+                    src="/visora-dashboard.png"
                     alt="Visora panel görünümü"
-                    width={1200}
-                    height={680}
-                    className="w-full h-auto"
+                    width={1024}
+                    height={484}
+                    className="w-full h-full object-cover object-top"
                   />
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2">
@@ -863,9 +946,6 @@ export default function LandingClient() {
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Destek</p>
               <ul className="mt-3 space-y-2 text-sm">
                 <li>
-                  <a href="mailto:destek@visora.com.tr" className="text-slate-300 hover:text-white transition-colors">destek@visora.com.tr</a>
-                </li>
-                <li>
                   <button
                     onClick={() => openLead("callback")}
                     className="text-slate-300 hover:text-white transition-colors text-left"
@@ -880,6 +960,11 @@ export default function LandingClient() {
                   >
                     Ücretsiz dene
                   </button>
+                </li>
+                <li>
+                  <Link href="/login" className="text-slate-300 hover:text-white transition-colors">
+                    Hesabıma giriş
+                  </Link>
                 </li>
               </ul>
             </div>

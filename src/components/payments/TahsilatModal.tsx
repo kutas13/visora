@@ -35,6 +35,8 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 49.5, EUR: 53, TL: 1 });
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesUpdatedAt, setRatesUpdatedAt] = useState<string | null>(null);
   const [dekontFile, setDekontFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -51,10 +53,15 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
 
   const loadExchangeRates = async () => {
     try {
+      setRatesLoading(true);
       const res = await fetch("/api/exchange-rates");
       const data = await res.json();
       if (data.rates) setExchangeRates(data.rates);
+      if (data.lastUpdate) setRatesUpdatedAt(data.lastUpdate as string);
     } catch {}
+    finally {
+      setRatesLoading(false);
+    }
   };
 
   const validEntries = paymentEntries.filter((e) => e.amount && parseFloat(e.amount) > 0);
@@ -205,6 +212,52 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
             </div>
           </div>
 
+          {/* TCMB ANLIK KUR */}
+          <div className="rounded-xl bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 border border-indigo-100 p-3.5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                  TCMB Anlık Kur
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadExchangeRates()}
+                disabled={ratesLoading}
+                className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 disabled:opacity-50 inline-flex items-center gap-1"
+                title="Kuru yenile"
+              >
+                <svg className={`w-3 h-3 ${ratesLoading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Yenile
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-white/70 ring-1 ring-indigo-100 px-3 py-2">
+                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">EUR / TL</p>
+                <p className="text-sm font-black text-slate-900 tabular-nums">
+                  ₺{exchangeRates.EUR?.toFixed(2) ?? "—"}
+                </p>
+              </div>
+              <div className="rounded-lg bg-white/70 ring-1 ring-indigo-100 px-3 py-2">
+                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">USD / TL</p>
+                <p className="text-sm font-black text-slate-900 tabular-nums">
+                  ₺{exchangeRates.USD?.toFixed(2) ?? "—"}
+                </p>
+              </div>
+            </div>
+            {ratesUpdatedAt && (
+              <p className="mt-1.5 text-[10px] text-slate-500">
+                Son güncelleme: {ratesUpdatedAt}
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ödeme Kalemleri</p>
@@ -253,20 +306,39 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
               </div>
             ))}
 
-            {validEntries.length === 1 &&
-              validEntries[0].amount &&
-              validEntries[0].currency !== "TL" &&
-              exchangeRates[validEntries[0].currency] && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5">
-                  <p className="text-xs text-emerald-600">
-                    {parseFloat(validEntries[0].amount).toLocaleString("tr-TR")} {validEntries[0].currency} ={" "}
-                    <strong>
-                      {(parseFloat(validEntries[0].amount) * exchangeRates[validEntries[0].currency]).toLocaleString(
-                        "tr-TR"
-                      )}{" "}
-                      TL
-                    </strong>
-                  </p>
+            {/* Çoklu kalem TL toplam karşılığı */}
+            {validEntries.length > 0 &&
+              validEntries.some((e) => e.currency !== "TL") &&
+              yontem !== "pos" && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 space-y-1">
+                  {validEntries.map((e, i) => {
+                    if (e.currency === "TL") return null;
+                    const rate = exchangeRates[e.currency] || 0;
+                    const tl = parseFloat(e.amount) * rate;
+                    return (
+                      <p key={i} className="text-xs text-emerald-700">
+                        {parseFloat(e.amount).toLocaleString("tr-TR")} {e.currency} ×{" "}
+                        <span className="font-mono">{rate.toFixed(2)}</span> ={" "}
+                        <strong className="tabular-nums">
+                          {Math.round(tl).toLocaleString("tr-TR")} ₺
+                        </strong>
+                      </p>
+                    );
+                  })}
+                  {validEntries.length > 1 && (
+                    <p className="text-[11px] text-emerald-800 font-bold border-t border-emerald-200 pt-1 mt-1">
+                      Toplam TL karşılığı:{" "}
+                      <span className="tabular-nums">
+                        {Math.round(
+                          validEntries.reduce((sum, e) => {
+                            const r = e.currency === "TL" ? 1 : exchangeRates[e.currency] || 0;
+                            return sum + parseFloat(e.amount) * r;
+                          }, 0)
+                        ).toLocaleString("tr-TR")}{" "}
+                        ₺
+                      </span>
+                    </p>
+                  )}
                 </div>
               )}
           </div>
