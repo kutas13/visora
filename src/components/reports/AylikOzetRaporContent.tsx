@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { MonthlySummary } from "@/lib/reports/buildMonthlySummary";
 import { sumStaffBuckets } from "@/lib/reports/buildMonthlySummary";
 
-// Visora SaaS: rapor erisimi role tabanli (admin/muhasebe/staff/platform_owner).
+// Visora: rapor erisimi role tabanli (admin/muhasebe/staff/platform_owner).
 // Eski sabit isim listesi kaldirildi.
 const ALLOWED_ROLES = ["admin", "muhasebe", "platform_owner", "staff"] as const;
 
@@ -117,18 +117,43 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
   const years = Array.from({ length: 8 }, (_, i) => now.getFullYear() - i);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-      <div className="rounded-2xl border border-navy-200 bg-gradient-to-br from-navy-900 to-navy-800 p-6 text-white shadow-lg sm:p-8">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-navy-200">Rapor</p>
-        <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Aylık vize özeti</h1>
-        <p className="mt-1 text-xs font-medium text-navy-200">Görünüm: {viewerName}</p>
-        <p className="mt-2 max-w-2xl text-sm text-navy-100">
-          {viewerName === "DAVUT"
-            ? "Tüm personelin birleşik özeti. PDF tüm ekibi ve personel tablosu altında toplamları içerir."
-            : "Yalnızca size atanmış dosyalar. PDF dosya adı: ADINIZ + AY + AYLIK ÖZET."}{" "}
-          Veri: seçilen ayda <strong className="text-white">sonuç tarihi</strong> bulunan onaylı ve reddedilen dosyalar.
-        </p>
+    <div className="mx-auto max-w-6xl space-y-6">
+      {/* PAGE HEADER */}
+      <div className="flex items-start gap-4">
+        <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Analiz</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Aylık Vize Özeti</h1>
+          <p className="text-slate-500 text-sm mt-1 max-w-2xl">
+            Görünüm: <span className="font-bold text-indigo-600">{viewerName}</span> · {viewerName === "DAVUT"
+              ? "Tüm personelin birleşik özeti."
+              : "Yalnızca size atanmış dosyalar."} Veri: seçilen ayda sonuç tarihi bulunan onaylı / reddedilen dosyalar.
+          </p>
+        </div>
       </div>
+
+      {/* HERO BANNER */}
+      <section className="relative overflow-hidden rounded-3xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950" />
+        <div className="pointer-events-none absolute inset-0 opacity-60">
+          <div className="absolute -top-20 -left-10 w-64 h-64 rounded-full bg-indigo-500 blur-3xl animate-blob" />
+          <div className="absolute -bottom-16 -right-10 w-72 h-72 rounded-full bg-fuchsia-500 blur-3xl animate-blob" style={{ animationDelay: "5s" }} />
+        </div>
+        <div className="relative p-6 sm:p-7 text-white">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur text-white/90 text-[11px] font-semibold uppercase tracking-[0.18em]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Aylık Rapor
+          </div>
+          <h2 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight">
+            <span className="bg-gradient-to-r from-indigo-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{viewerName}</span> · özet rapor
+          </h2>
+          <p className="mt-1.5 text-white/70 text-sm max-w-2xl">
+            {viewerName === "DAVUT"
+              ? "Tüm personelin birleşik özeti. PDF tüm ekibi ve personel tablosu altında toplamları içerir."
+              : "Yalnızca size atanmış dosyalar. PDF dosya adı: ADINIZ + AY + AYLIK ÖZET."}
+          </p>
+        </div>
+      </section>
 
       <div className="flex flex-wrap items-end gap-4 rounded-xl border border-navy-200 bg-white p-4 shadow-sm">
         <div>

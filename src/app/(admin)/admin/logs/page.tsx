@@ -110,16 +110,13 @@ export default function AdminLogsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Sayfa Başlığı */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center shadow-lg shadow-slate-500/25">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
+      {/* PAGE HEADER */}
+      <div className="flex items-start gap-4">
+        <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-slate-600 via-slate-700 to-slate-800" />
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Sistem Logları</h1>
-          <p className="text-slate-500 text-sm">Tüm kullanıcı aktivitelerinin kaydını görüntüleyin</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-600">Sistem · Audit</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Sistem Logları</h1>
+          <p className="text-slate-500 text-sm mt-1 max-w-xl">Tüm kullanıcı aktivitelerinin kaydı, güvenlik ve denetim için.</p>
         </div>
       </div>
 

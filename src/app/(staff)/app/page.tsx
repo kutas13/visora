@@ -2,15 +2,13 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { ActivityLog, VisaFile } from "@/lib/supabase/types";
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("tr-TR", {
     day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
+    month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -34,6 +32,16 @@ function getTimeGreeting() {
 
 const fmt = (n: number) => new Intl.NumberFormat("tr-TR").format(n);
 
+const ACTIVITY_META: Record<string, { icon: string; gradient: string }> = {
+  file_created: { icon: "M12 4v16m8-8H4", gradient: "from-indigo-500 to-violet-500" },
+  file_updated: { icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z", gradient: "from-violet-500 to-fuchsia-500" },
+  dosya_hazir: { icon: "M5 13l4 4L19 7", gradient: "from-emerald-500 to-teal-500" },
+  isleme_girdi: { icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15", gradient: "from-amber-500 to-orange-500" },
+  islemden_cikti: { icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", gradient: "from-emerald-500 to-teal-500" },
+  payment_added: { icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 1v8m0 0v1", gradient: "from-emerald-500 to-green-500" },
+  transfer: { icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4", gradient: "from-purple-500 to-pink-500" },
+};
+
 export default function StaffDashboard() {
   const router = useRouter();
   const [userName, setUserName] = useState("Kullanıcı");
@@ -56,7 +64,7 @@ export default function StaffDashboard() {
     tahsilatUSD: 0,
   });
   const [statusDistribution, setStatusDistribution] = useState<
-    { label: string; count: number; dot: string }[]
+    { label: string; count: number; color: string }[]
   >([]);
   const [recentLogs, setRecentLogs] = useState<
     (ActivityLog & { visa_files?: { musteri_ad: string; hedef_ulke: string } | null })[]
@@ -186,10 +194,10 @@ export default function StaffDashboard() {
         });
 
         setStatusDistribution([
-          { label: "Evrak gelmedi", count: evrakGelmedi, dot: "bg-amber-500" },
-          { label: "İşlemde", count: islemdeCount, dot: "bg-primary-500" },
-          { label: "Onaylandı", count: onaylandiCount, dot: "bg-emerald-500" },
-          { label: "Reddedildi", count: reddedildiCount, dot: "bg-red-500" },
+          { label: "Evrak gelmedi", count: evrakGelmedi, color: "from-amber-400 to-orange-500" },
+          { label: "İşlemde", count: islemdeCount, color: "from-indigo-500 to-violet-500" },
+          { label: "Onaylandı", count: onaylandiCount, color: "from-emerald-500 to-teal-500" },
+          { label: "Reddedildi", count: reddedildiCount, color: "from-rose-500 to-red-500" },
         ]);
       }
 
@@ -206,171 +214,156 @@ export default function StaffDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-[500px]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-[3px] border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-          <p className="text-sm text-navy-400 animate-pulse">Yükleniyor...</p>
+          <div className="w-10 h-10 border-[3px] border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-sm text-slate-400">Yükleniyor...</p>
         </div>
       </div>
     );
   }
 
   const onayOrani = stats.toplam > 0 ? Math.round((stats.onaylanan / stats.toplam) * 100) : 0;
+  const niceName = userName.toLocaleLowerCase("tr-TR").replace(/\b\w/g, (c) => c.toLocaleUpperCase("tr-TR"));
+
+  const heroChips = [
+    { label: "Yaklaşan (15g)", value: stats.randevu15Gun, color: "bg-amber-300/20 text-amber-100 ring-amber-300/30" },
+    { label: "Acil (2g)", value: stats.randevu2Gun, color: "bg-rose-300/20 text-rose-100 ring-rose-300/30" },
+    { label: "Konsolosluk", value: stats.islemde, color: "bg-violet-300/20 text-violet-100 ring-violet-300/30" },
+    { label: "Bekleyen tahsilat", value: stats.odenmedi, color: "bg-emerald-300/20 text-emerald-100 ring-emerald-300/30" },
+  ];
 
   return (
     <div className="space-y-6">
-      {/* HERO — Visora gradient */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-primary-500 to-accent-600 p-7 sm:p-9 shadow-2xl shadow-primary-500/30">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -right-16 w-80 h-80 rounded-full bg-white/15 blur-3xl" />
-          <div className="absolute -bottom-32 -left-10 w-72 h-72 rounded-full bg-accent-400/40 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_55%)]" />
+      {/* HERO */}
+      <section className="relative overflow-hidden rounded-3xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950" />
+        <div className="pointer-events-none absolute inset-0 opacity-60">
+          <div className="absolute -top-24 -left-16 w-72 h-72 rounded-full bg-indigo-500 blur-3xl animate-blob" />
+          <div className="absolute -bottom-24 -right-10 w-72 h-72 rounded-full bg-fuchsia-500 blur-3xl animate-blob" style={{ animationDelay: "5s" }} />
         </div>
 
-        <div className="relative grid md:grid-cols-[1fr_auto] gap-6 items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/25 backdrop-blur text-white text-[11px] font-semibold uppercase tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
-              {timeGreeting}
-            </div>
-            <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              {userName.toLocaleLowerCase("tr-TR").replace(/\b\w/g, (c) => c.toLocaleUpperCase("tr-TR"))}
-            </h1>
-            <p className="mt-2 text-white/85 text-sm">
-              Bugün <span className="font-semibold text-white">{stats.bugunRandevu}</span> randevu ·{" "}
-              <span className="font-semibold text-white">{stats.aktif}</span> aktif dosya ·{" "}
-              <span className="font-semibold text-white">{stats.onaylanan}</span> onaylanmış
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => router.push("/app/files/new")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-primary-700 bg-white hover:bg-navy-50 shadow-md transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
-              </svg>
-              Yeni dosya
-            </button>
-            <button
-              onClick={() => router.push("/app/calendar")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-white/15 hover:bg-white/25 backdrop-blur border border-white/20 transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              Takvim
-            </button>
-          </div>
-        </div>
-
-        {/* Hero alt: mini KPI şeridi */}
-        <div className="relative mt-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Yaklaşan (15 gün)", value: stats.randevu15Gun, accent: "bg-amber-300" },
-            { label: "Acil (2 gün)", value: stats.randevu2Gun, accent: "bg-red-300" },
-            { label: "Konsoloslukta", value: stats.islemde, accent: "bg-lilac-200" },
-            { label: "Bekleyen tahsilat", value: stats.odenmedi, accent: "bg-emerald-300" },
-          ].map((k) => (
-            <div
-              key={k.label}
-              className="relative overflow-hidden rounded-2xl bg-white/12 border border-white/20 backdrop-blur px-4 py-3"
-            >
-              <span className={`absolute top-2 right-2 w-1.5 h-1.5 rounded-full ${k.accent}`} />
-              <p className="text-3xl font-extrabold text-white leading-none">{k.value}</p>
-              <p className="mt-1.5 text-[11px] text-white/80 uppercase tracking-wider font-semibold">
-                {k.label}
+        <div className="relative p-6 sm:p-8">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur text-white/90 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                {timeGreeting}
+              </div>
+              <h1 className="mt-3 text-3xl sm:text-4xl font-black text-white tracking-tight">
+                Merhaba <span className="bg-gradient-to-r from-indigo-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{niceName}</span>
+              </h1>
+              <p className="mt-2 text-white/70 text-sm max-w-xl">
+                Bugün <span className="font-bold text-white">{stats.bugunRandevu}</span> randevu,{" "}
+                <span className="font-bold text-white">{stats.aktif}</span> aktif dosya ve{" "}
+                <span className="font-bold text-white">{stats.onaylanan}</span> onaylanmış başvurun var.
               </p>
             </div>
-          ))}
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => router.push("/app/files/new")}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-slate-900 text-sm font-semibold hover:bg-white/90 transition shadow-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
+                </svg>
+                Yeni Dosya
+              </button>
+              <button
+                onClick={() => router.push("/app/calendar")}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 ring-1 ring-white/15 text-white text-sm font-semibold hover:bg-white/15 backdrop-blur transition"
+              >
+                Takvim
+              </button>
+            </div>
+          </div>
+
+          <div className="relative mt-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {heroChips.map((c) => (
+              <div key={c.label} className={`rounded-2xl ring-1 ${c.color} px-4 py-3 backdrop-blur`}>
+                <p className="text-3xl font-black leading-none">{c.value}</p>
+                <p className="mt-1.5 text-[10.5px] uppercase tracking-wider font-bold opacity-80">{c.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ANA İZLEYEN ORTAK GRID: 12 kolon */}
-      <div className="grid grid-cols-12 gap-4">
-        {/* Bu Hafta */}
-        <section className="col-span-12 lg:col-span-7 relative overflow-hidden rounded-3xl bg-white border border-navy-100 p-6 shadow-sm">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-lilac-100/60 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative flex items-center justify-between mb-5">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-primary-600">
-                Bu hafta
-              </p>
-              <h2 className="text-lg font-bold text-navy-900 mt-0.5">Operasyon özeti</h2>
+      {/* 12-col grid */}
+      <div className="grid grid-cols-12 gap-5">
+        {/* BU HAFTA — sol büyük kart */}
+        <section className="col-span-12 lg:col-span-7 relative rounded-2xl bg-white ring-1 ring-slate-200/70 p-6 overflow-hidden">
+          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-indigo-100/60 blur-3xl pointer-events-none" />
+
+          <div className="relative flex items-start justify-between mb-5">
+            <div className="flex items-start gap-3">
+              <span className="w-1 h-10 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Bu Hafta</p>
+                <h2 className="text-lg font-extrabold text-slate-900 mt-0.5 tracking-tight">Operasyon özeti</h2>
+              </div>
             </div>
-            <span className="text-[10px] px-2.5 py-1 rounded-full bg-navy-100 text-navy-600 font-semibold">
+            <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
               {new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long" })}
             </span>
           </div>
 
           <div className="relative grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-gradient-to-br from-primary-50 to-white border border-primary-100 p-4">
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-primary-600">
-                Yeni dosya
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-navy-900">
-                {weeklyStats.buHaftaOlusturulan}
-              </p>
-              <p className="text-xs text-navy-500 mt-0.5">Bu hafta oluşturuldu</p>
+            <div className="rounded-2xl bg-gradient-to-br from-indigo-50 via-violet-50 to-white ring-1 ring-indigo-100 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-wider font-bold text-indigo-700">Yeni Dosya</p>
+                <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <p className="mt-3 text-3xl font-black text-slate-900">{weeklyStats.buHaftaOlusturulan}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Bu hafta oluşturuldu</p>
             </div>
-            <div className="rounded-2xl bg-gradient-to-br from-accent-50 to-white border border-accent-100 p-4">
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-accent-600">
-                Tahsilat
-              </p>
-              <p className="mt-2 text-3xl font-extrabold text-navy-900">
-                {weeklyStats.buHaftaTahsilat}
-              </p>
-              <p className="text-xs text-navy-500 mt-0.5">İşlem yapıldı</p>
+            <div className="rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50 to-white ring-1 ring-emerald-100 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-wider font-bold text-emerald-700">Tahsilat</p>
+                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 1v8m0 0v1" />
+                </svg>
+              </div>
+              <p className="mt-3 text-3xl font-black text-slate-900">{weeklyStats.buHaftaTahsilat}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">İşlem yapıldı</p>
             </div>
           </div>
 
-          <div className="relative mt-4 grid grid-cols-3 gap-2">
-            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center">
-              <p className="text-base font-bold text-emerald-700">
-                {fmt(weeklyStats.tahsilatTL)} ₺
-              </p>
-              <p className="text-[10px] text-emerald-600 mt-0.5 font-semibold tracking-wider uppercase">
-                TRY
-              </p>
+          <div className="relative mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-slate-50 ring-1 ring-slate-100 p-3 text-center">
+              <p className="text-base font-extrabold text-slate-900">{fmt(weeklyStats.tahsilatTL)} ₺</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 font-bold tracking-wider uppercase">TRY</p>
             </div>
-            <div className="rounded-xl bg-primary-50 border border-primary-100 p-3 text-center">
-              <p className="text-base font-bold text-primary-700">
-                {fmt(weeklyStats.tahsilatEUR)} €
-              </p>
-              <p className="text-[10px] text-primary-600 mt-0.5 font-semibold tracking-wider uppercase">
-                EUR
-              </p>
+            <div className="rounded-xl bg-slate-50 ring-1 ring-slate-100 p-3 text-center">
+              <p className="text-base font-extrabold text-slate-900">{fmt(weeklyStats.tahsilatEUR)} €</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 font-bold tracking-wider uppercase">EUR</p>
             </div>
-            <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-center">
-              <p className="text-base font-bold text-amber-700">
-                {fmt(weeklyStats.tahsilatUSD)} $
-              </p>
-              <p className="text-[10px] text-amber-600 mt-0.5 font-semibold tracking-wider uppercase">
-                USD
-              </p>
+            <div className="rounded-xl bg-slate-50 ring-1 ring-slate-100 p-3 text-center">
+              <p className="text-base font-extrabold text-slate-900">{fmt(weeklyStats.tahsilatUSD)} $</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 font-bold tracking-wider uppercase">USD</p>
             </div>
           </div>
         </section>
 
-        {/* Onay oranı + dağılım */}
-        <section className="col-span-12 lg:col-span-5 relative overflow-hidden rounded-3xl bg-navy-900 text-white p-6 shadow-2xl shadow-navy-900/20">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -top-16 -right-16 w-56 h-56 bg-primary-500/30 rounded-full blur-3xl" />
-            <div className="absolute -bottom-20 -left-10 w-56 h-56 bg-accent-500/25 rounded-full blur-3xl" />
+        {/* DOSYA DAĞILIMI — sağ kart */}
+        <section className="col-span-12 lg:col-span-5 relative overflow-hidden rounded-2xl text-white p-6 ring-1 ring-white/10">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950" />
+          <div className="pointer-events-none absolute inset-0 opacity-50">
+            <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-indigo-500 blur-3xl" />
+            <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full bg-fuchsia-500 blur-3xl" />
           </div>
-          <div className="relative flex items-center justify-between mb-4">
+
+          <div className="relative flex items-start justify-between mb-5">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-lilac-300">
-                Performans
-              </p>
-              <h2 className="text-lg font-bold text-white mt-0.5">Dosya durumu</h2>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-violet-300">Performans</p>
+              <h2 className="text-lg font-extrabold text-white mt-0.5 tracking-tight">Dosya durumu</h2>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-extrabold text-white leading-none">{onayOrani}%</p>
-              <p className="text-[10px] text-lilac-300 uppercase tracking-wider font-semibold mt-1">
-                Onay oranı
-              </p>
+              <p className="text-3xl font-black bg-gradient-to-br from-emerald-300 to-teal-300 bg-clip-text text-transparent leading-none">{onayOrani}%</p>
+              <p className="text-[10px] text-white/60 uppercase tracking-wider font-bold mt-1">Onay oranı</p>
             </div>
           </div>
 
@@ -380,20 +373,15 @@ export default function StaffDashboard() {
               return (
                 <div key={i}>
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                      <span className="text-[12px] text-white/85 font-medium">{s.label}</span>
-                    </div>
+                    <span className="text-[12px] text-white/85 font-medium">{s.label}</span>
                     <span className="text-[12px] font-bold text-white">
                       {s.count}{" "}
-                      <span className="text-white/50 font-normal text-[10px]">
-                        · {pct.toFixed(0)}%
-                      </span>
+                      <span className="text-white/50 font-normal text-[10px]">· %{pct.toFixed(0)}</span>
                     </span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${s.dot}`}
+                      className={`h-full rounded-full bg-gradient-to-r ${s.color} transition-all duration-700`}
                       style={{ width: `${Math.max(pct, 2)}%` }}
                     />
                   </div>
@@ -404,45 +392,33 @@ export default function StaffDashboard() {
         </section>
       </div>
 
-      {/* SON İŞLEMLER */}
-      <section className="rounded-3xl bg-white border border-navy-100 overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-navy-100 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-600 flex items-center justify-center shadow-md shadow-primary-500/30">
-            <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+      {/* SON İŞLEMLER — modern timeline */}
+      <section className="rounded-2xl bg-white ring-1 ring-slate-200/70 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-1 h-7 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Son İşlemler</h3>
+              <p className="text-[11px] text-slate-500">Aktivite akışı</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-bold text-navy-900">Son işlemler</h3>
-            <p className="text-[11px] text-navy-500">Aktivite akışı</p>
-          </div>
-          <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary-50 text-primary-700 font-semibold border border-primary-100">
+          <span className="text-[11px] px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-bold">
             {recentLogs.length}
           </span>
         </div>
 
         {recentLogs.length === 0 ? (
           <div className="p-14 text-center">
-            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-primary-50 to-accent-50 border border-primary-100 flex items-center justify-center">
-              <svg className="w-7 h-7 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 ring-1 ring-indigo-100 flex items-center justify-center">
+              <svg className="w-7 h-7 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="text-sm font-semibold text-navy-700">Henüz işlem kaydı yok</p>
-            <p className="text-xs text-navy-400 mt-1">İlk dosyanızı oluşturarak başlayın</p>
+            <p className="text-sm font-bold text-slate-700">Henüz işlem kaydı yok</p>
+            <p className="text-xs text-slate-400 mt-1">İlk dosyanızı oluşturarak başlayın</p>
             <button
               onClick={() => router.push("/app/files/new")}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-primary-500 to-accent-600 shadow-md shadow-primary-500/30 hover:shadow-lg transition-all"
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg hover:shadow-xl transition-all"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
@@ -451,87 +427,41 @@ export default function StaffDashboard() {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-navy-100">
-            {recentLogs.map((log) => {
-              const iconMap: Record<string, { icon: string; bg: string; color: string }> = {
-                file_created: {
-                  icon: "M12 4v16m8-8H4",
-                  bg: "bg-primary-50",
-                  color: "text-primary-600",
-                },
-                file_updated: {
-                  icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-                  bg: "bg-lilac-50",
-                  color: "text-lilac-600",
-                },
-                dosya_hazir: {
-                  icon: "M5 13l4 4L19 7",
-                  bg: "bg-emerald-50",
-                  color: "text-emerald-600",
-                },
-                isleme_girdi: {
-                  icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
-                  bg: "bg-primary-50",
-                  color: "text-primary-600",
-                },
-                islemden_cikti: {
-                  icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
-                  bg: "bg-emerald-50",
-                  color: "text-emerald-600",
-                },
-                payment_added: {
-                  icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 1v8m0 0v1",
-                  bg: "bg-emerald-50",
-                  color: "text-emerald-600",
-                },
-                transfer: {
-                  icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4",
-                  bg: "bg-accent-50",
-                  color: "text-accent-600",
-                },
-              };
-              const ic =
-                iconMap[log.type] || {
-                  icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-                  bg: "bg-navy-100",
-                  color: "text-navy-500",
-                };
-
+          <ol className="relative">
+            {recentLogs.map((log, idx) => {
+              const meta = ACTIVITY_META[log.type] || { icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", gradient: "from-slate-400 to-slate-500" };
               return (
-                <div
-                  key={log.id}
-                  className="flex items-start gap-3 px-6 py-3.5 hover:bg-primary-50/40 transition-colors"
-                >
-                  <div className={`w-9 h-9 rounded-xl ${ic.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                    <svg className={`w-4 h-4 ${ic.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.8}
-                        d={ic.icon}
-                      />
+                <li key={log.id} className="relative pl-14 pr-6 py-3.5 hover:bg-slate-50 transition-colors">
+                  {idx < recentLogs.length - 1 && (
+                    <span className="absolute left-[31px] top-11 bottom-0 w-px bg-slate-200" />
+                  )}
+                  <div className={`absolute left-5 top-3.5 w-8 h-8 rounded-xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center shadow-md`}>
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={meta.icon} />
                     </svg>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-navy-700 leading-snug">{log.message}</p>
-                    {log.visa_files && (
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        <Badge variant="info" size="sm">
-                          {log.visa_files.musteri_ad}
-                        </Badge>
-                        <Badge variant="default" size="sm">
-                          {log.visa_files.hedef_ulke}
-                        </Badge>
-                      </div>
-                    )}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-slate-800 leading-snug">{log.message}</p>
+                      {log.visa_files && (
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          <span className="text-[10.5px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold">
+                            {log.visa_files.musteri_ad}
+                          </span>
+                          <span className="text-[10.5px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold">
+                            {log.visa_files.hedef_ulke}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 flex-shrink-0 mt-1 whitespace-nowrap font-semibold uppercase tracking-wider">
+                      {formatDate(log.created_at)}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-navy-400 flex-shrink-0 mt-1 whitespace-nowrap">
-                    {formatDate(log.created_at)}
-                  </p>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ol>
         )}
       </section>
     </div>

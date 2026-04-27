@@ -20,21 +20,21 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={selectId} className="block text-sm font-medium text-navy-700 mb-1">
+          <label htmlFor={selectId} className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
             {label}
           </label>
         )}
         <select
           ref={ref}
           id={selectId}
-          className={`w-full px-3 py-2 border border-navy-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-navy-100 disabled:cursor-not-allowed ${error ? "border-red-500 focus:ring-red-500" : ""} ${className}`}
+          className={`w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 transition-all focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 disabled:bg-slate-100 disabled:cursor-not-allowed hover:border-slate-300 ${error ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500/10" : ""} ${className}`}
           {...props}
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </select>
-        {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+        {error && <p className="mt-1 text-xs text-rose-500 font-medium">{error}</p>}
       </div>
     );
   }

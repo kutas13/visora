@@ -143,22 +143,21 @@ export default function AdminCariHesapPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </div>
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-amber-500 via-orange-500 to-rose-500" />
           <div>
-            <h1 className="text-xl font-bold text-slate-800">{"Cari Hesap Yönetimi"}</h1>
-            <p className="text-slate-500 text-sm">{"Tüm personellerin borç ve alacak durumunu görüntüleyin, cari bakiyeleri takip edin ve firma hesaplarını yönetin"}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-600">Finans</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Cari Hesap Yönetimi</h1>
+            <p className="text-slate-500 text-sm mt-1 max-w-xl">
+              Tüm personelin borç-alacak durumu; cari bakiye takibi ve firma hesapları.
+            </p>
           </div>
         </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => router.push("/admin/cari-hesap/firmalar")}
-              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-fuchsia-50 ring-1 ring-fuchsia-200 text-fuchsia-700 hover:bg-fuchsia-100 text-sm font-bold transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
@@ -167,8 +166,7 @@ export default function AdminCariHesapPage() {
             </button>
             <button
               onClick={() => exportToExcel()}
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors text-sm font-medium"
-            >
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 hover:shadow-xl transition">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>

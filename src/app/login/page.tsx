@@ -230,11 +230,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-950 via-navy-900 to-[#1a1a3e] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute w-[420px] h-[420px] rounded-full bg-primary-500/15 -top-32 -left-20 blur-3xl" />
-        <div className="absolute w-[520px] h-[520px] rounded-full bg-accent-500/15 top-1/3 -right-32 blur-3xl" />
-        <div className="absolute w-[360px] h-[360px] rounded-full bg-lilac-400/15 bottom-0 left-1/4 blur-3xl" />
+        <div className="absolute w-[480px] h-[480px] rounded-full bg-indigo-600/30 -top-32 -left-20 blur-3xl animate-blob" />
+        <div className="absolute w-[520px] h-[520px] rounded-full bg-fuchsia-600/25 top-1/3 -right-32 blur-3xl animate-blob" style={{ animationDelay: "5s" }} />
+        <div className="absolute w-[400px] h-[400px] rounded-full bg-violet-600/25 bottom-0 left-1/4 blur-3xl animate-blob" style={{ animationDelay: "10s" }} />
       </div>
 
       {/* Sol üst geri linki */}
@@ -250,17 +250,20 @@ export default function LoginPage() {
 
       <Card className="relative z-10 w-full max-w-md p-8" variant="elevated">
         <div className="text-center mb-6">
-          <div className="relative w-20 h-20 mx-auto mb-4">
+          <div className="relative w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 ring-1 ring-indigo-100 flex items-center justify-center shadow-[0_20px_50px_-20px_rgba(99,102,241,0.5)]">
             <Image
               src="/visora-logo.png"
               alt="Visora"
-              fill
+              width={56}
+              height={56}
               priority
-              className="object-contain drop-shadow-[0_8px_24px_rgba(37,99,235,0.35)]"
+              className="object-contain"
             />
           </div>
-          <h1 className="text-2xl font-extrabold text-navy-900 tracking-tight">visora</h1>
-          <p className="text-sm text-navy-500 mt-1">Vize ofisleri için yönetim platformu</p>
+          <h1 className="text-3xl font-black tracking-tight">
+            <span className="text-gradient-visora">Visora</span>
+          </h1>
+          <p className="text-sm text-slate-500 mt-1.5">Vize ofisleri için modern yönetim platformu</p>
         </div>
 
         {error && (
@@ -334,7 +337,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-xs text-navy-400">
-          Visora &copy; {new Date().getFullYear()} &middot; Vize ofisleri için SaaS yönetim platformu
+          Visora &copy; {new Date().getFullYear()} &middot; Vize ofisleri için modern yönetim platformu
         </p>
       </Card>
 

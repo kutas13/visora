@@ -596,28 +596,45 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
+      {/* PAGE HEADER */}
+      <div className="flex items-start gap-4">
+        <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-emerald-500 via-teal-500 to-cyan-500" />
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Ödemeler</h1>
-          <p className="text-slate-500 text-sm">Müşteri tahsilatlarını kaydedin, ödeme geçmişini görüntüleyin ve bekleyen ödemeleri takip edin</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Finans</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+            Ödemeler
+          </h1>
+          <p className="text-slate-500 text-sm mt-1 max-w-xl">
+            Müşteri tahsilatlarını kaydet, ödeme geçmişini görüntüle ve bekleyenleri takip et.
+          </p>
         </div>
       </div>
 
-      {/* Özet */}
-      <div className="grid grid-cols-3 gap-3">
-        {Object.entries(stats).map(([curr, total]) => (
-          <div key={curr} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{curr}</p>
-            <p className={`text-xl font-black mt-1 ${curr === "TL" ? "text-emerald-600" : curr === "EUR" ? "text-blue-600" : "text-amber-600"}`}>
-              {total > 0 ? formatCurrency(total, curr) : "—"}
-            </p>
-          </div>
-        ))}
+      {/* DÖVİZ KARTLARI */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {Object.entries(stats).map(([curr, total]) => {
+          const meta: Record<string, { gradient: string; chip: string; label: string }> = {
+            TL:  { gradient: "from-emerald-500 to-teal-500", chip: "bg-emerald-50 text-emerald-700", label: "Türk Lirası" },
+            EUR: { gradient: "from-indigo-500 to-violet-500", chip: "bg-indigo-50 text-indigo-700", label: "Euro" },
+            USD: { gradient: "from-amber-500 to-orange-500", chip: "bg-amber-50 text-amber-700", label: "Dollar" },
+          };
+          const m = meta[curr] || meta.TL;
+          return (
+            <div key={curr} className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200/70 p-5">
+              <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br ${m.gradient} opacity-10`} />
+              <div className="relative flex items-start justify-between mb-3">
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${m.gradient} flex items-center justify-center shadow-lg`}>
+                  <span className="text-white font-extrabold text-lg">{getCurrencySymbol(curr)}</span>
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${m.chip}`}>{curr}</span>
+              </div>
+              <p className="relative text-3xl font-black text-slate-900 tracking-tight">
+                {total > 0 ? formatCurrency(total, curr) : "—"}
+              </p>
+              <p className="relative text-[11px] text-slate-500 mt-1">Toplam · {m.label}</p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Arama */}

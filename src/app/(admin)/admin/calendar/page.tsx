@@ -111,17 +111,16 @@ export default function AdminCalendarPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
+      {/* PAGE HEADER */}
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500" />
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Randevu Takvimi</h1>
-            <p className="text-slate-500 text-sm">Tüm personellerin randevularını takvimde görüntüleyin ve yönetin &middot; {appointments.length} yaklaşan</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-violet-600">Operasyon</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Randevu Takvimi</h1>
+            <p className="text-slate-500 text-sm mt-1">
+              Tüm personelin randevularını takvimde görüntüle ve yönet · <span className="font-bold text-violet-600">{appointments.length}</span> yaklaşan
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

@@ -66,7 +66,7 @@ const ULKE_RENKLERI: Record<string, { bg: string; text: string }> = {
 };
 
 // Eski hardcoded avatar/telefon listesi kaldirildi.
-// SaaS modelinde personel bilgileri profiles tablosundan dinamik gelir
+// Personel bilgileri profiles tablosundan dinamik gelir
 // ve WhatsApp gonderimi varsayilan KAPALI'dir.
 const AVATAR_MAP: Record<string, string> = {};
 
@@ -828,34 +828,41 @@ export default function RandevuListesi() {
       {/* Fullscreen Image Viewer */}
       {viewerImage && <ImageViewer src={viewerImage} onClose={() => setViewerImage(null)} />}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-            <span className="text-3xl">📋</span>
-            Randevu Alınacak
-          </h1>
-          <p className="text-navy-500 mt-1">
-            {filteredTalepler.length} {showArchived ? "alınan randevu" : "aktif"} randevu talebi
-          </p>
+      {/* PAGE HEADER */}
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500" />
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-violet-600">Operasyon</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Randevu Alınacak</h1>
+            <p className="text-slate-500 text-sm mt-1">
+              <span className="font-bold text-violet-600">{filteredTalepler.length}</span> {showArchived ? "alınan" : "aktif"} randevu talebi
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant={showArchived ? "primary" : "outline"}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
             onClick={() => setShowArchived(!showArchived)}
-            className="shadow-md"
+            className={`inline-flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-bold transition ${
+              showArchived
+                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25 hover:bg-emerald-600"
+                : "bg-white ring-1 ring-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
             {showArchived ? "Aktif Talepleri Göster" : "Alınan Randevular"}
-          </Button>
-          <Button onClick={() => setShowCreateModal(true)} className="shadow-lg">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white text-sm font-bold shadow-lg shadow-violet-500/25 hover:shadow-xl transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
             </svg>
             Randevu Talebi Oluştur
-          </Button>
+          </button>
         </div>
       </div>
 

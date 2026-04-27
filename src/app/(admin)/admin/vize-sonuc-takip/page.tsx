@@ -111,48 +111,31 @@ export default function AdminVizeSonucTakipPage() {
   }, [rows, search, filterCountry]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-[1400px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 text-white flex items-center justify-center">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4M7.835 4.697A3.42 3.42 0 001.946 6.586a3.42 3.42 0 002.357 5.34 3.42 3.42 0 001.279 5.591 3.42 3.42 0 005.32-2.31 3.42 3.42 0 005.62 1.61 3.42 3.42 0 002.31-5.32 3.42 3.42 0 001.61-5.62 3.42 3.42 0 00-5.32-2.31 3.42 3.42 0 00-5.62-1.61z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">Vize Sonuç Takip</h1>
-                <p className="text-xs text-slate-500">
-                  Vize merkezine başvurusu yapılmış ve sonucu beklenen müşteriler. Pasaport
-                  geri alınınca (işlemden çıktı) listeden otomatik düşer.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={load}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Yenile
-            </button>
+    <div className="space-y-6">
+      {/* PAGE HEADER */}
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-cyan-500 via-sky-500 to-indigo-500" />
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-600">Operasyon</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Vize Sonuç Takip</h1>
+            <p className="text-slate-500 text-sm mt-1 max-w-2xl">
+              Başvurusu yapılmış ve sonucu beklenen müşteriler. Pasaport iade olduğunda (işlemden çıktı) liste otomatik temizlenir.
+            </p>
           </div>
         </div>
-      </header>
+        <button
+          onClick={load}
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-white ring-1 ring-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-semibold transition"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Yenile
+        </button>
+      </div>
 
-      <div className="max-w-[1400px] mx-auto px-6 py-6">
+      <div>
         <div className="bg-white border border-slate-200 rounded-xl p-4 mb-4 flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[240px] max-w-[400px]">
             <svg

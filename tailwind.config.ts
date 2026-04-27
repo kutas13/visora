@@ -12,20 +12,20 @@ const config: Config = {
         sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
       },
       colors: {
-        // Visora marka paleti
-        // primary = Royal Mavi (#2563EB) - butonlar, aktif, ana vurgu
+        // Visora marka paleti — Modern Indigo
+        // primary = Royal Indigo (#4F46E5) - butonlar, aktif, ana vurgu
         primary: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#2563eb", // Ana royal mavi (logo geçişi başlangıcı)
-          600: "#1d4ed8",
-          700: "#1e40af",
-          800: "#1e3a8a",
-          900: "#172554",
-          950: "#0f172a",
+          50: "#eef2ff",
+          100: "#e0e7ff",
+          200: "#c7d2fe",
+          300: "#a5b4fc",
+          400: "#818cf8",
+          500: "#6366f1",
+          600: "#4f46e5", // Ana indigo
+          700: "#4338ca",
+          800: "#3730a3",
+          900: "#312e81",
+          950: "#1e1b4b",
         },
         // navy = Gece Laciverti (#0F172A) - başlıklar, koyu yüzeyler
         navy: {
@@ -85,12 +85,15 @@ const config: Config = {
         },
       },
       backgroundImage: {
-        "visora-gradient": "linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)",
-        "visora-gradient-soft": "linear-gradient(135deg, #dbeafe 0%, #ede9fe 100%)",
+        "visora-gradient": "linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #D946EF 100%)",
+        "visora-gradient-soft": "linear-gradient(135deg, #e0e7ff 0%, #ede9fe 50%, #fae8ff 100%)",
+        "visora-mesh":
+          "radial-gradient(at 0% 0%, rgba(79,70,229,0.10) 0px, transparent 50%), radial-gradient(at 100% 0%, rgba(217,70,239,0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(124,58,237,0.10) 0px, transparent 50%)",
       },
       boxShadow: {
-        "visora": "0 10px 30px -10px rgba(37, 99, 235, 0.45)",
+        "visora": "0 10px 30px -10px rgba(79, 70, 229, 0.45)",
         "visora-lg": "0 20px 50px -12px rgba(124, 58, 237, 0.40)",
+        "visora-glow": "0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px -8px rgba(79,70,229,0.45)",
       },
     },
   },

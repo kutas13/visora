@@ -24,18 +24,18 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   // İşleme girdi modal
   const [showIslemeGirdiModal, setShowIslemeGirdiModal] = useState(false);
   const [tahminiCikisTarihi, setTahminiCikisTarihi] = useState("");
+  const [takipNo, setTakipNo] = useState("");
+  const [dogumTarihi, setDogumTarihi] = useState("");
 
   // Sonuç modal
   const [showSonucModal, setShowSonucModal] = useState(false);
   const [sonuc, setSonuc] = useState<VizeSonucu | "">("");
   const [sonucTarihi, setSonucTarihi] = useState(new Date().toISOString().split("T")[0]);
   const [vizeBitisTarihi, setVizeBitisTarihi] = useState("");
-  const [musteriTelefon, setMusteriTelefon] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [sonucError, setSonucError] = useState<string | null>(null);
   const [vizeGorselFile, setVizeGorselFile] = useState<File | null>(null);
   const [vizeGorselPreview, setVizeGorselPreview] = useState<string | null>(null);
-  const [showEskiPasaportModal, setShowEskiPasaportModal] = useState(false);
 
   // Dosya tamamlandı mı kontrolü
   const isCompleted = file.sonuc !== null;
@@ -130,6 +130,8 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
   const openIslemeGirdiModal = () => {
     if (isLoading || actionInProgress) return;
     setTahminiCikisTarihi("");
+    setTakipNo(file.takip_no || "");
+    setDogumTarihi(file.dogum_tarihi || "");
     if (isChinaTBD) {
       void handleIslemeGirdiKaydet("");
       return;
@@ -156,13 +158,16 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       const updateData: Partial<VisaFile> = {
         basvuru_yapildi: true,
         basvuru_yapildi_at: timestamp,
-        tahmini_cikis_tarihi: effectiveDate || null,
+        tahmini_cikis_tarihi: isChina ? (effectiveDate || null) : null,
+        takip_no: takipNo.trim() || null,
+        dogum_tarihi: dogumTarihi || null,
       };
 
-      const cikisText = effectiveDate
+      const cikisText = isChina && effectiveDate
         ? ` (tahmini çıkış: ${new Date(effectiveDate).toLocaleDateString("tr-TR")})`
         : "";
-      const logMessage = `${file.musteri_ad} dosyası işleme girdi${cikisText}`;
+      const takipText = takipNo.trim() ? ` · takip: ${takipNo.trim()}` : "";
+      const logMessage = `${file.musteri_ad} dosyası işleme girdi${cikisText}${takipText}`;
 
       const { error } = await supabase.from("visa_files").update(updateData).eq("id", file.id);
       if (error) throw error;
@@ -243,7 +248,6 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
         sonuc: sonuc as VizeSonucu,
         sonuc_tarihi: sonucTarihi,
         vize_bitis_tarihi: sonuc === "vize_onay" ? vizeBitisTarihi : null,
-        musteri_telefon: musteriTelefon.trim() || null,
         arsiv_mi: true,
         ...(gorselUrl ? { vize_gorseli: gorselUrl } : {}),
       };
@@ -276,10 +280,6 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       // tutulmaya devam eder; dis kanallara hicbir veri iletilmez.
 
       setShowSonucModal(false);
-
-      if (file.eski_pasaport) {
-        setShowEskiPasaportModal(true);
-      }
 
       onUpdate();
     } catch (err) {
@@ -416,12 +416,30 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
           </div>
 
           <Input
-            label="Tahmini Çıkış Tarihi"
-            type="date"
-            value={tahminiCikisTarihi}
-            onChange={(e) => setTahminiCikisTarihi(e.target.value)}
+            label="Takip No"
+            value={takipNo}
+            onChange={(e) => setTakipNo(e.target.value)}
+            placeholder="Vize merkezi takip numarası"
           />
-          <p className="text-xs text-navy-500 -mt-2">Boş bırakabilirsiniz, sonradan da güncellenebilir.</p>
+
+          <Input
+            label="Doğum Tarihi"
+            type="date"
+            value={dogumTarihi}
+            onChange={(e) => setDogumTarihi(e.target.value)}
+          />
+
+          {isChina && (
+            <>
+              <Input
+                label="Tahmini Çıkış Tarihi"
+                type="date"
+                value={tahminiCikisTarihi}
+                onChange={(e) => setTahminiCikisTarihi(e.target.value)}
+              />
+              <p className="text-xs text-navy-500 -mt-2">Boş bırakabilirsiniz, sonradan da güncellenebilir.</p>
+            </>
+          )}
 
           <div className="flex gap-3 pt-4 border-t border-navy-200">
             <Button type="button" variant="outline" onClick={() => setShowIslemeGirdiModal(false)} className="flex-1" disabled={isLoading}>
@@ -437,6 +455,26 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
       {/* Sonuç Modal */}
       <Modal isOpen={showSonucModal} onClose={() => setShowSonucModal(false)} title="İşlem Sonucu" size="sm">
         <div className="space-y-4">
+          {file.eski_pasaport && (
+            <div className="rounded-xl border-2 border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50 p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 ring-2 ring-orange-200">
+                  <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-extrabold text-orange-900 uppercase tracking-wide">
+                    ESKİ PASAPORT SİZDEYSE İADE ETMEYİ UNUTMAYIN
+                  </p>
+                  <p className="text-xs text-orange-700 mt-1">
+                    {file.musteri_ad} müşterisinin eski pasaportu sistem kayıtlarında mevcut. Pasaport teslimi sırasında iadesini ihmal etmeyin.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {sonucError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
               {sonucError}
@@ -515,34 +553,6 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
             </div>
           )}
 
-          {/* İletişim Bilgisi */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-navy-700">Müşteri Telefon Numarası</label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 text-sm text-navy-600 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg">
-                  +90
-                </span>
-                <input
-                  type="text"
-                  placeholder="5058937071"
-                  value={musteriTelefon.replace(/^90/, "")} // 90 prefix'i gösterme
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    setMusteriTelefon("90" + digits); // Otomatik 90 ekle
-                  }}
-                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  maxLength={10}
-                />
-              </div>
-              <p className="text-xs text-navy-500">
-                Sadece numarayı girin, +90 otomatik eklenir
-              </p>
-            </div>
-            <p className="text-xs text-blue-600 mt-2">
-              💡 Vize bitiş hatırlatması için kayıt edilir (WhatsApp sayfasından mesaj gönderilebilir)
-            </p>
-          </div>
 
           <div className="flex gap-3 pt-4 border-t border-navy-200">
             <Button type="button" variant="outline" onClick={() => setShowSonucModal(false)} className="flex-1" disabled={isLoading}>
@@ -552,28 +562,6 @@ export default function FileActions({ file, onUpdate, isAdmin = false }: FileAct
               {isLoading ? "Kaydediliyor..." : "Kaydet ve Tamamla"}
             </Button>
           </div>
-        </div>
-      </Modal>
-
-      {/* Eski Pasaport Uyarı Modal */}
-      <Modal isOpen={showEskiPasaportModal} onClose={() => setShowEskiPasaportModal(false)} title="Eski Pasaport Hatırlatma" size="sm">
-        <div className="space-y-4">
-          <div className="bg-orange-50 border border-orange-300 rounded-xl p-5">
-            <div className="flex gap-3 items-start">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-orange-800 mb-1">Eski Pasaportu İade Etmeyi Unutmayınız!</p>
-                <p className="text-sm text-orange-700">{file.musteri_ad} müşterisinin eski pasaportu bulunmaktadır. Lütfen teslim sırasında eski pasaportu iade etmeyi unutmayın.</p>
-              </div>
-            </div>
-          </div>
-          <Button onClick={() => setShowEskiPasaportModal(false)} className="w-full">
-            Tamam, Anladım
-          </Button>
         </div>
       </Modal>
 

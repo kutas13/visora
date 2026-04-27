@@ -144,13 +144,14 @@ export default function RandevuRaporlari() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-navy-900 flex items-center gap-2">
-            <span className="text-3xl">📊</span>
-            Randevu Raporları
-          </h1>
-          <p className="text-navy-500 mt-1">Pasaport bazlı randevu istatistikleri</p>
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Analiz</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Randevu Raporları</h1>
+            <p className="text-slate-500 text-sm mt-1">Pasaport bazlı randevu istatistikleri ve dönemsel performans</p>
+          </div>
         </div>
         <div className="flex gap-2">
           {(["all", "month", "week"] as const).map((range) => (

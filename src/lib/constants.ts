@@ -1,5 +1,5 @@
 // ----------------------------------------------------------------------
-// VISORA — SaaS modeli
+// VISORA — Çoklu firma modeli
 // ----------------------------------------------------------------------
 // Eski monolitik kurulumdaki hardcoded kullanici listesi kaldirildi.
 // Artik tum kullanici/personel bilgileri tenant bazli olarak `profiles`

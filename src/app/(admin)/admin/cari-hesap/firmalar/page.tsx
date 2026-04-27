@@ -76,19 +76,16 @@ export default function AdminFirmaCariPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <button onClick={() => router.back()} className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={() => router.back()} className="w-10 h-10 rounded-xl bg-white ring-1 ring-slate-200 hover:bg-slate-50 flex items-center justify-center transition-colors flex-shrink-0">
           <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H9m0 0H5m0 0h2M7 7h10M7 11h10M7 15h10" />
-          </svg>
-        </div>
+        <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-fuchsia-500 via-violet-500 to-indigo-500" />
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Firma Cari Hesapları</h1>
-          <p className="text-slate-500 text-sm">Şirket bazında vize işlemleri</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-fuchsia-600">Cari Hesap</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Firma Cari Hesapları</h1>
+          <p className="text-slate-500 text-sm mt-1">Şirket bazında vize işlemleri ve borç takibi</p>
         </div>
       </div>
 

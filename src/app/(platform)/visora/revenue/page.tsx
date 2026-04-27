@@ -68,13 +68,31 @@ export default function VisoraRevenuePage() {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6 bg-gradient-to-br from-primary-500 via-violet-500 to-indigo-500 text-white">
-        <p className="text-xs uppercase tracking-wider text-white/80 font-semibold">Toplam Tahsil Edilen Ciro (Kasaya Giren)</p>
-        <p className="text-4xl md:text-5xl font-extrabold mt-2">{fmtTRYExact(totals.paidTotal)}</p>
-        <p className="text-sm text-white/80 mt-2">
-          Son {windowMonths} ay · Aylık ortalama tahsilat: <strong>{fmtTRY(totals.avgMonthly)}</strong>
-        </p>
-      </Card>
+      {/* PAGE HEADER */}
+      <div className="flex items-start gap-4">
+        <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-emerald-500 via-teal-500 to-cyan-500" />
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Platform · Finans</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Gelirler</h1>
+          <p className="text-slate-500 text-sm mt-1 max-w-xl">Visora platform tahsilatları, aylık ciro ve abonelik geliri özetleri.</p>
+        </div>
+      </div>
+
+      {/* HERO BANNER */}
+      <section className="relative overflow-hidden rounded-3xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-emerald-950 to-teal-950" />
+        <div className="pointer-events-none absolute inset-0 opacity-60">
+          <div className="absolute -top-20 -left-10 w-64 h-64 rounded-full bg-emerald-500 blur-3xl animate-blob" />
+          <div className="absolute -bottom-16 -right-10 w-72 h-72 rounded-full bg-cyan-500 blur-3xl animate-blob" style={{ animationDelay: "5s" }} />
+        </div>
+        <div className="relative p-6 sm:p-7 text-white">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-200 font-bold">Toplam Tahsil Edilen Ciro (Kasaya Giren)</p>
+          <p className="text-3xl md:text-5xl font-black mt-2 tracking-tight">{fmtTRYExact(totals.paidTotal)}</p>
+          <p className="text-sm text-white/70 mt-2">
+            Son <span className="font-bold text-white">{windowMonths}</span> ay · Aylık ortalama: <strong className="text-white">{fmtTRY(totals.avgMonthly)}</strong>
+          </p>
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-4">

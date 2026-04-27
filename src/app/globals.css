@@ -2,32 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Visora - Koyu Lacivert + Mor/Indigo Tema */
-body {
-  @apply bg-navy-50 text-navy-900;
+/* Visora — Modern Indigo / Soft Mesh Tema */
+:root {
+  --visora-bg: #f5f7ff;
+  --visora-surface: #ffffff;
+  --visora-border: rgba(15, 23, 42, 0.06);
+  --visora-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -8px rgba(79, 70, 229, 0.10);
 }
 
-/* Scrollbar stilleri */
+html, body {
+  height: 100%;
+}
+
+body {
+  @apply text-slate-900 antialiased;
+  background:
+    radial-gradient(1200px 600px at 0% -10%, rgba(99, 102, 241, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(217, 70, 239, 0.07), transparent 55%),
+    radial-gradient(900px 700px at 50% 110%, rgba(124, 58, 237, 0.08), transparent 60%),
+    var(--visora-bg);
+  background-attachment: fixed;
+  -webkit-font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+}
+
+/* Modern, ince scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-navy-100;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-navy-300 rounded-full;
+  background: rgba(99, 102, 241, 0.18);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-navy-400;
+  background: rgba(99, 102, 241, 0.32);
+  background-clip: padding-box;
 }
 
 /* Custom badge styles */
 .badge-success {
-  @apply bg-green-100 text-green-700;
+  @apply bg-emerald-100 text-emerald-700;
 }
 
 .badge-warning {
@@ -35,21 +58,42 @@ body {
 }
 
 .badge-error {
-  @apply bg-red-100 text-red-700;
+  @apply bg-rose-100 text-rose-700;
 }
 
 .badge-info {
-  @apply bg-blue-100 text-blue-700;
+  @apply bg-indigo-100 text-indigo-700;
+}
+
+/* Modern kart yüzeyi (otomatik glassmorphism) */
+.surface {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(160%) blur(8px);
+  -webkit-backdrop-filter: saturate(160%) blur(8px);
+  border: 1px solid var(--visora-border);
+  border-radius: 16px;
+  box-shadow: var(--visora-shadow);
+}
+
+.surface-strong {
+  background: #ffffff;
+  border: 1px solid var(--visora-border);
+  border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px -16px rgba(79, 70, 229, 0.18);
 }
 
 /* Card hover effect */
 .card-hover {
-  @apply transition-all duration-200 hover:shadow-lg hover:scale-[1.01];
+  @apply transition-all duration-200;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px -4px rgba(79, 70, 229, 0.18);
 }
 
-/* Table row hover */
+/* Tablo satır hover */
 .table-row-hover {
-  @apply transition-colors hover:bg-navy-50;
+  @apply transition-colors hover:bg-indigo-50/40;
 }
 
 /* Sidebar scroll */
@@ -60,16 +104,56 @@ body {
   background: transparent;
 }
 .sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.10);
   border-radius: 10px;
 }
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18);
 }
 
-/* Gate curtain shake animation */
+/* Marka odaklı köşelendirme */
+.rounded-visora {
+  border-radius: 18px;
+}
+
+/* Marka gradient yardımcıları */
+.text-gradient-visora {
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #D946EF 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Animasyonlar */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
   20%, 40%, 60%, 80% { transform: translateX(6px); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes blob {
+  0%, 100% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+}
+.animate-blob {
+  animation: blob 14s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(110deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 2.2s infinite;
 }

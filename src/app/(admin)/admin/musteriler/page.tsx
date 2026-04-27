@@ -424,46 +424,56 @@ export default function AdminMusterilerPage() {
       </div>
 
       <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
-        {/* Hero */}
-        <div className="overflow-hidden rounded-3xl border border-navy-200 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 shadow-xl shadow-navy-900/20">
-          <div className="relative p-6 sm:p-8 text-white">
-            <div className="absolute inset-0 opacity-40">
-              <div className="absolute -right-10 -top-10 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-              <div className="absolute bottom-0 left-0 h-40 w-64 rounded-full bg-navy-500/30 blur-2xl" />
-            </div>
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.08),transparent_55%)]" />
-            <div className="relative flex flex-wrap items-end justify-between gap-6">
-              <div className="max-w-xl">
-                <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-navy-100">
-                  <svg className="h-3.5 w-3.5 text-white/90" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                  </svg>
-                  Tüm Personel CRM
-                </p>
-                <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Tüm Müşteriler</h1>
-                <p className="mt-2 text-sm text-navy-200 sm:text-base">
-                  Tüm personelin müşteri kayıtları — pasaport bazlı birleştirilmiş görünüm.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-                {[
-                  { k: "Müşteri", v: stats.total },
-                  { k: "Tekrarlayan", v: stats.returning },
-                  { k: "Onay var", v: stats.approved },
-                  { k: "Dosya", v: stats.totalFiles },
-                ].map((s) => (
-                  <div
-                    key={s.k}
-                    className="min-w-[76px] rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-center backdrop-blur-sm"
-                  >
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-navy-200">{s.k}</p>
-                    <p className="text-xl font-bold tabular-nums">{s.v}</p>
-                  </div>
-                ))}
-              </div>
+        {/* PAGE HEADER */}
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Müşteri CRM</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Tüm Müşteriler</h1>
+              <p className="text-slate-500 text-sm mt-1 max-w-xl">
+                Tüm personelin müşteri kayıtları — pasaport bazlı birleştirilmiş görünüm.
+              </p>
             </div>
           </div>
         </div>
+
+        {/* HERO — DARK GLASS BANNER */}
+        <section className="relative overflow-hidden rounded-3xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950" />
+          <div className="pointer-events-none absolute inset-0 opacity-60">
+            <div className="absolute -top-24 -left-16 w-72 h-72 rounded-full bg-indigo-500 blur-3xl animate-blob" />
+            <div className="absolute -bottom-24 -right-10 w-72 h-72 rounded-full bg-fuchsia-500 blur-3xl animate-blob" style={{ animationDelay: "5s" }} />
+          </div>
+          <div className="relative grid md:grid-cols-[1fr_auto] gap-5 items-end p-6 sm:p-7">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur text-white/90 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Tüm Personel
+              </div>
+              <h2 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight">
+                <span className="bg-gradient-to-r from-indigo-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{stats.total}</span> kayıtlı müşteri
+              </h2>
+              <p className="mt-1.5 text-white/60 text-sm">Pasaport bazlı birleştirilmiş kayıtlar ve dosya geçmişi</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {[
+                { k: "Müşteri", v: stats.total },
+                { k: "Tekrarlayan", v: stats.returning },
+                { k: "Onay var", v: stats.approved },
+                { k: "Dosya", v: stats.totalFiles },
+              ].map((s) => (
+                <div
+                  key={s.k}
+                  className="min-w-[80px] rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur px-3 py-2.5 text-center"
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/60">{s.k}</p>
+                  <p className="text-xl font-black tabular-nums text-white">{s.v}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* Personel filtresi */}
         <div className="flex flex-wrap items-center gap-1.5">

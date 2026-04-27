@@ -249,50 +249,62 @@ export default function VisoraCompaniesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Toplam şirket</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{totalCompanies}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Aktif şirket</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{totalActiveCompanies}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Toplam kullanıcı</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{totalUsers}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Aylık MRR (Aktif)</p>
-          <p className="text-2xl font-bold text-primary-600 mt-1">{fmtTRY(monthlyMRR)}</p>
-        </Card>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="flex-1 max-w-sm">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Şirket veya e-posta ara…"
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-          />
+      {/* PAGE HEADER */}
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Platform</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Şirketler</h1>
+            <p className="text-slate-500 text-sm mt-1 max-w-xl">Visora platformuna kayıtlı tüm şirketleri yönet, planları düzenle.</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
+        <div className="flex flex-wrap items-center gap-2">
+          <button
             onClick={() => {
               setResetOpen(true);
               setResetText("");
               setResetMsg(null);
             }}
-            variant="ghost"
-            className="text-red-600 hover:bg-red-50 border border-red-200"
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-rose-50 ring-1 ring-rose-200 text-rose-700 hover:bg-rose-100 text-sm font-semibold transition"
           >
             Tümünü Sıfırla
-          </Button>
-          <Button onClick={() => setCreateOpen(true)} className="bg-primary-500 hover:bg-primary-600 shadow-primary-500/30">
-            + Yeni Şirket
-          </Button>
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 hover:shadow-xl transition"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
+            </svg>
+            Yeni Şirket
+          </button>
         </div>
+      </div>
+
+      {/* STATS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Toplam şirket", value: totalCompanies, gradient: "from-indigo-500 to-violet-500" },
+          { label: "Aktif şirket", value: totalActiveCompanies, gradient: "from-emerald-500 to-teal-500" },
+          { label: "Toplam kullanıcı", value: totalUsers, gradient: "from-violet-500 to-fuchsia-500" },
+          { label: "Aylık MRR (Aktif)", value: fmtTRY(monthlyMRR), gradient: "from-amber-500 to-orange-500" },
+        ].map((s) => (
+          <div key={s.label} className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200/70 p-4">
+            <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br ${s.gradient} opacity-10`} />
+            <p className="relative text-[10px] font-bold uppercase tracking-wider text-slate-500">{s.label}</p>
+            <p className="relative text-2xl font-black text-slate-900 mt-1 tracking-tight">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex-1 max-w-sm">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Şirket veya e-posta ara…"
+          className="w-full h-10 px-3 rounded-xl bg-white ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 text-sm"
+        />
       </div>
 
       {err && <Card className="p-4 text-red-600 text-sm">{err}</Card>}

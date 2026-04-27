@@ -26,7 +26,7 @@ export function isWhatsappEnabled(): boolean {
 /**
  * Legacy SMTP'ye bagli email endpoint'leri (gunluk-rapor / tahsilat /
  * randevu mail) eski monolitik kurulumda tek SMTP hesabi uzerinden
- * mail gonderiyordu. SaaS modelinde her sirketin kendi SMTP yapilandirmasi
+ * mail gonderiyordu. Yeni modelde her sirketin kendi SMTP yapilandirmasi
  * olmali. Henuz multi-tenant SMTP yokken bu endpoint'ler default olarak
  * KAPALIDIR, boylece eski hesaplardan disariya mail gitmez.
  *

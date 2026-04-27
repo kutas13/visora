@@ -152,16 +152,13 @@ export default function AdminBildirimlerPage() {
   return (
     <div className="space-y-6">
       {/* Sayfa Başlığı */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </div>
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-amber-500 via-orange-500 to-rose-500" />
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Tüm Bildirimler</h1>
-            <p className="text-slate-500 text-sm">Sistem tarafından oluşturulan tüm bildirimleri yönetin</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-600">Sistem</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Tüm Bildirimler</h1>
+            <p className="text-slate-500 text-sm mt-1">Sistem tarafından oluşturulan tüm bildirimleri yönet ve filtrele</p>
           </div>
         </div>
         <div className="flex gap-2">

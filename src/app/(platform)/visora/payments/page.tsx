@@ -170,23 +170,30 @@ export default function VisoraPaymentsPage() {
 
   return (
     <div className="space-y-6">
+      {/* PAGE HEADER */}
+      <div className="flex items-start gap-4">
+        <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-emerald-500 via-teal-500 to-cyan-500" />
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Platform · Finans</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Şirket Tahsilatları</h1>
+          <p className="text-slate-500 text-sm mt-1 max-w-xl">Aylık abonelik tahakkukları, bakiyeler ve geciken ödemeler.</p>
+        </div>
+      </div>
+
+      {/* STATS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Toplam tahsil edilen</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{fmtTRY(totalPaidAll)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Toplam bakiye</p>
-          <p className="text-2xl font-bold text-amber-600 mt-1">{fmtTRY(totalUnpaidAll)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Gecikmiş kayıt</p>
-          <p className="text-2xl font-bold text-red-600 mt-1">{overdueCount}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-slate-500">Şirket sayısı</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{orgs.length}</p>
-        </Card>
+        {[
+          { label: "Toplam tahsil edilen", value: fmtTRY(totalPaidAll), gradient: "from-emerald-500 to-teal-500" },
+          { label: "Toplam bakiye", value: fmtTRY(totalUnpaidAll), gradient: "from-amber-500 to-orange-500" },
+          { label: "Gecikmiş kayıt", value: overdueCount, gradient: "from-rose-500 to-red-500" },
+          { label: "Şirket sayısı", value: orgs.length, gradient: "from-indigo-500 to-violet-500" },
+        ].map((s) => (
+          <div key={s.label} className="relative overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200/70 p-4">
+            <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br ${s.gradient} opacity-10`} />
+            <p className="relative text-[10px] font-bold uppercase tracking-wider text-slate-500">{s.label}</p>
+            <p className="relative text-2xl font-black text-slate-900 mt-1 tracking-tight">{s.value}</p>
+          </div>
+        ))}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">

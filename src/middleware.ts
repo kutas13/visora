@@ -23,7 +23,6 @@ export const config = {
     "/admin/calendar/:path*",
     "/admin/bildirimler/:path*",
     "/admin/vize-bitisi/:path*",
-    "/admin/prim-takibi/:path*",
     "/admin/randevu-listesi/:path*",
     "/admin/randevu-raporlari/:path*",
     // Korumalı rotalar - muhasebe

@@ -6,7 +6,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 // Eski hardcoded avatar listesi kaldirildi.
-// SaaS modelinde her kullanici default initial avatar kullanir; ileride
+// Her kullanici default initial avatar kullanir; ileride
 // profile.avatar_url eklenecek.
 const USER_AVATARS: Record<string, string> = {};
 
@@ -53,13 +53,13 @@ export default function TopBar({ title, userName = "Kullanıcı", variant = "sta
   const notifPath = variant === "admin" ? "/admin/bildirimler" : "/app/bildirimler";
 
   return (
-    <header className="h-16 bg-white border-b border-navy-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-sm">
+    <header className="h-16 sticky top-0 z-30 px-4 md:px-6 flex items-center justify-between bg-white/70 backdrop-blur-xl border-b border-slate-200/70 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
       <div className="flex items-center gap-3">
         {/* Hamburger / Kapat - sadece mobilde */}
         {onMenuToggle && (
           <button
             onClick={onMenuToggle}
-            className="lg:hidden p-2 -ml-2 text-navy-600 hover:bg-navy-100 rounded-xl transition-colors relative z-[60]"
+            className="lg:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors relative z-[60]"
             aria-label={sidebarOpen ? "Menüyü Kapat" : "Menü"}
           >
             {sidebarOpen ? (
@@ -73,28 +73,31 @@ export default function TopBar({ title, userName = "Kullanıcı", variant = "sta
             )}
           </button>
         )}
-        <h1 className="text-lg md:text-xl font-bold text-navy-900 truncate">{title}</h1>
+        <div className="flex items-center gap-2.5">
+          <span className="hidden md:inline-block w-1.5 h-7 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+          <h1 className="text-base md:text-lg font-extrabold tracking-tight text-slate-900 truncate">{title}</h1>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-4">
-        <button 
+      <div className="flex items-center gap-2 md:gap-3">
+        <button
           onClick={() => router.push(notifPath)}
-          className="relative p-2 text-navy-500 hover:bg-navy-100 rounded-xl transition-colors"
+          className="relative p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
           title="Bildirimler"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1 shadow-lg animate-pulse">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
         </button>
 
-        <div className="flex items-center gap-2 md:gap-3 pl-2 md:pl-4 border-l border-navy-200">
+        <div className="flex items-center gap-2 md:gap-3 pl-2 md:pl-3 border-l border-slate-200">
           {USER_AVATARS[userName.toUpperCase()] ? (
-            <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl overflow-hidden shadow-md ring-2 ring-primary-200">
+            <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl overflow-hidden ring-2 ring-white shadow-md">
               <Image
                 src={USER_AVATARS[userName.toUpperCase()]}
                 alt={userName}
@@ -104,17 +107,20 @@ export default function TopBar({ title, userName = "Kullanıcı", variant = "sta
               />
             </div>
           ) : (
-            <div className="w-9 h-9 md:w-10 md:h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-sm">{userName.charAt(0).toUpperCase()}</span>
+            <div className="relative w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shadow-[0_6px_20px_-6px_rgba(99,102,241,0.6)]">
+              <span className="text-white font-extrabold text-sm tracking-wide">{userName.charAt(0).toUpperCase()}</span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-white" />
             </div>
           )}
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-navy-900">{userName}</p>
-            <p className="text-xs text-navy-500">{variant === "admin" ? "Genel Müdür" : "Personel"}</p>
+          <div className="hidden sm:block leading-tight">
+            <p className="text-sm font-semibold text-slate-900">{userName}</p>
+            <p className="text-[11px] uppercase tracking-wider text-slate-400">
+              {variant === "admin" ? "Genel Müdür" : "Personel"}
+            </p>
           </div>
           <button
             onClick={handleLogout}
-            className="ml-1 md:ml-2 p-2 text-navy-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+            className="ml-1 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
             title="Çıkış Yap"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

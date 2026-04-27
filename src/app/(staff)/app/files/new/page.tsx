@@ -47,41 +47,26 @@ export default function NewVisaFilePage() {
             </nav>
           </div>
 
-          {/* Hero başlık */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 p-6 sm:p-8 mb-6 shadow-xl shadow-navy-900/20">
-            <div className="absolute inset-0 opacity-30">
-              <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full bg-primary-500 blur-3xl" />
-              <div className="absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-primary-400 blur-3xl" />
+          {/* HERO BANNER */}
+          <section className="relative overflow-hidden rounded-3xl mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950" />
+            <div className="pointer-events-none absolute inset-0 opacity-60">
+              <div className="absolute -top-20 -left-10 w-64 h-64 rounded-full bg-indigo-500 blur-3xl animate-blob" />
+              <div className="absolute -bottom-16 -right-10 w-72 h-72 rounded-full bg-fuchsia-500 blur-3xl animate-blob" style={{ animationDelay: "5s" }} />
             </div>
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(249,115,22,0.15),transparent_50%)]" />
-
-            <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
-              <div className="relative shrink-0">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-primary-600 rounded-2xl blur-lg opacity-60" />
-                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-primary-400 via-primary-500 to-primary-600 flex items-center justify-center shadow-lg ring-1 ring-white/20">
-                  <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
+            <div className="relative p-6 sm:p-7 text-white">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 ring-1 ring-white/15 backdrop-blur text-white/90 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Yeni Kayıt
               </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-500/20 border border-primary-400/30 text-primary-200 text-[11px] font-semibold uppercase tracking-wider mb-2">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-300 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-400" />
-                  </span>
-                  Yeni Kayıt
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                  Vize Dosyası Oluştur
-                </h1>
-                <p className="text-sm sm:text-base text-navy-200 mt-1.5 max-w-xl">
-                  Müşteri bilgilerini, hedef ülkeyi ve ödeme planını doldurarak yeni dosyayı birkaç saniyede hazırlayın.
-                </p>
-              </div>
+              <h1 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight">
+                <span className="bg-gradient-to-r from-indigo-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">Vize Dosyası</span> Oluştur
+              </h1>
+              <p className="mt-1.5 text-white/70 text-sm max-w-xl">
+                Müşteri bilgileri, hedef ülke ve ödeme planı — birkaç saniyede yeni dosyayı hazırla.
+              </p>
             </div>
-          </div>
+          </section>
 
           {/* Form kartı — tam genişlik */}
           <div className="relative rounded-3xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-xl shadow-navy-900/5 overflow-hidden">

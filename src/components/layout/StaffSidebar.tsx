@@ -54,7 +54,6 @@ const menuGroups: { title: string; items: Item[] }[] = [
     items: [
       { href: "/app/cari-hesap", label: "Cari Hesabım", icon: <Icon d="M3 10h18M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" /> },
       { href: "/app/payments", label: "Ödemeler", icon: <Icon d="M3 7h18M3 12h18M3 17h12" /> },
-      { href: "/app/prim-takibi", label: "Prim Takibi", icon: <Icon d="M3 17l6-6 4 4 8-8M14 7h7v7" /> },
     ],
   },
   {
@@ -71,7 +70,7 @@ const menuGroups: { title: string; items: Item[] }[] = [
 export default function StaffSidebar() {
   const pathname = usePathname();
   const [aiOpen, setAiOpen] = useState(false);
-  const [orgName, setOrgName] = useState<string>("Visora");
+  const [orgName, setOrgName] = useState<string>("");
 
   useEffect(() => {
     const supabase = createClient();
@@ -102,46 +101,50 @@ export default function StaffSidebar() {
   }, []);
 
   return (
-    <aside className="h-full w-[230px] bg-white border-r border-slate-200 flex flex-col">
-      <div className="h-14 flex items-center gap-2.5 px-4 border-b border-slate-200 flex-shrink-0">
-        <div className="relative w-7 h-7 flex-shrink-0">
-          <Image
-            src="/visora-logo.png"
-            alt="Visora"
-            fill
-            sizes="28px"
-            className="object-contain"
-          />
+    <aside className="h-full w-[260px] relative flex flex-col bg-slate-950 text-slate-200 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-[0.30]">
+        <div className="absolute -top-24 -left-16 w-72 h-72 rounded-full bg-indigo-600 blur-3xl animate-blob" />
+        <div className="absolute top-1/3 -right-20 w-72 h-72 rounded-full bg-fuchsia-600 blur-3xl animate-blob" style={{ animationDelay: "4s" }} />
+        <div className="absolute -bottom-20 left-1/4 w-72 h-72 rounded-full bg-violet-600 blur-3xl animate-blob" style={{ animationDelay: "8s" }} />
+      </div>
+
+      <div className="relative h-16 flex items-center gap-3 px-5 border-b border-white/5 flex-shrink-0">
+        <div className="relative w-9 h-9 flex-shrink-0 rounded-xl bg-white/5 backdrop-blur-sm ring-1 ring-white/10 flex items-center justify-center shadow-[0_8px_24px_-8px_rgba(99,102,241,0.6)]">
+          <Image src="/visora-logo.png" alt="Visora" width={26} height={26} className="object-contain" />
         </div>
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-slate-900 leading-tight truncate">{orgName}</p>
-          <p className="text-[10px] text-slate-500 leading-tight">Personel</p>
+          <p className="text-[14px] font-extrabold leading-tight truncate tracking-tight">
+            <span className="bg-gradient-to-r from-white via-indigo-200 to-fuchsia-200 bg-clip-text text-transparent">Visora</span>
+            {orgName ? <span className="text-slate-500 font-normal"> — </span> : null}
+            {orgName && <span className="text-slate-200">{orgName}</span>}
+          </p>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500 leading-tight mt-0.5">Personel</p>
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 sidebar-scroll">
+      <nav className="relative flex-1 overflow-y-auto py-3 sidebar-scroll">
         {menuGroups.map((group, gi) => (
-          <div key={gi} className={gi > 0 ? "mt-4 px-3" : "px-3"}>
-            <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <div key={gi} className={gi > 0 ? "mt-5 px-3" : "px-3"}>
+            <p className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
               {group.title}
             </p>
-            <ul className="space-y-[1px]">
+            <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`relative flex items-center gap-2.5 px-2 py-[7px] rounded-md text-[13px] transition-colors ${
+                      className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[13px] transition-all ${
                         isActive
-                          ? "bg-slate-100 text-slate-900 font-medium"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                          ? "bg-gradient-to-r from-indigo-500/20 via-violet-500/15 to-fuchsia-500/15 text-white font-semibold ring-1 ring-white/10 shadow-[0_4px_18px_-6px_rgba(99,102,241,0.55)]"
+                          : "text-slate-400 hover:bg-white/5 hover:text-white"
                       }`}
                     >
                       {isActive && (
-                        <span className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full bg-primary-600" />
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-gradient-to-b from-indigo-400 via-violet-400 to-fuchsia-400" />
                       )}
-                      <span className={`flex-shrink-0 ${isActive ? "text-primary-600" : "text-slate-400"}`}>
+                      <span className={`flex-shrink-0 ${isActive ? "text-white" : "text-slate-500"}`}>
                         {item.icon}
                       </span>
                       <span className="truncate">{item.label}</span>
@@ -154,41 +157,41 @@ export default function StaffSidebar() {
         ))}
       </nav>
 
-      <div className="flex-shrink-0 px-3 py-2 border-t border-slate-200">
+      <div className="relative flex-shrink-0 px-3 py-2 border-t border-white/5">
         {!aiOpen ? (
           <button
             onClick={() => setAiOpen(true)}
-            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-[13px] text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-[13px] text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-900 text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-[0_6px_18px_-6px_rgba(168,85,247,0.6)]">
               <Icon d="M13 10V3L4 14h7v7l9-11h-7z" />
             </span>
-            <span className="font-medium">Visora AI</span>
-            <span className="ml-auto text-slate-400">
+            <span className="font-semibold">Visora AI</span>
+            <span className="ml-auto text-slate-500">
               <Icon d="M9 5l7 7-7 7" />
             </span>
           </button>
         ) : (
-          <div className="rounded-md border border-slate-200 overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-200">
-              <p className="text-[11px] font-medium text-slate-700">Visora AI</p>
+          <div className="rounded-xl border border-white/10 overflow-hidden bg-slate-900/80 backdrop-blur">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/10">
+              <p className="text-[11px] font-semibold text-slate-200">Visora AI</p>
               <button
                 onClick={() => setAiOpen(false)}
-                className="p-0.5 rounded text-slate-400 hover:text-slate-700 transition-colors"
+                className="p-0.5 rounded text-slate-400 hover:text-white transition-colors"
                 aria-label="Kapat"
               >
                 <Icon d="M6 18L18 6M6 6l12 12" />
               </button>
             </div>
-            <div className="max-h-[260px] overflow-y-auto">
+            <div className="max-h-[260px] overflow-y-auto bg-white text-slate-900">
               <AIAssistant isAdmin={false} />
             </div>
           </div>
         )}
       </div>
 
-      <div className="px-3 py-2 border-t border-slate-200 flex-shrink-0">
-        <p className="text-[10px] text-slate-400 text-center">Visora &copy; {new Date().getFullYear()}</p>
+      <div className="relative px-3 py-2 border-t border-white/5 flex-shrink-0">
+        <p className="text-[10px] text-slate-500 text-center">Visora &copy; {new Date().getFullYear()}</p>
       </div>
     </aside>
   );

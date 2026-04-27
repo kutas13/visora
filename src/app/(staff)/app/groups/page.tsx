@@ -103,20 +103,23 @@ export default function GroupsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/25">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-teal-500 via-cyan-500 to-sky-500" />
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Gruplarım</h1>
-            <p className="text-slate-500 text-sm">Aile ve topluluk dosyalarını gruplayın, toplu takip edin ve grup bazında işlem yapın</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-teal-600">Operasyon</p>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Gruplarım</h1>
+            <p className="text-slate-500 text-sm mt-1">Aile / topluluk dosyalarını grupla ve toplu işlem yap</p>
           </div>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors">
-          + Yeni Grup
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-sky-500 text-white text-sm font-bold shadow-lg shadow-teal-500/25 hover:shadow-xl transition"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
+          </svg>
+          Yeni Grup
         </button>
       </div>
 

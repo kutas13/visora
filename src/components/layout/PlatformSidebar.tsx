@@ -35,6 +35,15 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    href: "/visora/forms",
+    label: "Formlar",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 17v-2a4 4 0 014-4h4M5 19a2 2 0 002 2h10a2 2 0 002-2V7l-5-5H7a2 2 0 00-2 2v15zM13 3v4a2 2 0 002 2h4" />
+      </svg>
+    ),
+  },
 ];
 
 export default function PlatformSidebar() {

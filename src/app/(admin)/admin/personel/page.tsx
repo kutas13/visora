@@ -97,19 +97,24 @@ export default function AdminPersonelPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 p-4">
-      <div>
-        <h1 className="text-2xl font-bold text-navy-900">Personel hesapları</h1>
-        <p className="text-sm text-navy-600 mt-1">
-          {orgName ? (
-            <>
-              Firma: <span className="font-semibold">{orgName}</span> — Genel müdür en fazla{" "}
-              <span className="font-semibold">{STAFF_LIMIT}</span> personel açabilir.
-            </>
-          ) : (
-            "Firma bağlamı bulunamadı. Önce platform kurulumunun tamamlandığından emin olun."
-          )}
-        </p>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* PAGE HEADER */}
+      <div className="flex items-start gap-4">
+        <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Yönetim</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Personel Hesapları</h1>
+          <p className="text-slate-500 text-sm mt-1 max-w-xl">
+            {orgName ? (
+              <>
+                Firma: <span className="font-semibold text-slate-700">{orgName}</span> — Genel müdür en fazla{" "}
+                <span className="font-bold text-indigo-600">{STAFF_LIMIT}</span> personel hesabı açabilir.
+              </>
+            ) : (
+              "Firma bağlamı bulunamadı. Önce platform kurulumunun tamamlandığından emin olun."
+            )}
+          </p>
+        </div>
       </div>
 
       <Card className="p-6">

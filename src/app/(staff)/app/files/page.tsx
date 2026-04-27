@@ -199,62 +199,41 @@ export default function FilesPage() {
   const islemTipiOptions = [{ value: "all", label: "Tümü" }, ...ISLEM_TIPLERI];
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] -mx-4 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-6 lg:-mt-8 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-      {/* Dekoratif arka plan */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-24 -right-20 h-80 w-80 rounded-full bg-gradient-to-br from-primary-300/30 via-primary-200/20 to-transparent blur-3xl" />
-        <div className="absolute top-96 -left-28 h-96 w-96 rounded-full bg-gradient-to-tr from-navy-200/40 via-blue-100/30 to-transparent blur-3xl" />
-      </div>
-
-      <div className="relative space-y-6">
-        {/* Hero Başlık */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 p-6 sm:p-7 shadow-xl shadow-navy-900/20">
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute -top-10 -right-10 h-48 w-48 rounded-full bg-primary-500 blur-3xl" />
-            <div className="absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-primary-400 blur-3xl" />
+    <div className="space-y-6">
+        {/* PAGE HEADER */}
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <span className="w-1.5 h-14 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Operasyon</p>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+                Vize Dosyaları
+              </h1>
+              <p className="text-slate-500 text-sm mt-1 max-w-xl">
+                Dosyaları oluştur, düzenle; evrak, ödeme ve randevu süreçlerini anlık takip et.
+              </p>
+            </div>
           </div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(249,115,22,0.15),transparent_50%)]" />
-
-          <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-            <div className="flex items-center gap-4">
-              <div className="relative shrink-0">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-400 to-primary-600 rounded-2xl blur-lg opacity-60" />
-                <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-400 via-primary-500 to-primary-600 flex items-center justify-center shadow-lg ring-1 ring-white/20">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
-                </div>
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Vize Dosyaları</h1>
-                <p className="text-sm text-navy-200 mt-1 max-w-xl">
-                  Dosyaları oluşturun, düzenleyin; evrak, ödeme ve randevu süreçlerini anlık takip edin.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={loadFiles}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 backdrop-blur border border-white/10 text-white text-sm font-semibold transition-all"
-                title="Listeyi yenile"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span className="hidden sm:inline">Yenile</span>
-              </button>
-              <button
-                onClick={() => router.push("/app/files/new")}
-                className="group relative inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white text-sm font-bold shadow-lg shadow-primary-500/40 hover:shadow-xl hover:shadow-primary-500/50 transition-all active:scale-[0.98] overflow-hidden"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Yeni Dosya
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadFiles}
+              className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl bg-white ring-1 ring-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition"
+              title="Listeyi yenile"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="hidden sm:inline">Yenile</span>
+            </button>
+            <button
+              onClick={() => router.push("/app/files/new")}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 hover:shadow-xl transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
+              </svg>
+              Yeni Dosya
+            </button>
           </div>
         </div>
 
@@ -688,7 +667,6 @@ export default function FilesPage() {
             </div>
           )}
         </Modal>
-      </div>
     </div>
   );
 }

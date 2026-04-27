@@ -81,7 +81,6 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/admin/bildirimler") ||
     pathname.startsWith("/admin/vize-bitisi") ||
     pathname.startsWith("/admin/aylik-ozet-rapor") ||
-    pathname.startsWith("/admin/prim-takibi") ||
     pathname.startsWith("/admin/randevu") ||
     pathname.startsWith("/muhasebe");
 

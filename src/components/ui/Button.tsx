@@ -10,22 +10,24 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className = "", variant = "primary", size = "md", children, ...props }, ref) => {
     const variants = {
-      primary: "bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500 shadow-md shadow-primary-500/20",
-      secondary: "bg-navy-700 text-white hover:bg-navy-800 focus:ring-navy-500",
-      outline: "border-2 border-primary-500 text-primary-600 hover:bg-primary-50 focus:ring-primary-500",
-      ghost: "text-navy-600 hover:bg-navy-100 focus:ring-navy-500",
+      primary:
+        "text-white bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 hover:brightness-110 focus:ring-indigo-400 shadow-[0_8px_24px_-8px_rgba(99,102,241,0.6)]",
+      secondary: "bg-slate-900 text-white hover:bg-slate-800 focus:ring-slate-500",
+      outline:
+        "border border-slate-300 text-slate-700 bg-white hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/50 focus:ring-indigo-400",
+      ghost: "text-slate-600 hover:bg-slate-100 focus:ring-slate-400",
     };
 
     const sizes = {
       sm: "px-3 py-1.5 text-sm",
-      md: "px-4 py-2 text-base",
-      lg: "px-6 py-3 text-lg",
+      md: "px-4 py-2 text-sm",
+      lg: "px-6 py-3 text-base",
     };
 
     return (
       <button
         ref={ref}
-        className={`inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+        className={`inline-flex items-center justify-center font-semibold rounded-xl tracking-tight transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
         {...props}
       >
         {children}

@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 /**
- * Aylik ozet rapor erisim kontrolu — Visora SaaS
+ * Aylik ozet rapor erisim kontrolu — Visora
  *
  * - admin / muhasebe / platform_owner -> "org" modu: tum sirket raporu
  * - staff                              -> "staff" modu: sadece kendi

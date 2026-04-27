@@ -48,7 +48,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     <div className="fixed inset-0 z-[100] overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-navy-950/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity"
         onClick={onClose}
       />
 
@@ -56,15 +56,22 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
       <div className="relative flex min-h-full items-center justify-center p-4">
         <div
           ref={modalRef}
-          className={`relative w-full ${sizes[size]} bg-white rounded-2xl shadow-2xl transform transition-all`}
+          className={`relative w-full ${sizes[size]} bg-white rounded-2xl ring-1 ring-slate-200/80 shadow-[0_30px_80px_-20px_rgba(15,23,42,0.40)] transform transition-all`}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* dekoratif gradient stripe */}
+          <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500" />
+
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-navy-200">
-            <h2 className="text-xl font-bold text-navy-900">{title}</h2>
+          <div className="flex items-center justify-between p-5 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <span className="w-1.5 h-7 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{title}</h2>
+            </div>
             <button
               onClick={onClose}
-              className="p-2 text-navy-400 hover:text-navy-600 hover:bg-navy-100 rounded-xl transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              aria-label="Kapat"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -73,7 +80,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
           </div>
 
           {/* Content */}
-          <div className="p-6 max-h-[70vh] overflow-y-auto">
+          <div className="p-5 md:p-6 max-h-[72vh] overflow-y-auto">
             {children}
           </div>
         </div>
