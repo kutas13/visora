@@ -15,6 +15,7 @@ type Subscription = {
   monthly_fee: number;
   currency: string;
   status: string;
+  trial_ends_at: string | null;
 };
 
 type Payment = {
@@ -96,7 +97,7 @@ export default function VisoraPaymentsPage() {
     setErr(null);
     const [{ data: o, error: oe }, { data: s }, { data: p }] = await Promise.all([
       supabase.from("organizations").select("id, name, status").order("name"),
-      supabase.from("platform_subscriptions").select("organization_id, monthly_fee, currency, status"),
+      supabase.from("platform_subscriptions").select("organization_id, monthly_fee, currency, status, trial_ends_at"),
       supabase
         .from("platform_payments")
         .select("id, organization_id, period_year, period_month, amount, paid, paid_at, payment_method, note")
@@ -213,6 +214,7 @@ export default function VisoraPaymentsPage() {
             <p className="text-emerald-50/90 text-sm mt-2 max-w-xl">
               Şirket aboneliklerinin aylık tahakkukları, ödemeleri ve bakiyeleri.{" "}
               <span className="font-semibold text-white">Platform başlangıç ayı: {monthLong(PLATFORM_START_YEAR, PLATFORM_START_MONTH)}.</span>
+              <span className="block text-emerald-50/80 text-xs mt-1">Yeni şirketlere 15 gün ücretsiz deneme süresi tanımlanır; ücretli tahakkuk deneme süresi bittikten sonraki ilk aydan itibaren başlar.</span>
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
@@ -407,9 +409,31 @@ export default function VisoraPaymentsPage() {
                             (m.year === today.getFullYear() && m.month < today.getMonth() + 1);
                           const isCurrent =
                             m.year === today.getFullYear() && m.month === today.getMonth() + 1;
+
+                          // Deneme süresi: bu ay, aboneliğin trial_ends_at ayından KESİNLİKLE ÖNCE mi?
+                          // (Deneme bitiş ayı zaten ücretli aboneliğin ilk ayı olduğu için tahakkuklu olacak.)
+                          const sub = subs.find((s) => s.organization_id === org.id);
+                          const trialEndsAt = sub?.trial_ends_at ? new Date(sub.trial_ends_at + "T00:00:00") : null;
+                          const isTrialMonth =
+                            trialEndsAt !== null &&
+                            (m.year < trialEndsAt.getFullYear() ||
+                              (m.year === trialEndsAt.getFullYear() && m.month < trialEndsAt.getMonth() + 1));
+
                           let cls = "bg-slate-50 text-slate-300 hover:bg-slate-100 ring-1 ring-slate-100";
                           let icon: React.ReactNode = <span className="text-base leading-none">−</span>;
                           let title = "Tahakkuk yok";
+
+                          // Deneme ayı + tahakkuk yok → Deneme rozeti göster
+                          if (!p && isTrialMonth) {
+                            cls = "bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 ring-1 ring-indigo-200 hover:from-indigo-200 hover:to-violet-200";
+                            icon = (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                              </svg>
+                            );
+                            title = `Deneme süresi · ${trialEndsAt!.toLocaleDateString("tr-TR")} sonuna kadar ücretsiz`;
+                          }
+
                           if (p) {
                             title = `${fmtTRY(Number(p.amount))} · ${p.paid ? "Ödendi" : isPast ? "Gecikmiş" : isCurrent ? "Bu ay bekliyor" : "Bekliyor"}`;
                             if (p.paid) {
@@ -498,6 +522,14 @@ export default function VisoraPaymentsPage() {
           <span className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white ring-1 ring-slate-200">
             <span className="w-5 h-5 rounded-md bg-slate-50 text-slate-300 flex items-center justify-center font-bold ring-1 ring-slate-100">−</span>
             <span className="font-semibold text-slate-700">Tahakkuk yok</span>
+          </span>
+          <span className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white ring-1 ring-slate-200">
+            <span className="w-5 h-5 rounded-md bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 flex items-center justify-center ring-1 ring-indigo-200">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </span>
+            <span className="font-semibold text-slate-700">Deneme süresi (15 gün)</span>
           </span>
         </div>
       </Card>

@@ -11,6 +11,7 @@ const pageTitles: Record<string, string> = {
   "/visora/payments": "Aylık Ödeme Takibi",
   "/visora/revenue": "Sistem Geliri",
   "/visora/forms": "Formlar",
+  "/visora/logs": "Giriş / Çıkış Logları",
 };
 
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {

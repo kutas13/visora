@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/client";
+import { logLogout } from "@/lib/audit/authLog";
 
 const AIAssistant = dynamic(() => import("@/components/ai/AIAssistant"), { ssr: false });
 
@@ -282,6 +283,12 @@ const PLATFORM_GROUPS: NavGroup[] = [
         description: "Ana sayfadan gelen iletişim talepleri",
         icon: "M9 17h6M9 13h6M9 9h2M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z",
       },
+      {
+        href: "/visora/logs",
+        label: "Giriş / Çıkış Logları",
+        description: "Genel müdür ve personel oturum kayıtları",
+        icon: "M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1",
+      },
     ],
   },
   {
@@ -393,6 +400,8 @@ export default function TopNav({ variant, userName = "Kullanıcı", orgName = ""
 
   const handleLogout = async () => {
     const supabase = createClient();
+    // Audit log: signOut'tan ÖNCE yaz (sonra auth.uid() boşalır, RLS yazımı reddeder)
+    await logLogout(supabase);
     await supabase.auth.signOut();
     router.push(variant === "admin" ? "/admin" : "/login");
     router.refresh();

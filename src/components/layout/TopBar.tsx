@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { logLogout } from "@/lib/audit/authLog";
 
 // Eski hardcoded avatar listesi kaldirildi.
 // Her kullanici default initial avatar kullanir; ileride
@@ -45,6 +46,7 @@ export default function TopBar({ title, userName = "Kullanıcı", variant = "sta
 
   const handleLogout = async () => {
     const supabase = createClient();
+    await logLogout(supabase);
     await supabase.auth.signOut();
     router.push(variant === "admin" ? "/admin" : "/login");
     router.refresh();

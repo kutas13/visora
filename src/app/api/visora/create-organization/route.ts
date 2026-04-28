@@ -112,11 +112,21 @@ export async function POST(request: NextRequest) {
   }
 
   // 4) Abonelik (caller oturumuyla)
+  //    15 günlük ücretsiz deneme süresi: trial_ends_at = bugün + 15 gün.
+  //    Ücretli aylık tahakkuk, deneme süresinin bittiği aydan SONRAKİ ay başlar.
+  const TRIAL_DAYS = 15;
+  const today = new Date();
+  const trialEnd = new Date(today.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  const trialEndsAtISO = `${trialEnd.getFullYear()}-${String(trialEnd.getMonth() + 1).padStart(2, "0")}-${String(trialEnd.getDate()).padStart(2, "0")}`;
+  const startedAtISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
   const { error: subErr } = await userClient.from("platform_subscriptions").insert({
     organization_id: organizationId,
     monthly_fee: monthlyFee,
     plan_name: planName,
     status: "active",
+    started_at: startedAtISO,
+    trial_ends_at: trialEndsAtISO,
   });
   if (subErr) {
     return NextResponse.json(
@@ -128,6 +138,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     organizationId,
     adminUserId: created.user.id,
-    message: "Şirket, genel müdür ve abonelik oluşturuldu.",
+    trialEndsAt: trialEndsAtISO,
+    message: `Şirket, genel müdür ve abonelik oluşturuldu. ${TRIAL_DAYS} gün ücretsiz deneme süresi başlatıldı (bitiş: ${trialEndsAtISO}).`,
   });
 }

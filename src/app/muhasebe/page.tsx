@@ -163,7 +163,9 @@ export default function MuhasebePage() {
 
   const handleLogout = async () => {
     const { createClient } = await import("@/lib/supabase/client");
+    const { logLogout } = await import("@/lib/audit/authLog");
     const supabase = createClient();
+    await logLogout(supabase);
     await supabase.auth.signOut();
     router.replace("/login");
   };

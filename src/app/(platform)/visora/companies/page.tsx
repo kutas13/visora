@@ -28,6 +28,7 @@ type Subscription = {
   currency: string;
   plan_name: string;
   started_at: string;
+  trial_ends_at: string | null;
   status: string;
   notes: string | null;
 };
@@ -43,6 +44,26 @@ const fmtTRY = (n: number) =>
 
 const roleLabel = (r: string) =>
   r === "admin" ? "Genel müdür" : r === "staff" ? "Personel" : r === "muhasebe" ? "Muhasebe" : r;
+
+/**
+ * Bir aboneliğin deneme süresi durumu.
+ * - none: deneme tanımlı değil (eski abonelik)
+ * - active: bugün < trial_ends_at  → henüz ücretli aboneliğe geçmedi
+ * - expired: bugün >= trial_ends_at → ücretli abonelik aktif
+ */
+type TrialState = { kind: "none" } | { kind: "active"; daysLeft: number; endsAt: Date } | { kind: "expired"; endedAt: Date };
+
+function getTrialState(sub: Subscription | null): TrialState {
+  if (!sub || !sub.trial_ends_at) return { kind: "none" };
+  const endsAt = new Date(sub.trial_ends_at + "T23:59:59");
+  const now = new Date();
+  const diffMs = endsAt.getTime() - now.getTime();
+  if (diffMs > 0) {
+    const daysLeft = Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+    return { kind: "active", daysLeft, endsAt };
+  }
+  return { kind: "expired", endedAt: endsAt };
+}
 
 export default function VisoraCompaniesPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -321,6 +342,7 @@ export default function VisoraCompaniesPage() {
             const admin = row.members.find((m) => m.role === "admin");
             const staffCount = row.members.filter((m) => m.role === "staff").length;
             const isActive = row.org.status === "active";
+            const trial = getTrialState(row.subscription);
             return (
               <Card key={row.org.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -338,10 +360,31 @@ export default function VisoraCompaniesPage() {
                       >
                         {row.org.status}
                       </span>
+                      {trial.kind === "active" && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide bg-gradient-to-r from-indigo-500 to-violet-500 text-white"
+                          title={`Deneme bitiş: ${trial.endsAt.toLocaleDateString("tr-TR")}`}
+                        >
+                          Deneme · {trial.daysLeft} gün
+                        </span>
+                      )}
+                      {trial.kind === "expired" && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                          title={`Ücretli abonelik · deneme bitti: ${trial.endedAt.toLocaleDateString("tr-TR")}`}
+                        >
+                          Ücretli
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {row.org.billing_email || admin?.name || "—"} · oluşturulma{" "}
                       {new Date(row.org.created_at).toLocaleDateString("tr-TR")}
+                      {trial.kind === "active" && (
+                        <span className="ml-1 text-indigo-600 font-medium">
+                          · ücretli {trial.endsAt.toLocaleDateString("tr-TR")} sonrası başlar
+                        </span>
+                      )}
                     </p>
                   </div>
                   <button
@@ -408,6 +451,14 @@ export default function VisoraCompaniesPage() {
       {/* Create modal */}
       <Modal isOpen={createOpen} onClose={() => setCreateOpen(false)} title="Yeni Şirket Oluştur" size="lg">
         <form onSubmit={handleCreate} className="space-y-4">
+          <div className="rounded-lg border border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-3 text-sm text-indigo-900 flex items-start gap-2">
+            <svg className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>
+              Yeni açılan her şirkete <b>15 gün ücretsiz deneme süresi</b> tanımlanır. Ücretli aylık tahakkuklar, deneme süresi bittikten sonraki ilk aydan itibaren başlar.
+            </p>
+          </div>
           <Input label="Şirket adı" value={cName} onChange={(e) => setCName(e.target.value)} required />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <Input

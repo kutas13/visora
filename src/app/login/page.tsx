@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button, Input, Card, Modal } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { logLogin } from "@/lib/audit/authLog";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -132,6 +133,8 @@ export default function LoginPage() {
           setError(result.reason);
           return;
         }
+        // Başarılı giriş — audit log (platform_owner için yazılmaz)
+        void logLogin(supabase, data.user.id);
       }
 
       try {
