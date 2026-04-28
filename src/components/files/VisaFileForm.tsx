@@ -91,6 +91,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   const [orgAdminName, setOrgAdminName] = useState<string | null>(null);
   // Mevcut kullanicinin rolu (cari secim ekraninda kullanilir)
   const [userRole, setUserRole] = useState<string>("");
+  // Sirketin diger personelleri (sadece admin gorur). Admin dosya olustururken
+  // her personelin carisini ayri secenek olarak secebilir.
+  const [staffCariNames, setStaffCariNames] = useState<string[]>([]);
   
   // Firma cari
   const [companySearch, setCompanySearch] = useState("");
@@ -200,9 +203,10 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
       setUserRole((profile?.role as string) || "");
       if (!file) setCariSahibi(name);
 
-      // Ayni sirketin (organization) Genel Muduru'nu (admin) bul.
-      // Personel ekraninda "Genel Mudur Cari" secenegini onun ismi
-      // ile gosteririz; admin ekraninda ek secenege gerek yok.
+      // Ayni sirketin (organization) iliskili kullanicilari yukle:
+      //  - Personel: ayni sirketin Genel Muduru ("Genel Mudur Cari" secenegi)
+      //  - Genel Mudur (admin): ayni sirketin tum personelleri (her biri
+      //    icin ayri "<isim> Cari" secenegi)
       const orgId = profile?.organization_id as string | null;
       if (orgId && profile?.role !== "admin") {
         const { data: adminProfile } = await supabase
@@ -213,6 +217,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           .limit(1)
           .maybeSingle();
         if (adminProfile?.name) setOrgAdminName(adminProfile.name);
+      } else if (orgId && profile?.role === "admin") {
+        const { data: staffProfiles } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("organization_id", orgId)
+          .eq("role", "staff")
+          .order("name");
+        const names = (staffProfiles || [])
+          .map((p) => (p as { name: string | null }).name)
+          .filter((n): n is string => !!n && n !== name);
+        setStaffCariNames(Array.from(new Set(names)));
       }
     };
     loadUserName();
@@ -1328,21 +1343,83 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
         )}
 
         {/* Cari ödeme detayları */}
-        {(odemePlani === "cari" && String(islemTipi) !== "firma_cari") && (
+        {(odemePlani === "cari" && String(islemTipi) !== "firma_cari") && (() => {
+          // Cari secenekleri: kendisi + (admin ise) tum personeller / (personel ise) genel mudur
+          const cariOptions: { key: string; name: string; label: string; sub?: string; isSelf: boolean }[] = [];
+          // Kendi
+          cariOptions.push({
+            key: "self",
+            name: userName,
+            label: userRole === "admin" ? "Genel Müdür Cari" : `${userName} Cari`,
+            sub: userRole === "admin" ? userName : "(Personel · Kendi Cari)",
+            isSelf: true,
+          });
+          // Personel ekraninda Genel Mudur Cari
+          if (userRole !== "admin" && orgAdminName && orgAdminName !== userName) {
+            cariOptions.push({
+              key: `admin-${orgAdminName}`,
+              name: orgAdminName,
+              label: "Genel Müdür Cari",
+              sub: orgAdminName,
+              isSelf: false,
+            });
+          }
+          // Admin ekraninda tum personellerin carileri
+          if (userRole === "admin") {
+            staffCariNames.forEach((sn) => {
+              cariOptions.push({
+                key: `staff-${sn}`,
+                name: sn,
+                label: `${sn} Cari`,
+                sub: "(Personel)",
+                isSelf: false,
+              });
+            });
+          }
+          const colsCls =
+            cariOptions.length >= 4 ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+            : cariOptions.length === 3 ? "grid-cols-2 sm:grid-cols-3"
+            : cariOptions.length === 2 ? "grid-cols-2"
+            : "grid-cols-1";
+          return (
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
-            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Cari Detayları</p>
-            
-            <div className={`grid gap-2 ${orgAdminName && orgAdminName !== userName ? "grid-cols-2" : "grid-cols-1"}`}>
-              <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${cariSahibi === userName ? "border-amber-500 bg-white text-amber-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-                <input type="radio" checked={cariSahibi === userName} onChange={() => setCariSahibi(userName)} className="sr-only" />
-                {userRole === "admin" ? "Genel Müdür Cari" : `${userName} Cari (Personel)`}
-              </label>
-              {orgAdminName && orgAdminName !== userName && (
-                <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${cariSahibi === orgAdminName ? "border-amber-500 bg-white text-amber-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-                  <input type="radio" checked={cariSahibi === orgAdminName} onChange={() => setCariSahibi(orgAdminName)} className="sr-only" />
-                  Genel Müdür Cari
-                </label>
-              )}
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Cari Detayları</p>
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-amber-600/70">
+                {cariOptions.length} seçenek
+              </span>
+            </div>
+
+            <div className={`grid gap-2 ${colsCls}`}>
+              {cariOptions.map((opt) => {
+                const selected = cariSahibi === opt.name;
+                return (
+                  <label
+                    key={opt.key}
+                    className={`relative p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${
+                      selected
+                        ? "border-amber-500 bg-white text-amber-700 font-semibold ring-1 ring-amber-500 shadow-sm"
+                        : "border-navy-200 bg-white/60 text-navy-700 hover:border-amber-300 hover:bg-white"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="cariSahibi"
+                      checked={selected}
+                      onChange={() => setCariSahibi(opt.name)}
+                      className="sr-only"
+                    />
+                    <div className="flex flex-col items-center justify-center gap-0.5">
+                      <span className="leading-tight">{opt.label}</span>
+                      {opt.sub && (
+                        <span className={`text-[10px] font-medium leading-tight ${selected ? "text-amber-600" : "text-navy-400"}`}>
+                          {opt.sub}
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
             </div>
 
             <label className="flex items-center gap-2 mt-3">
@@ -1367,7 +1444,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </fieldset>
 
       {/* İşlem Tipi - Çin hariç */}

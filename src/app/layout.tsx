@@ -51,14 +51,21 @@ export const metadata: Metadata = {
     description: shareDescription,
     images: ["/visora-banner.png"],
   },
+  // Favicon stratejisi:
+  //   - Google SERP icin /favicon.ico kucuk (4KB, 32x32) ICO dosyamiz var.
+  //   - Modern tarayicilar icin Next.js App Router src/app/icon.png ve
+  //     src/app/apple-icon.png otomatik olarak <link rel="icon"> uretir,
+  //     biz burada netlestirmek icin acik tanimlariyoruz.
   icons: {
     icon: [
-      { url: "/visora-logo.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any", rel: "icon" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
     apple: [
-      { url: "/visora-logo.png", type: "image/png" },
+      { url: "/apple-icon.png", type: "image/png", sizes: "180x180" },
     ],
-    shortcut: "/visora-logo.png",
+    shortcut: "/favicon.ico",
   },
 };
 
