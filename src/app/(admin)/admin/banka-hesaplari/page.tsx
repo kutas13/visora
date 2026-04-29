@@ -23,6 +23,7 @@ type Movement = {
   currency: ParaBirimi;
   yontem: string;
   payment_type: string | null;
+  dekont_url: string | null;
   visa_files: { musteri_ad: string | null; hedef_ulke: string | null } | null;
 };
 
@@ -90,7 +91,7 @@ export default function AdminBankAccountsPage() {
       .from("payments")
       .select(`
         id, created_at, tutar, currency, yontem, payment_type,
-        hesap_sahibi,
+        hesap_sahibi, dekont_url,
         visa_files ( musteri_ad, hedef_ulke )
       `)
       .in("hesap_sahibi", names)
@@ -113,6 +114,7 @@ export default function AdminBankAccountsPage() {
         currency: row.currency as ParaBirimi,
         yontem: row.yontem,
         payment_type: row.payment_type,
+        dekont_url: row.dekont_url || null,
         visa_files: row.visa_files
           ? { musteri_ad: row.visa_files.musteri_ad, hedef_ulke: row.visa_files.hedef_ulke }
           : null,
@@ -306,6 +308,7 @@ export default function AdminBankAccountsPage() {
                             <th className="px-2.5 py-2 font-semibold">Müşteri</th>
                             <th className="px-2.5 py-2 font-semibold">Vize</th>
                             <th className="px-2.5 py-2 font-semibold text-right">Tutar</th>
+                            <th className="px-2.5 py-2 font-semibold text-center">Dekont</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -315,6 +318,24 @@ export default function AdminBankAccountsPage() {
                               <td className="px-2.5 py-1.5 truncate max-w-[140px] font-medium text-navy-800">{m.visa_files?.musteri_ad || "—"}</td>
                               <td className="px-2.5 py-1.5 truncate max-w-[100px] text-navy-600">{m.visa_files?.hedef_ulke || "—"}</td>
                               <td className="px-2.5 py-1.5 text-right font-bold text-emerald-700">{fmtMoney(m.tutar, m.currency)}</td>
+                              <td className="px-2.5 py-1.5 text-center">
+                                {m.dekont_url ? (
+                                  <a
+                                    href={m.dekont_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-semibold transition-colors"
+                                    title="Dekontu yeni sekmede aç"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 3h6v6M21 3l-7 7M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-4" />
+                                    </svg>
+                                    Dekont gör
+                                  </a>
+                                ) : (
+                                  <span className="text-navy-300">—</span>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>

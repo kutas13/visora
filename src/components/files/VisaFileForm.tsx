@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Button, Input, Select, Modal } from "@/components/ui";
 import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME_PLANLARI_EXTENDED, FATURA_TIPLERI, ALL_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
+import { uploadBase64ToStorage } from "@/lib/supabase/storage";
 import { notifyFileCreated, notifyFileUpdated } from "@/lib/notifications";
 import type { VisaFile, IslemTipi, EvrakDurumu, ParaBirimi, OdemePlani, HesapSahibi, FaturaTipi, Company, BankAccount } from "@/lib/supabase/types";
 
@@ -522,6 +523,18 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
             const pdn =
               pesinYontem === "pos" && (ucretCurrency === "USD" || ucretCurrency === "EUR") ? totalDosyaAmount : null;
             const pdc = pdn ? ucretCurrency : null;
+
+            // Dekont (yalniz hesaba): Storage'a yukle, payments.dekont_url'e yaz.
+            let dekontUrlForPayment: string | null = null;
+            if (dekontFile && pesinYontem === "hesaba" && hesapSahibi) {
+              try {
+                const b64 = await fileToBase64(dekontFile);
+                dekontUrlForPayment = await uploadBase64ToStorage(b64, `dekontlar/${file.id}`, `pesin-${Date.now()}`);
+              } catch (e) {
+                console.error("Dekont yuklenemedi:", e);
+              }
+            }
+
             await supabase.from("payments").insert({
               file_id: file.id,
               tutar: tKayit,
@@ -532,6 +545,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               created_by: user.id,
               pos_doviz_tutar: pdn,
               pos_doviz_currency: pdc,
+              hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
+              dekont_url: dekontUrlForPayment,
             });
             await fetch("/api/send-tahsilat-email", {
               method: "POST",
@@ -596,7 +611,19 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               pesinYontem === "pos" && (ucretCurrency === "USD" || ucretCurrency === "EUR") ? totalDosyaAmount : null;
             const pdc = pdn ? ucretCurrency : null;
 
-            await supabase.from("payments").insert({
+            // Dekont (yalniz hesaba odemelerinde): once Storage'a yukle,
+            // donen URL'i payments.dekont_url'e yazariz.
+            let dekontUrlForPayment: string | null = null;
+            if (dekontFile && pesinYontem === "hesaba" && hesapSahibi) {
+              try {
+                const b64 = await fileToBase64(dekontFile);
+                dekontUrlForPayment = await uploadBase64ToStorage(b64, `dekontlar/${newFile.id}`, `pesin-${Date.now()}`);
+              } catch (e) {
+                console.error("Dekont yuklenemedi:", e);
+              }
+            }
+
+            const { error: payInsertErr } = await supabase.from("payments").insert({
               file_id: newFile.id,
               tutar: tKayit,
               yontem: yDb,
@@ -606,7 +633,12 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               created_by: user.id,
               pos_doviz_tutar: pdn,
               pos_doviz_currency: pdc,
+              hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
+              dekont_url: dekontUrlForPayment,
             });
+            if (payInsertErr) {
+              console.error("Pesin satis payment insert hatasi:", payInsertErr);
+            }
 
             const validPesinEntries = pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
             const breakdownText = pesinYontem === "pos"

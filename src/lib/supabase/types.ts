@@ -168,6 +168,10 @@ export interface Payment {
   pos_doviz_tutar?: number | null;
   /** POS’ta karttan çekilen döviz: USD veya EUR */
   pos_doviz_currency?: ParaBirimi | null;
+  /** "hesaba" yöntemi için hangi banka hesabına gittiği (bank_accounts.name) */
+  hesap_sahibi?: HesapSahibi | null;
+  /** "hesaba" yöntemi için dekont URL'i (Supabase Storage) */
+  dekont_url?: string | null;
   created_at: string;
   created_by: string;
 }

@@ -346,6 +346,23 @@ export default function PaymentsPage() {
         yontem === "pos" && (fc === "USD" || fc === "EUR") ? getTotalDosyaAmount(selectedFile) : null;
       const posDovizCurr = posDovizNum ? (fc as "USD" | "EUR") : null;
 
+      // Dekont (yalniz hesaba): Storage'a yukle, payments.dekont_url'e yaz.
+      let dekontUrlForPayment: string | null = null;
+      if (dekontFile && yontem === "hesaba" && hesapSahibi) {
+        try {
+          const b64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(dekontFile);
+          });
+          const { uploadBase64ToStorage } = await import("@/lib/supabase/storage");
+          dekontUrlForPayment = await uploadBase64ToStorage(b64, `dekontlar/${selectedFile.id}`, `tahsilat-${Date.now()}`);
+        } catch (e) {
+          console.error("Dekont yuklenemedi:", e);
+        }
+      }
+
       const { error: paymentError } = await supabase.from("payments").insert({
         file_id: selectedFile.id,
         tutar: primaryAmount,
@@ -356,6 +373,8 @@ export default function PaymentsPage() {
         created_by: user.id,
         pos_doviz_tutar: posDovizNum,
         pos_doviz_currency: posDovizCurr,
+        hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
+        dekont_url: dekontUrlForPayment,
       });
 
       if (paymentError) throw paymentError;
@@ -528,6 +547,24 @@ export default function PaymentsPage() {
       const effectiveBulkCurrency = (bulkYontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
       const perFileAmount = Math.round((primaryAmount / selectedFiles.length) * 100) / 100;
 
+      // Toplu tahsilatta tek dekont varsa Storage'a tek seferde yukle, ayni
+      // URL'i tum kayitlarda kullan.
+      let bulkDekontUrl: string | null = null;
+      if (bulkDekontFile && bulkYontem === "hesaba" && bulkHesapSahibi) {
+        try {
+          const b64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(bulkDekontFile);
+          });
+          const { uploadBase64ToStorage } = await import("@/lib/supabase/storage");
+          bulkDekontUrl = await uploadBase64ToStorage(b64, `dekontlar/bulk`, `bulk-${Date.now()}`);
+        } catch (e) {
+          console.error("Toplu dekont yuklenemedi:", e);
+        }
+      }
+
       for (const file of selectedFiles) {
         const fcur = file.ucret_currency || "TL";
         const filePosDoviz =
@@ -543,6 +580,8 @@ export default function PaymentsPage() {
           created_by: user.id,
           pos_doviz_tutar: filePosDoviz,
           pos_doviz_currency: filePosCurr,
+          hesap_sahibi: bulkYontem === "hesaba" ? bulkHesapSahibi : null,
+          dekont_url: bulkDekontUrl,
         });
         await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);
         await supabase.from("activity_logs").insert({

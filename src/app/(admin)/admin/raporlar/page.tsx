@@ -45,10 +45,16 @@ export default function RaporlarPage() {
   useEffect(() => {
     async function load() {
       const supabase = createClient();
+      // Personel filtresine Genel Mudur (admin) de dahil edildi: artik raporlar
+      // sayfasinda admin de bir secenek olarak gorunur ve karsilastirilabilir.
       const [filesRes, paymentsRes, staffRes, firmaCariRes] = await Promise.all([
         supabase.from("visa_files").select("*").returns<VisaFile[]>(),
         supabase.from("payments").select("*").eq("durum", "odendi").returns<Payment[]>(),
-        supabase.from("profiles").select("*").eq("role", "staff").returns<Profile[]>(),
+        supabase
+          .from("profiles")
+          .select("*")
+          .in("role", ["admin", "staff"])
+          .returns<Profile[]>(),
         supabase.from("visa_files").select("*").eq("cari_tipi", "firma_cari").returns<VisaFile[]>(),
       ]);
 
@@ -66,7 +72,13 @@ export default function RaporlarPage() {
 
       setFiles(filesRes.data || []);
       setPayments([...(paymentsRes.data || []), ...firmaCariAsPayments]);
-      setStaff(staffRes.data || []);
+      // Admin'i (Genel Mudur) listenin basina al, sonra alfabetik personeller.
+      const profiles = (staffRes.data || []) as Profile[];
+      profiles.sort((a, b) => {
+        if (a.role !== b.role) return a.role === "admin" ? -1 : 1;
+        return (a.name || "").localeCompare(b.name || "", "tr");
+      });
+      setStaff(profiles);
       setLoading(false);
     }
     load();
@@ -215,6 +227,7 @@ export default function RaporlarPage() {
         {staff.map((s) => {
           const avatarSrc = USER_AVATARS[s.name.toUpperCase()];
           const isActive = selectedStaffId === s.id;
+          const isAdmin = s.role === "admin";
           return (
             <button
               key={s.id}
@@ -222,19 +235,31 @@ export default function RaporlarPage() {
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
                 isActive
                   ? "bg-slate-800 text-white border-slate-800 shadow-md"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
+                  : isAdmin
+                    ? "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-900 border-amber-300 hover:border-amber-500"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
               }`}
+              title={isAdmin ? "Genel Müdür — kendi atanan dosyalari" : "Personel"}
             >
               {avatarSrc ? (
                 <div className={`w-5 h-5 rounded-full overflow-hidden flex-shrink-0 ${isActive ? "ring-1 ring-white" : "ring-1 ring-slate-200"}`}>
                   <Image src={avatarSrc} alt={s.name} width={20} height={20} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold ${isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[9px] font-bold ${isActive ? "bg-white/20 text-white" : isAdmin ? "bg-amber-200 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
                   {s.name.charAt(0)}
                 </div>
               )}
-              {s.name}
+              <span>{s.name}</span>
+              {isAdmin && (
+                <span
+                  className={`px-1.5 py-px rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                    isActive ? "bg-amber-300/30 text-amber-100" : "bg-amber-200/70 text-amber-900"
+                  }`}
+                >
+                  GM
+                </span>
+              )}
             </button>
           );
         })}

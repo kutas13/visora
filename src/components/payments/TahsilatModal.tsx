@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Modal, Input, Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { uploadBase64ToStorage } from "@/lib/supabase/storage";
 import { notifyPaymentReceived } from "@/lib/notifications";
 import { ODEME_YONTEMLERI } from "@/lib/constants";
 import type { VisaFile, ParaBirimi, HesapSahibi, BankAccount } from "@/lib/supabase/types";
@@ -132,6 +133,22 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
       const posDovizNum = yontem === "pos" && (fc === "USD" || fc === "EUR") ? getTotalDosyaAmount(file) : null;
       const posDovizCurr = posDovizNum ? (fc as "USD" | "EUR") : null;
 
+      // Dekont (yalniz hesaba): Storage'a yukle, payments.dekont_url'e yaz.
+      let dekontUrlForPayment: string | null = null;
+      if (dekontFile && yontem === "hesaba" && hesapSahibi) {
+        try {
+          const b64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(dekontFile);
+          });
+          dekontUrlForPayment = await uploadBase64ToStorage(b64, `dekontlar/${file.id}`, `tahsilat-${Date.now()}`);
+        } catch (e) {
+          console.error("Dekont yuklenemedi:", e);
+        }
+      }
+
       const { error: payErr } = await supabase.from("payments").insert({
         file_id: file.id,
         tutar: primaryAmount,
@@ -142,6 +159,8 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         created_by: user.id,
         pos_doviz_tutar: posDovizNum,
         pos_doviz_currency: posDovizCurr,
+        hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
+        dekont_url: dekontUrlForPayment,
       });
       if (payErr) throw payErr;
 
