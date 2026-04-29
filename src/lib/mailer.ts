@@ -124,14 +124,26 @@ function baseTemplate(content: string, opts?: { preheader?: string }) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="supported-color-schemes" content="light only" />
     <title>Visora</title>
+    <style>
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      /* Gmail/iOS Mail dark-mode auto-invert sorununu engelle */
+      u + .body .gmail-fix { background:#ffffff !important; color:#0f172a !important; }
+      [data-ogsc] .gmail-fix { background:#ffffff !important; color:#0f172a !important; }
+      [data-ogsb] .gmail-fix { background:#ffffff !important; color:#0f172a !important; }
+      @media (prefers-color-scheme: dark) {
+        .gmail-fix { background:#ffffff !important; color:#0f172a !important; }
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:0;background:#f5f7ff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+  <body class="body" style="margin:0;padding:0;background:#f5f7ff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
     <span style="display:none;visibility:hidden;opacity:0;color:transparent;height:0;width:0;">${preheader}</span>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7ff;padding:24px 0;">
       <tr>
         <td align="center">
-          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(79,70,229,0.10);max-width:600px;width:100%;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="gmail-fix" style="background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(79,70,229,0.10);max-width:600px;width:100%;">
             <tr>
               <td style="padding:0;">
                 <img src="${BANNER_URL}" alt="Visora" style="display:block;width:100%;max-width:600px;height:auto;" />
@@ -176,8 +188,8 @@ function badge(text: string, color: "indigo" | "emerald" | "amber" | "rose" | "s
 
 function infoRow(label: string, value: string) {
   return `<tr>
-    <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">${label}</td>
-    <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:#0f172a;font-size:13px;font-weight:600;text-align:right;">${value}</td>
+    <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:#64748b !important;font-size:13px;">${label}</td>
+    <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:#0f172a !important;font-size:13px;font-weight:600;text-align:right;">${value}</td>
   </tr>`;
 }
 
@@ -212,37 +224,78 @@ export async function sendWelcomeEmail(args: WelcomeEmailArgs) {
   const { gmEmail, gmName, organizationName, loginUrl } = args;
   const url = loginUrl || `${SITE_URL}/login`;
 
+  const stepCard = (
+    num: string,
+    title: string,
+    desc: string,
+    color: string
+  ) => `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px 0;">
+      <tr>
+        <td width="44" valign="top" style="padding:0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="background:${color};border-radius:50%;width:36px;height:36px;">
+            <tr>
+              <td align="center" valign="middle" style="color:#ffffff;font-size:15px;font-weight:800;font-family:Arial,Helvetica,sans-serif;line-height:36px;width:36px;height:36px;">${num}</td>
+            </tr>
+          </table>
+        </td>
+        <td valign="top" style="padding:2px 0 0 4px;">
+          <p style="margin:0 0 2px 0;font-size:14px;font-weight:700;color:#0f172a !important;line-height:1.3;">${title}</p>
+          <p style="margin:0;font-size:13px;color:#475569 !important;line-height:1.5;">${desc}</p>
+        </td>
+      </tr>
+    </table>`;
+
   const html = baseTemplate(
     `
-    ${badge("Hoş geldiniz", "indigo")}
-    <h1 style="margin:14px 0 8px 0;font-size:22px;font-weight:800;color:#0f172a;">Visora ailesine hoş geldiniz, ${gmName}!</h1>
-    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#475569;">
-      <strong>${organizationName}</strong> firmanız için Visora hesabınız hazır.
-      Vize başvuruları, müşteri kayıtları, tahsilat takibi ve ekip yönetimi —
-      hepsi tek bir yerden.
+    <div style="text-align:center;">
+      ${badge("Hoş geldiniz", "indigo")}
+    </div>
+
+    <h1 style="margin:14px 0 4px 0;font-size:26px;font-weight:900;color:#0f172a !important;line-height:1.25;text-align:center;">
+      Visora ailesine hoş<br/>geldiniz, ${gmName}!
+    </h1>
+
+    <p style="margin:0 0 6px 0;font-size:14.5px;line-height:1.6;color:#475569 !important;text-align:center;">
+      Vize ofisinizin tüm operasyonu artık tek bir paneli.
     </p>
 
-    <div style="background:linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%);border:1px solid #e0e7ff;border-radius:14px;padding:18px 20px;margin:18px 0;">
-      <p style="margin:0 0 10px 0;font-size:12px;font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.08em;">Başlamanız için 3 adım</p>
-      <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#1e293b;">
-        <li>Aşağıdaki <strong>“Panele Giriş Yap”</strong> butonuyla giriş yapın.</li>
-        <li><strong>Banka Hesapları</strong> sayfasından kendi hesaplarınızı tanımlayın.</li>
-        <li><strong>Personel</strong> ekleyip ilk vize dosyanızı oluşturun.</li>
-      </ol>
-    </div>
+    <!-- Org card -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 8px 0;">
+      <tr>
+        <td style="background:#0f172a;border-radius:14px;padding:18px 22px;text-align:center;">
+          <p style="margin:0 0 4px 0;font-size:10.5px;color:#a5b4fc !important;font-weight:700;letter-spacing:.16em;text-transform:uppercase;">Firmanız</p>
+          <p style="margin:0;font-size:18px;color:#ffffff !important;font-weight:800;letter-spacing:.01em;">${organizationName}</p>
+          <p style="margin:6px 0 0 0;font-size:11.5px;color:#cbd5e1 !important;">15 gün ücretsiz deneme süreniz başladı</p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="text-align:center;margin:22px 0 8px 0;">
-      <a href="${url}"
-         style="display:inline-block;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#ffffff;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(79,70,229,0.30);">
-        Panele Giriş Yap →
-      </a>
-    </div>
+    <h2 style="margin:24px 0 14px 0;font-size:14px;font-weight:800;color:#4338ca !important;text-transform:uppercase;letter-spacing:.1em;">
+      Başlamanız için 3 adım
+    </h2>
 
-    <p style="margin:18px 0 0 0;font-size:12px;color:#94a3b8;">
-      Yardıma mı ihtiyacınız var? <a href="mailto:${FROM_EMAIL}" style="color:#4f46e5;">${FROM_EMAIL}</a>
+    ${stepCard("1", "Panele giriş yapın", "Aşağıdaki butonla yönetim paneline ulaşın.", "#4f46e5")}
+    ${stepCard("2", "Banka hesaplarınızı ekleyin", "Tahsilat & dosya akışında doğru hesaplar görünsün.", "#7c3aed")}
+    ${stepCard("3", "Personelinizi ekleyin", "Ekibinizi davet edip ilk vize dosyanızı oluşturun.", "#0ea5e9")}
+
+    <!-- CTA -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 10px 0;">
+      <tr>
+        <td align="center">
+          <a href="${url}"
+             style="display:inline-block;background:#4f46e5;color:#ffffff !important;padding:16px 38px;border-radius:14px;text-decoration:none;font-size:15px;font-weight:800;box-shadow:0 6px 20px rgba(79,70,229,0.32);letter-spacing:.01em;">
+            Panele Giriş Yap →
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:14px 0 0 0;font-size:12.5px;color:#94a3b8 !important;text-align:center;">
+      Sorun yaşarsan yardım için: <a href="mailto:${FROM_EMAIL}" style="color:#4f46e5 !important;text-decoration:none;font-weight:600;">${FROM_EMAIL}</a>
     </p>
   `,
-    { preheader: `Visora hesabınız hazır, ${gmName}` }
+    { preheader: `${organizationName} için Visora hesabınız hazır.` }
   );
 
   return sendVisoraEmail({
@@ -560,34 +613,72 @@ export async function sendStaffWelcomeEmail(args: StaffWelcomeEmailArgs) {
     ? [gmEmail, VISORA_OWNER_EMAIL]
     : [VISORA_OWNER_EMAIL];
 
+  const stepCard = (
+    num: string,
+    title: string,
+    desc: string,
+    color: string
+  ) => `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px 0;">
+      <tr>
+        <td width="44" valign="top" style="padding:0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="background:${color};border-radius:50%;width:36px;height:36px;">
+            <tr>
+              <td align="center" valign="middle" style="color:#ffffff;font-size:15px;font-weight:800;font-family:Arial,Helvetica,sans-serif;line-height:36px;width:36px;height:36px;">${num}</td>
+            </tr>
+          </table>
+        </td>
+        <td valign="top" style="padding:2px 0 0 4px;">
+          <p style="margin:0 0 2px 0;font-size:14px;font-weight:700;color:#0f172a !important;line-height:1.3;">${title}</p>
+          <p style="margin:0;font-size:13px;color:#475569 !important;line-height:1.5;">${desc}</p>
+        </td>
+      </tr>
+    </table>`;
+
   const html = baseTemplate(
     `
-    ${badge("Hesabınız hazır", "indigo")}
-    <h1 style="margin:14px 0 8px 0;font-size:22px;font-weight:800;color:#0f172a;">Hoş geldin ${staffName}!</h1>
-    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#475569;">
-      <strong>${organizationName}</strong> ekibinin Visora paneline personel olarak eklendin.
-      Vize dosyaları, randevu takibi, müşteri kayıtları ve günlük raporlar
-      panelinden senin de erişimine açıldı.
+    <div style="text-align:center;">
+      ${badge("Hesabınız hazır", "indigo")}
+    </div>
+
+    <h1 style="margin:14px 0 4px 0;font-size:26px;font-weight:900;color:#0f172a !important;line-height:1.25;text-align:center;">
+      Hoş geldin, ${staffName}!
+    </h1>
+
+    <p style="margin:0 0 6px 0;font-size:14.5px;line-height:1.6;color:#475569 !important;text-align:center;">
+      Ekip arkadaşların seni Visora paneline ekledi.
     </p>
 
-    <div style="background:linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%);border:1px solid #e0e7ff;border-radius:14px;padding:18px 20px;margin:18px 0;">
-      <p style="margin:0 0 10px 0;font-size:12px;font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.08em;">İlk girişin için</p>
-      <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#1e293b;">
-        <li>Aşağıdaki <strong>“Panele Giriş Yap”</strong> butonuyla giriş yap.</li>
-        <li>Profil sayfasından şifreni güncelle.</li>
-        <li>Günlük rapor ve dosya işlemlerine hemen başlayabilirsin.</li>
-      </ol>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 8px 0;">
+      <tr>
+        <td style="background:#0f172a;border-radius:14px;padding:18px 22px;text-align:center;">
+          <p style="margin:0 0 4px 0;font-size:10.5px;color:#a5b4fc !important;font-weight:700;letter-spacing:.16em;text-transform:uppercase;">Firma</p>
+          <p style="margin:0;font-size:18px;color:#ffffff !important;font-weight:800;letter-spacing:.01em;">${organizationName}</p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="text-align:center;margin:22px 0 8px 0;">
-      <a href="${url}"
-         style="display:inline-block;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#ffffff;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(79,70,229,0.30);">
-        Panele Giriş Yap →
-      </a>
-    </div>
+    <h2 style="margin:24px 0 14px 0;font-size:14px;font-weight:800;color:#4338ca !important;text-transform:uppercase;letter-spacing:.1em;">
+      İlk girişin için
+    </h2>
 
-    <p style="margin:18px 0 0 0;font-size:12px;color:#94a3b8;">
-      Sorun yaşarsan: <a href="mailto:${FROM_EMAIL}" style="color:#4f46e5;">${FROM_EMAIL}</a>
+    ${stepCard("1", "Giriş yap", "Aşağıdaki butonla panele ulaş.", "#4f46e5")}
+    ${stepCard("2", "Şifreni güncelle", "Profil sayfasından kendi şifreni belirle.", "#7c3aed")}
+    ${stepCard("3", "Çalışmaya başla", "Dosya, tahsilat, randevu, günlük rapor — hepsi senin erişiminde.", "#0ea5e9")}
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 10px 0;">
+      <tr>
+        <td align="center">
+          <a href="${url}"
+             style="display:inline-block;background:#4f46e5;color:#ffffff !important;padding:16px 38px;border-radius:14px;text-decoration:none;font-size:15px;font-weight:800;box-shadow:0 6px 20px rgba(79,70,229,0.32);letter-spacing:.01em;">
+            Panele Giriş Yap →
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:14px 0 0 0;font-size:12.5px;color:#94a3b8 !important;text-align:center;">
+      Sorun yaşarsan yardım için: <a href="mailto:${FROM_EMAIL}" style="color:#4f46e5 !important;text-decoration:none;font-weight:600;">${FROM_EMAIL}</a>
     </p>
   `,
     { preheader: `Visora hesabın hazır, ${staffName}` }
