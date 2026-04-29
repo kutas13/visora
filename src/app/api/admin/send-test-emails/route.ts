@@ -89,11 +89,14 @@ async function runTests(request: NextRequest) {
     }
   }
 
-  if (process.env.ENABLE_LEGACY_EMAIL !== "true") {
+  // SMTP credential kontrolu — yokluk durumunda hicbir mail gitmez,
+  // bu yuzden net hata don.
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
     return NextResponse.json(
       {
         ok: false,
-        error: "ENABLE_LEGACY_EMAIL=true olarak Vercel env vars'a eklenmeli.",
+        error:
+          "SMTP_USER veya SMTP_PASSWORD Vercel env vars'a eklenmemis. Mail gondermek icin ikisi de gerekli.",
       },
       { status: 412 }
     );

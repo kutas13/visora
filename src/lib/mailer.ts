@@ -58,11 +58,25 @@ interface SendArgs {
   attachments?: { filename: string; content: Buffer | string; contentType?: string }[];
 }
 
+/**
+ * Mail kontrolu:
+ *  - ENABLE_LEGACY_EMAIL=true ise her zaman gonderir (eski feature flag).
+ *  - ENABLE_LEGACY_EMAIL=false ise: SMTP_USER + SMTP_PASSWORD ikisi de
+ *    set ise yine de gonderir (Visora yeni mail akisi). Boylece eski
+ *    flag'e ihtiyac duymadan modern entegrasyon calisir.
+ *  - Hicbiri yoksa skip eder; build/test guvenligi.
+ */
+function isMailEnabled(): boolean {
+  if (process.env.ENABLE_LEGACY_EMAIL?.toLowerCase() === "true") return true;
+  if (process.env.ENABLE_VISORA_EMAIL?.toLowerCase() === "false") return false;
+  return Boolean(process.env.SMTP_USER && process.env.SMTP_PASSWORD);
+}
+
 export async function sendVisoraEmail(args: SendArgs) {
-  if (process.env.ENABLE_LEGACY_EMAIL !== "true") {
-    // Email gonderimi feature flag ile aciliyor; build/test'te yanlislikla
-    // gondermesin diye varsayilan kapali.
-    console.warn("[mailer] ENABLE_LEGACY_EMAIL=true degil, mail atlanir.");
+  if (!isMailEnabled()) {
+    console.warn(
+      "[mailer] SMTP_USER/SMTP_PASSWORD bulunamadi veya ENABLE_VISORA_EMAIL=false. Mail atlanir."
+    );
     return { skipped: true } as const;
   }
 
