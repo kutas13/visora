@@ -338,13 +338,27 @@ export default function PaymentsPage() {
       
       const validEntries = paymentEntries.filter(e => e.amount && parseFloat(e.amount) > 0);
       const primaryEntry = validEntries[0];
-      const primaryAmount = parseFloat(primaryEntry.amount);
-      const effectiveCurrency = (yontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
+      const primaryAmountInput = parseFloat(primaryEntry.amount);
+      const inputCurrency = (yontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
 
-      const fc = selectedFile.ucret_currency || "TL";
+      const fc = (selectedFile.ucret_currency || "TL") as ParaBirimi;
       const posDovizNum =
         yontem === "pos" && (fc === "USD" || fc === "EUR") ? getTotalDosyaAmount(selectedFile) : null;
       const posDovizCurr = posDovizNum ? (fc as "USD" | "EUR") : null;
+
+      // TL girildi + dosya farkli currency => orijinal currency'ye cevir,
+      // TL miktari tl_karsilik'a yazilir.
+      let primaryAmount = primaryAmountInput;
+      let effectiveCurrency = inputCurrency;
+      let tlKarsilikValue: number | null = null;
+      if (yontem !== "pos" && inputCurrency === "TL" && fc !== "TL") {
+        const rate = exchangeRates[fc] || 0;
+        if (rate > 0) {
+          primaryAmount = Math.round((primaryAmountInput / rate) * 100) / 100;
+          effectiveCurrency = fc;
+          tlKarsilikValue = primaryAmountInput;
+        }
+      }
 
       // Dekont (yalniz hesaba): Storage'a yukle, payments.dekont_url'e yaz.
       let dekontUrlForPayment: string | null = null;
@@ -379,9 +393,10 @@ export default function PaymentsPage() {
         ...paymentPayload,
         hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
         dekont_url: dekontUrlForPayment,
+        tl_karsilik: tlKarsilikValue,
       });
 
-      if (paymentError && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(paymentError.message || "")) {
+      if (paymentError && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz|tl_karsilik/i.test(paymentError.message || "")) {
         const minimal = {
           file_id: paymentPayload.file_id,
           tutar: paymentPayload.tutar,
@@ -559,8 +574,10 @@ export default function PaymentsPage() {
       if (!user) throw new Error("Oturum bulunamadı");
 
       const primaryEntry = bulkValidEntries[0];
-      const primaryAmount = parseFloat(primaryEntry.amount);
-      const effectiveBulkCurrency = (bulkYontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
+      const primaryAmountInput = parseFloat(primaryEntry.amount);
+      const inputBulkCurrency = (bulkYontem === "pos" ? "TL" : primaryEntry.currency) as ParaBirimi;
+      const primaryAmount = primaryAmountInput;
+      const effectiveBulkCurrency = inputBulkCurrency;
       const perFileAmount = Math.round((primaryAmount / selectedFiles.length) * 100) / 100;
 
       // Toplu tahsilatta tek dekont varsa Storage'a tek seferde yukle, ayni
@@ -886,6 +903,11 @@ export default function PaymentsPage() {
                     ) : null}
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{formatCurrency(Number(p.tutar), p.currency || "TL")}</p>
+                      {typeof (p as any).tl_karsilik === "number" && (p as any).tl_karsilik > 0 && (p.currency || "TL") !== "TL" && (
+                        <p className="text-[10px] font-semibold text-amber-600">
+                          TL karşılığı: {Math.round((p as any).tl_karsilik).toLocaleString("tr-TR")} ₺
+                        </p>
+                      )}
                       <p className="text-[10px] text-slate-400">{formatDate(p.created_at)}</p>
                     </div>
                   </div>

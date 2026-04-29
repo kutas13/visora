@@ -172,6 +172,8 @@ export interface Payment {
   hesap_sahibi?: HesapSahibi | null;
   /** "hesaba" yöntemi için dekont URL'i (Supabase Storage) */
   dekont_url?: string | null;
+  /** Dosya farklı currency iken TL olarak tahsil edildiyse, gerçekte alınan TL tutar. */
+  tl_karsilik?: number | null;
   created_at: string;
   created_by: string;
 }

@@ -126,12 +126,27 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
       const userName = profile?.name || "Kullanıcı";
 
       const primary = validEntries[0];
-      const primaryAmount = parseFloat(primary.amount);
-      const effectiveCurrency = (yontem === "pos" ? "TL" : primary.currency) as ParaBirimi;
+      const primaryAmountInput = parseFloat(primary.amount);
+      const inputCurrency = (yontem === "pos" ? "TL" : primary.currency) as ParaBirimi;
 
-      const fc = file.ucret_currency || "TL";
+      const fc = (file.ucret_currency || "TL") as ParaBirimi;
       const posDovizNum = yontem === "pos" && (fc === "USD" || fc === "EUR") ? getTotalDosyaAmount(file) : null;
       const posDovizCurr = posDovizNum ? (fc as "USD" | "EUR") : null;
+
+      // Muhasebe kuralı: tahsilat TL girilmiş ama dosya USD/EUR ise, kasaya
+      // ve raporlara dosyanın kendi cinsinden (USD) düşsün; ödenen TL tutarı
+      // tl_karsilik kolonunda saklanır ve "TL karşılığı: X ₺" notu ile gösterilir.
+      let primaryAmount = primaryAmountInput;
+      let effectiveCurrency = inputCurrency;
+      let tlKarsilikValue: number | null = null;
+      if (yontem !== "pos" && inputCurrency === "TL" && fc !== "TL") {
+        const rate = exchangeRates[fc] || 0;
+        if (rate > 0) {
+          primaryAmount = Math.round((primaryAmountInput / rate) * 100) / 100;
+          effectiveCurrency = fc;
+          tlKarsilikValue = primaryAmountInput;
+        }
+      }
 
       // Dekont (yalniz hesaba): Storage'a yukle, payments.dekont_url'e yaz.
       let dekontUrlForPayment: string | null = null;
@@ -165,9 +180,10 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         ...paymentPayload,
         hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
         dekont_url: dekontUrlForPayment,
+        tl_karsilik: tlKarsilikValue,
       });
       // Migration eksik / schema cache hatasi olursa minimum payload ile yine kaydet.
-      if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(payErr.message || "")) {
+      if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz|tl_karsilik/i.test(payErr.message || "")) {
         const minimal = {
           file_id: paymentPayload.file_id,
           tutar: paymentPayload.tutar,
@@ -521,11 +537,30 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
               <strong>{file.musteri_ad}</strong>
             </p>
             <div className="space-y-1 mt-3">
-              {validEntries.map((e, i) => (
-                <p key={i} className="text-2xl font-black text-emerald-700">
-                  {formatCurrency(parseFloat(e.amount), e.currency)}
-                </p>
-              ))}
+              {(() => {
+                const fileCur = (file.ucret_currency || "TL") as ParaBirimi;
+                const isTlOdedi = yontem !== "pos" && validEntries.length === 1 && validEntries[0].currency === "TL" && fileCur !== "TL";
+                if (isTlOdedi) {
+                  const tlMiktar = parseFloat(validEntries[0].amount);
+                  const rate = exchangeRates[fileCur] || 0;
+                  const fileCurMiktar = rate > 0 ? Math.round((tlMiktar / rate) * 100) / 100 : 0;
+                  return (
+                    <>
+                      <p className="text-2xl font-black text-emerald-700">
+                        {formatCurrency(fileCurMiktar, fileCur)}
+                      </p>
+                      <p className="text-[11px] font-semibold text-emerald-700/80">
+                        TL karşılığı: <span className="tabular-nums">{tlMiktar.toLocaleString("tr-TR")} ₺</span>
+                      </p>
+                    </>
+                  );
+                }
+                return validEntries.map((e, i) => (
+                  <p key={i} className="text-2xl font-black text-emerald-700">
+                    {formatCurrency(parseFloat(e.amount), e.currency)}
+                  </p>
+                ));
+              })()}
             </div>
             <p className="text-xs text-slate-500 mt-2">
               {yontem === "nakit"

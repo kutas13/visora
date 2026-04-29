@@ -524,6 +524,20 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               pesinYontem === "pos" && (ucretCurrency === "USD" || ucretCurrency === "EUR") ? totalDosyaAmount : null;
             const pdc = pdn ? ucretCurrency : null;
 
+            // Edit akışı: TL alındı ama dosya USD/EUR ise tl_karsilik'a TL'yi yaz.
+            let tlKarsilikValue: number | null = null;
+            if (pesinYontem !== "pos" && ucretCurrency !== "TL") {
+              const tlEntries = pesinEntries.filter(
+                (en) => en.amount && parseFloat(en.amount) > 0 && en.currency === "TL"
+              );
+              if (tlEntries.length > 0) {
+                tlKarsilikValue = tlEntries.reduce(
+                  (sum, en) => sum + parseFloat(en.amount),
+                  0
+                );
+              }
+            }
+
             // Dekont (yalniz hesaba): Storage'a yukle, payments.dekont_url'e yaz.
             let dekontUrlForPayment: string | null = null;
             if (dekontFile && pesinYontem === "hesaba" && hesapSahibi) {
@@ -551,10 +565,11 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               ...paymentPayload,
               hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
               dekont_url: dekontUrlForPayment,
+              tl_karsilik: tlKarsilikValue,
             });
 
             // Migration eksik / schema cache hatasi olursa minimum payload ile yine kaydet.
-            if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(payErr.message || "")) {
+            if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz|tl_karsilik/i.test(payErr.message || "")) {
               const minimal = {
                 file_id: paymentPayload.file_id,
                 tutar: paymentPayload.tutar,
@@ -631,6 +646,22 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               pesinYontem === "pos" && (ucretCurrency === "USD" || ucretCurrency === "EUR") ? totalDosyaAmount : null;
             const pdc = pdn ? ucretCurrency : null;
 
+            // Muhasebe kuralı: peşin TL alındı ama dosya USD/EUR ise; payment
+            // dosyanın orijinal currency'sinde durur, TL miktarı tl_karsilik'e
+            // yazılır (kasada/raporlarda "TL karşılığı: X ₺" olarak görünür).
+            let tlKarsilikValue: number | null = null;
+            if (pesinYontem !== "pos" && ucretCurrency !== "TL") {
+              const tlEntries = pesinEntries.filter(
+                (en) => en.amount && parseFloat(en.amount) > 0 && en.currency === "TL"
+              );
+              if (tlEntries.length > 0) {
+                tlKarsilikValue = tlEntries.reduce(
+                  (sum, en) => sum + parseFloat(en.amount),
+                  0
+                );
+              }
+            }
+
             // Dekont (yalniz hesaba odemelerinde): once Storage'a yukle,
             // donen URL'i payments.dekont_url'e yazariz.
             let dekontUrlForPayment: string | null = null;
@@ -659,8 +690,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               ...paymentPayload,
               hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
               dekont_url: dekontUrlForPayment,
+              tl_karsilik: tlKarsilikValue,
             });
-            if (payInsertErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(payInsertErr.message || "")) {
+            if (payInsertErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz|tl_karsilik/i.test(payInsertErr.message || "")) {
               const minimal = {
                 file_id: paymentPayload.file_id,
                 tutar: paymentPayload.tutar,

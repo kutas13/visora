@@ -37,6 +37,8 @@ interface DisplayRow {
   personel: string;
   created_at: string;
   badge?: string;
+  /** TL karşılığı tahsil edildiyse, gerçekte alınan TL tutar (gösterim notu için) */
+  tl_karsilik?: number | null;
 }
 
 const SYM: Record<string, string> = { TL: "₺", EUR: "€", USD: "$" };
@@ -174,6 +176,7 @@ export default function KasaPage() {
           personel: p.profiles?.name || "—",
           created_at: p.created_at,
           badge: p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat",
+          tl_karsilik: typeof p.tl_karsilik === "number" ? p.tl_karsilik : null,
         };
 
         // Yöntem bazında: nakit / hesaba_eft
@@ -400,7 +403,12 @@ export default function KasaPage() {
                     <td className="py-3 px-4 font-bold text-slate-900">{r.musteri_ad}</td>
                     <td className="py-3 px-4 text-slate-700 font-medium">{r.hedef_ulke}</td>
                     <td className="py-3 px-4 text-right font-extrabold text-slate-900">
-                      {fmtCur(r.tutar, r.currency)}
+                      <div>{fmtCur(r.tutar, r.currency)}</div>
+                      {typeof r.tl_karsilik === "number" && r.tl_karsilik > 0 && r.currency !== "TL" && (
+                        <div className="text-[10px] font-semibold text-amber-600 mt-0.5">
+                          TL karşılığı: {Math.round(r.tl_karsilik).toLocaleString("tr-TR")} ₺
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span

@@ -24,6 +24,7 @@ type Movement = {
   yontem: string;
   payment_type: string | null;
   dekont_url: string | null;
+  tl_karsilik: number | null;
   visa_files: { musteri_ad: string | null; hedef_ulke: string | null } | null;
 };
 
@@ -91,7 +92,7 @@ export default function AdminBankAccountsPage() {
       .from("payments")
       .select(`
         id, created_at, tutar, currency, yontem, payment_type,
-        hesap_sahibi, dekont_url,
+        hesap_sahibi, dekont_url, tl_karsilik,
         visa_files ( musteri_ad, hedef_ulke )
       `)
       .in("hesap_sahibi", names)
@@ -115,6 +116,7 @@ export default function AdminBankAccountsPage() {
         yontem: row.yontem,
         payment_type: row.payment_type,
         dekont_url: row.dekont_url || null,
+        tl_karsilik: typeof row.tl_karsilik === "number" ? row.tl_karsilik : null,
         visa_files: row.visa_files
           ? { musteri_ad: row.visa_files.musteri_ad, hedef_ulke: row.visa_files.hedef_ulke }
           : null,
@@ -317,7 +319,14 @@ export default function AdminBankAccountsPage() {
                               <td className="px-2.5 py-1.5 whitespace-nowrap text-navy-500">{fmtDate(m.created_at)}</td>
                               <td className="px-2.5 py-1.5 truncate max-w-[140px] font-medium text-navy-800">{m.visa_files?.musteri_ad || "—"}</td>
                               <td className="px-2.5 py-1.5 truncate max-w-[100px] text-navy-600">{m.visa_files?.hedef_ulke || "—"}</td>
-                              <td className="px-2.5 py-1.5 text-right font-bold text-emerald-700">{fmtMoney(m.tutar, m.currency)}</td>
+                              <td className="px-2.5 py-1.5 text-right font-bold text-emerald-700">
+                                <div>{fmtMoney(m.tutar, m.currency)}</div>
+                                {typeof m.tl_karsilik === "number" && m.tl_karsilik > 0 && m.currency !== "TL" && (
+                                  <div className="text-[10px] font-semibold text-amber-600">
+                                    TL karşılığı: {Math.round(m.tl_karsilik).toLocaleString("tr-TR")} ₺
+                                  </div>
+                                )}
+                              </td>
                               <td className="px-2.5 py-1.5 text-center">
                                 {m.dekont_url ? (
                                   <a
