@@ -5,8 +5,16 @@ import {
   sendDosyaOlusturulduEmail,
   sendAylikRaporEmail,
   sendInactivityEmail,
+  sendStaffWelcomeEmail,
+  sendStaffCreatedEmail,
+  sendRandevuTalebiEmail,
+  sendRandevuAlindiEmail,
   VISORA_OWNER_EMAIL,
+  SITE_URL,
 } from "@/lib/mailer";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { AylikRaporPdf } from "@/lib/reports/AylikRaporPdf";
+import React from "react";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -31,29 +39,39 @@ export const runtime = "nodejs";
  *   6. Giris yapilmadi (24 saat)
  */
 
-function makeDummyPdf(): Buffer {
-  // Minimal valid PDF (1 sayfa, "Visora rapor ornegi") — sadece test icin.
-  const pdf = `%PDF-1.4
-1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
-2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
-3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>endobj
-4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj
-5 0 obj<</Length 64>>stream
-BT /F1 24 Tf 100 750 Td (Visora - Test Aylik Rapor) Tj ET
-endstream endobj
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000054 00000 n 
-0000000101 00000 n 
-0000000192 00000 n 
-0000000252 00000 n 
-trailer<</Size 6/Root 1 0 R>>
-startxref
-365
-%%EOF`;
-  return Buffer.from(pdf, "utf8");
+async function makeAylikRaporPdf(): Promise<Buffer> {
+  const element = React.createElement(AylikRaporPdf, {
+    data: {
+      organizationName: "Visora Demo Şirketi",
+      ay: "Nisan 2026",
+      generatedAt: new Date().toLocaleString("tr-TR"),
+      bannerUrl: `${SITE_URL}/visora-banner.png`,
+      ozet: {
+        dosyaSayisi: 47,
+        tlGelir: 124500,
+        eurGelir: 3200,
+        usdGelir: 1800,
+        aktivePersonel: 3,
+      },
+      personeller: [
+        { personelAd: "Yusuf Bey (GM)", dosyaSayisi: 18, tlGelir: 56000, eurGelir: 1200, usdGelir: 800 },
+        { personelAd: "Bahar", dosyaSayisi: 12, tlGelir: 32500, eurGelir: 800, usdGelir: 400 },
+        { personelAd: "Ercan", dosyaSayisi: 9, tlGelir: 22000, eurGelir: 600, usdGelir: 300 },
+        { personelAd: "Zafer", dosyaSayisi: 8, tlGelir: 14000, eurGelir: 600, usdGelir: 300 },
+      ],
+      ulkeler: [
+        { ulke: "Almanya", dosyaSayisi: 14 },
+        { ulke: "İtalya", dosyaSayisi: 9 },
+        { ulke: "Fransa", dosyaSayisi: 7 },
+        { ulke: "İspanya", dosyaSayisi: 6 },
+        { ulke: "Hollanda", dosyaSayisi: 5 },
+        { ulke: "ABD", dosyaSayisi: 3 },
+        { ulke: "İngiltere", dosyaSayisi: 3 },
+      ],
+    },
+  });
+  const buf = await renderToBuffer(element as any);
+  return buf as unknown as Buffer;
 }
 
 export async function POST(request: NextRequest) {
@@ -186,13 +204,14 @@ async function runTests(request: NextRequest) {
   }
 
   try {
+    const pdfBuffer = await makeAylikRaporPdf();
     results.aylik_rapor = await sendAylikRaporEmail({
       gmEmail: target,
       organizationName: "Visora Demo Şirketi",
       ay: "Nisan 2026",
       ozet: { tlGelir: 124500, eurGelir: 3200, usdGelir: 1800, dosyaSayisi: 47 },
-      pdfBuffer: makeDummyPdf(),
-      pdfFilename: "visora-test-rapor-nisan-2026.pdf",
+      pdfBuffer,
+      pdfFilename: "visora-rapor-nisan-2026.pdf",
     });
   } catch (e: any) {
     results.aylik_rapor = { error: e?.message || String(e) };
@@ -207,6 +226,57 @@ async function runTests(request: NextRequest) {
     });
   } catch (e: any) {
     results.inactivity = { error: e?.message || String(e) };
+  }
+
+  try {
+    results.staff_welcome = await sendStaffWelcomeEmail({
+      staffEmail: target,
+      staffName: "Bahar",
+      organizationName: "Visora Demo Şirketi",
+      gmEmail: null,
+    });
+  } catch (e: any) {
+    results.staff_welcome = { error: e?.message || String(e) };
+  }
+
+  try {
+    results.staff_created = await sendStaffCreatedEmail({
+      gmEmail: target,
+      gmName: "Yusuf Bey",
+      staffName: "Bahar",
+      staffEmail: "bahar@visoraturizm.com",
+      organizationName: "Visora Demo Şirketi",
+    });
+  } catch (e: any) {
+    results.staff_created = { error: e?.message || String(e) };
+  }
+
+  try {
+    results.randevu_talebi = await sendRandevuTalebiEmail({
+      gmEmail: target,
+      actorName: "Bahar (personel)",
+      dosyaAdi: "Mehmet Yılmaz",
+      ulkeler: ["Almanya"],
+      vizeTipi: "Turistik",
+      iletisim: "+905551112233",
+      notlar: "Aile birleşimi başvurusu, acil.",
+    });
+  } catch (e: any) {
+    results.randevu_talebi = { error: e?.message || String(e) };
+  }
+
+  try {
+    results.randevu_alindi = await sendRandevuAlindiEmail({
+      gmEmail: target,
+      actorName: "Yusuf Bey (Genel Müdür)",
+      dosyaAdi: "Mehmet Yılmaz",
+      ulkeler: ["Almanya"],
+      vizeTipi: "Turistik",
+      randevuTarihi: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      olusturanAd: "Bahar (personel)",
+    });
+  } catch (e: any) {
+    results.randevu_alindi = { error: e?.message || String(e) };
   }
 
   return NextResponse.json({ ok: true, target, results });

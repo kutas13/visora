@@ -6,6 +6,7 @@ import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME
 import { createClient } from "@/lib/supabase/client";
 import { uploadBase64ToStorage } from "@/lib/supabase/storage";
 import { notifyFileCreated, notifyFileUpdated } from "@/lib/notifications";
+import { notifyEmail } from "@/lib/notifyEmail";
 import type { VisaFile, IslemTipi, EvrakDurumu, ParaBirimi, OdemePlani, HesapSahibi, FaturaTipi, Company, BankAccount } from "@/lib/supabase/types";
 
 type UIPaymentPlan = "pesin" | "cari" | "firma_cari";
@@ -823,6 +824,53 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           }
 
           await notifyFileCreated(newFile.id, musteriAd.trim(), finalUlke, user.id, userName);
+
+          // Modern Visora bildirim maili (banner + GM + Visora owner CC).
+          // Pesin satista tahsilat detaylarini ayni maile goster.
+          {
+            const pesinPayload =
+              odemePlani === "pesin"
+                ? {
+                    tutar:
+                      pesinYontem === "pos"
+                        ? parseFloat(pesinPosTl) || totalDosyaAmount
+                        : totalDosyaAmount,
+                    currency:
+                      pesinYontem === "pos" ? "TL" : ucretCurrency,
+                    yontem: pesinYontem,
+                    hesapSahibi:
+                      pesinYontem === "hesaba" ? hesapSahibi : null,
+                    tlKarsilik: (() => {
+                      if (pesinYontem === "pos") return null;
+                      if (ucretCurrency === "TL") return null;
+                      const tlEntries = pesinEntries.filter(
+                        (en) =>
+                          en.amount &&
+                          parseFloat(en.amount) > 0 &&
+                          en.currency === "TL"
+                      );
+                      if (tlEntries.length === 0) return null;
+                      return tlEntries.reduce(
+                        (sum, en) => sum + parseFloat(en.amount),
+                        0
+                      );
+                    })(),
+                  }
+                : undefined;
+
+            notifyEmail("dosya", {
+              musteriAd: musteriAd.trim(),
+              hedefUlke: finalUlke,
+              ucret: totalDosyaAmount,
+              currency: ucretCurrency,
+              odemePlani,
+              pesinTahsilat: pesinPayload,
+              onOdeme:
+                onOdemeVar && onOdemeNum
+                  ? { tutar: onOdemeNum, currency: onOdemeCurrency }
+                  : null,
+            });
+          }
         }
       }
 

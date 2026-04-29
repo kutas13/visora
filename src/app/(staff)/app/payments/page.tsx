@@ -7,6 +7,7 @@ import { Card, Button, Badge, Modal, Input, Select, CustomerAvatar, resolveAvata
 const FileDetailModal = dynamic(() => import("@/components/files/FileDetailModal"), { ssr: false });
 import { createClient } from "@/lib/supabase/client";
 import { notifyPaymentReceived } from "@/lib/notifications";
+import { notifyEmail } from "@/lib/notifyEmail";
 import { ODEME_YONTEMLERI, PARA_BIRIMLERI } from "@/lib/constants";
 import type { Payment, VisaFile, ParaBirimi, HesapSahibi, BankAccount } from "@/lib/supabase/types";
 
@@ -425,6 +426,18 @@ export default function PaymentsPage() {
       });
 
       await notifyPaymentReceived(selectedFile.id, selectedFile.musteri_ad, primaryAmount, yontem, user.id, userName);
+
+      // Modern Visora bildirim maili (banner + GM + Visora owner CC).
+      notifyEmail("tahsilat", {
+        musteriAd: selectedFile.musteri_ad,
+        hedefUlke: selectedFile.hedef_ulke,
+        tutar: primaryAmount,
+        currency: effectiveCurrency,
+        yontem,
+        hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
+        tlKarsilik: tlKarsilikValue,
+        notlar: notlar.trim() || null,
+      });
 
       try {
         let dekontBase64: string | null = null;

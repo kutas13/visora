@@ -3,6 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { validateOrigin, sanitizeInput } from "@/lib/security";
 import { explainAuthAdminError, SERVICE_KEY_SETUP_HINT } from "@/lib/platform/auth";
+import {
+  sendStaffWelcomeEmail,
+  sendStaffCreatedEmail,
+} from "@/lib/mailer";
+import { resolveOrgContextById } from "@/lib/mailerServer";
 
 export const dynamic = "force-dynamic";
 
@@ -123,10 +128,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Mail gonderimi — basarisiz olursa personel olusumu bozulmasin.
+  let emailStatus: "sent" | "skipped" | "error" = "skipped";
+  let emailError: string | undefined;
+  try {
+    const ctx = await resolveOrgContextById(me.organization_id);
+    if (ctx) {
+      // Personele hosgeldin maili (CC: GM + Visora owner)
+      await sendStaffWelcomeEmail({
+        staffEmail: email,
+        staffName: name,
+        organizationName: ctx.organizationName,
+        gmEmail: ctx.gmEmail,
+      });
+      // GM'ye bilgi maili
+      await sendStaffCreatedEmail({
+        gmEmail: ctx.gmEmail,
+        gmName: ctx.gmName,
+        staffName: name,
+        staffEmail: email,
+        organizationName: ctx.organizationName,
+      });
+      emailStatus = "sent";
+    }
+  } catch (e: any) {
+    emailStatus = "error";
+    emailError = e?.message || String(e);
+    console.error("[create-staff] email error:", emailError);
+  }
+
   return NextResponse.json({
     userId: created.user.id,
     message: "Personel hesabı oluşturuldu.",
     staffCount: (count ?? 0) + 1,
     staffLimit: STAFF_LIMIT,
+    emailStatus,
+    emailError,
   });
 }

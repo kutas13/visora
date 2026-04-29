@@ -539,3 +539,213 @@ export async function sendInactivityEmail(args: InactivityEmailArgs) {
     html,
   });
 }
+
+/* =========================================================
+ *  6) PERSONELE HOSGELDIN (yeni staff hesabi)
+ * ========================================================= */
+
+export interface StaffWelcomeEmailArgs {
+  staffEmail: string;
+  staffName: string;
+  organizationName: string;
+  gmEmail?: string | null;
+  loginUrl?: string;
+}
+
+export async function sendStaffWelcomeEmail(args: StaffWelcomeEmailArgs) {
+  const { staffEmail, staffName, organizationName, gmEmail, loginUrl } = args;
+  const url = loginUrl || `${SITE_URL}/login`;
+
+  const cc = gmEmail
+    ? [gmEmail, VISORA_OWNER_EMAIL]
+    : [VISORA_OWNER_EMAIL];
+
+  const html = baseTemplate(
+    `
+    ${badge("Hesabınız hazır", "indigo")}
+    <h1 style="margin:14px 0 8px 0;font-size:22px;font-weight:800;color:#0f172a;">Hoş geldin ${staffName}!</h1>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.6;color:#475569;">
+      <strong>${organizationName}</strong> ekibinin Visora paneline personel olarak eklendin.
+      Vize dosyaları, randevu takibi, müşteri kayıtları ve günlük raporlar
+      panelinden senin de erişimine açıldı.
+    </p>
+
+    <div style="background:linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%);border:1px solid #e0e7ff;border-radius:14px;padding:18px 20px;margin:18px 0;">
+      <p style="margin:0 0 10px 0;font-size:12px;font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.08em;">İlk girişin için</p>
+      <ol style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.7;color:#1e293b;">
+        <li>Aşağıdaki <strong>“Panele Giriş Yap”</strong> butonuyla giriş yap.</li>
+        <li>Profil sayfasından şifreni güncelle.</li>
+        <li>Günlük rapor ve dosya işlemlerine hemen başlayabilirsin.</li>
+      </ol>
+    </div>
+
+    <div style="text-align:center;margin:22px 0 8px 0;">
+      <a href="${url}"
+         style="display:inline-block;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#ffffff;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:14px;font-weight:700;box-shadow:0 4px 14px rgba(79,70,229,0.30);">
+        Panele Giriş Yap →
+      </a>
+    </div>
+
+    <p style="margin:18px 0 0 0;font-size:12px;color:#94a3b8;">
+      Sorun yaşarsan: <a href="mailto:${FROM_EMAIL}" style="color:#4f46e5;">${FROM_EMAIL}</a>
+    </p>
+  `,
+    { preheader: `Visora hesabın hazır, ${staffName}` }
+  );
+
+  return sendVisoraEmail({
+    to: staffEmail,
+    cc,
+    subject: `Visora'ya hoş geldin — ${organizationName}`,
+    html,
+  });
+}
+
+/* =========================================================
+ *  7) GENEL MUDURE: YENI PERSONEL EKLENDI BILDIRIMI
+ * ========================================================= */
+
+export interface StaffCreatedEmailArgs {
+  gmEmail: string;
+  gmName?: string;
+  staffName: string;
+  staffEmail: string;
+  organizationName: string;
+}
+
+export async function sendStaffCreatedEmail(args: StaffCreatedEmailArgs) {
+  const { gmEmail, gmName, staffName, staffEmail, organizationName } = args;
+
+  const html = baseTemplate(
+    `
+    ${badge("Yeni personel", "indigo")}
+    <h1 style="margin:14px 0 6px 0;font-size:20px;font-weight:800;color:#0f172a;">${staffName} ekibe katıldı</h1>
+    <p style="margin:0 0 14px 0;font-size:13.5px;color:#475569;">
+      ${gmName ? `${gmName}, ` : ""}<strong>${organizationName}</strong> firmanıza yeni bir personel eklendi.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${infoRow("Personel", staffName)}
+      ${infoRow("E-posta", staffEmail)}
+      ${infoRow("Eklendiği tarih", dateFmt())}
+    </table>
+
+    <p style="margin:18px 0 0 0;font-size:12.5px;color:#64748b;">
+      Personeliniz <a href="${SITE_URL}/login" style="color:#4f46e5;text-decoration:none;">${SITE_URL.replace(/^https?:\/\//, "")}/login</a>
+      adresinden e-posta + size verilen şifreyle ilk girişini yapabilir.
+    </p>
+  `,
+    { preheader: `${staffName} ${organizationName} ekibine eklendi` }
+  );
+
+  return sendVisoraEmail({
+    to: gmEmail,
+    cc: VISORA_OWNER_EMAIL,
+    subject: `Yeni personel eklendi — ${staffName}`,
+    html,
+  });
+}
+
+/* =========================================================
+ *  8) RANDEVU TALEBI OLUSTURULDU
+ * ========================================================= */
+
+export interface RandevuTalebiEmailArgs {
+  gmEmail: string;
+  actorName: string;
+  dosyaAdi: string;
+  ulkeler: string[];
+  vizeTipi: string;
+  iletisim?: string | null;
+  notlar?: string | null;
+}
+
+export async function sendRandevuTalebiEmail(args: RandevuTalebiEmailArgs) {
+  const { gmEmail, actorName, dosyaAdi, ulkeler, vizeTipi, iletisim, notlar } = args;
+
+  const html = baseTemplate(
+    `
+    ${badge("Yeni randevu talebi", "sky")}
+    <h1 style="margin:14px 0 6px 0;font-size:20px;font-weight:800;color:#0f172a;">${dosyaAdi} için randevu talebi açıldı</h1>
+    <p style="margin:0 0 14px 0;font-size:13.5px;color:#64748b;">${actorName} tarafından, ${dateFmt()} itibarıyla.</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${infoRow("Dosya", dosyaAdi)}
+      ${infoRow("Ülke(ler)", ulkeler.join(", "))}
+      ${infoRow("Vize tipi", vizeTipi)}
+      ${iletisim ? infoRow("Müşteri iletişim", iletisim) : ""}
+      ${notlar ? infoRow("Not", notlar) : ""}
+    </table>
+
+    <div style="text-align:center;margin:22px 0 4px 0;">
+      <a href="${SITE_URL}/admin/randevu-listesi"
+         style="display:inline-block;background:#0ea5e9;color:#ffffff;padding:12px 22px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:700;">
+        Randevu Listesini Aç
+      </a>
+    </div>
+  `,
+    { preheader: `${dosyaAdi} — ${ulkeler.join(", ")} randevu talebi` }
+  );
+
+  return sendVisoraEmail({
+    to: gmEmail,
+    cc: VISORA_OWNER_EMAIL,
+    subject: `Yeni randevu talebi — ${dosyaAdi}`,
+    html,
+  });
+}
+
+/* =========================================================
+ *  9) RANDEVU ALINDI
+ * ========================================================= */
+
+export interface RandevuAlindiEmailArgs {
+  gmEmail: string;
+  actorName: string; // Randevuyu alan kisi
+  dosyaAdi: string;
+  ulkeler: string[];
+  vizeTipi: string;
+  randevuTarihi: string; // ISO
+  olusturanAd?: string | null;
+}
+
+export async function sendRandevuAlindiEmail(args: RandevuAlindiEmailArgs) {
+  const {
+    gmEmail,
+    actorName,
+    dosyaAdi,
+    ulkeler,
+    vizeTipi,
+    randevuTarihi,
+    olusturanAd,
+  } = args;
+
+  const html = baseTemplate(
+    `
+    ${badge("Randevu alındı", "emerald")}
+    <h1 style="margin:14px 0 6px 0;font-size:20px;font-weight:800;color:#0f172a;">${dosyaAdi} için randevu alındı</h1>
+    <p style="margin:0 0 14px 0;font-size:13.5px;color:#64748b;">${actorName} tarafından, ${dateFmt()} itibarıyla.</p>
+
+    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:14px;padding:18px 20px;text-align:center;">
+      <p style="margin:0;font-size:11px;font-weight:700;color:#047857;text-transform:uppercase;letter-spacing:.08em;">Randevu Tarihi</p>
+      <p style="margin:6px 0 0 0;font-size:24px;font-weight:900;color:#047857;">${dateFmt(randevuTarihi)}</p>
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px;">
+      ${infoRow("Dosya", dosyaAdi)}
+      ${infoRow("Ülke(ler)", ulkeler.join(", "))}
+      ${infoRow("Vize tipi", vizeTipi)}
+      ${infoRow("Randevuyu alan", actorName)}
+      ${olusturanAd ? infoRow("Talebi açan", olusturanAd) : ""}
+    </table>
+  `,
+    { preheader: `${dosyaAdi} — ${dateFmt(randevuTarihi)}` }
+  );
+
+  return sendVisoraEmail({
+    to: gmEmail,
+    cc: VISORA_OWNER_EMAIL,
+    subject: `Randevu alındı — ${dosyaAdi} (${dateFmt(randevuTarihi)})`,
+    html,
+  });
+}

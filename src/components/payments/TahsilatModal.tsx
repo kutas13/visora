@@ -5,6 +5,7 @@ import { Modal, Input, Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { uploadBase64ToStorage } from "@/lib/supabase/storage";
 import { notifyPaymentReceived } from "@/lib/notifications";
+import { notifyEmail } from "@/lib/notifyEmail";
 import { ODEME_YONTEMLERI } from "@/lib/constants";
 import type { VisaFile, ParaBirimi, HesapSahibi, BankAccount } from "@/lib/supabase/types";
 
@@ -212,6 +213,18 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
       });
 
       await notifyPaymentReceived(file.id, file.musteri_ad, primaryAmount, yontem, user.id, userName);
+
+      // Modern Visora bildirim maili (banner + GM + Visora owner CC).
+      notifyEmail("tahsilat", {
+        musteriAd: file.musteri_ad,
+        hedefUlke: file.hedef_ulke,
+        tutar: primaryAmount,
+        currency: effectiveCurrency,
+        yontem,
+        hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
+        tlKarsilik: tlKarsilikValue,
+        notlar: notlar.trim() || null,
+      });
 
       try {
         let dekontBase64: string | null = null;

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER } from "@/lib/constants";
 import { uploadMultipleToStorage } from "@/lib/supabase/storage";
 import type { RandevuTalebi, HesapBilgileri } from "@/lib/supabase/types";
+import { notifyEmail } from "@/lib/notifyEmail";
 
 const SCHENGEN_ULKELERI = [
   "Fransa", "Hollanda", "Bulgaristan", "İtalya",
@@ -510,6 +511,14 @@ export default function RandevuListesi() {
       if (!error) {
         const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === formVizeTipi)?.label || formVizeTipi;
         const ulkelerStr = formUlkeler.join(", ");
+
+        notifyEmail("randevu_talebi", {
+          dosyaAdi: formDosyaAdi,
+          ulkeler: formUlkeler,
+          vizeTipi: vizeTipiLabel,
+          iletisim: formIletisim,
+          notlar: formNot.trim() || null,
+        });
         const wpMsg =
           `📋 *Yeni Randevu Talebi*\n\n` +
           `👤 Dosya: *${formDosyaAdi}*\n` +
@@ -583,20 +592,14 @@ export default function RandevuListesi() {
           day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
         });
 
-        // Email
-        try {
-          await fetch("/api/randevu-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              dosyaAdi: selectedTalep.dosya_adi,
-              ulkeler: selectedTalep.ulkeler,
-              vizeTipi: vizeTipiLabel,
-              randevuTarihi,
-              alanKisi: currentUser.name,
-            }),
-          });
-        } catch { /* sessiz */ }
+        // Modern Visora maili (banner + GM + Visora owner CC)
+        notifyEmail("randevu_alindi", {
+          dosyaAdi: selectedTalep.dosya_adi,
+          ulkeler: selectedTalep.ulkeler,
+          vizeTipi: vizeTipiLabel,
+          randevuTarihi,
+          olusturanAd: selectedTalep.profiles?.name || null,
+        });
 
         // Hedef kişileri belirle: müşteri + davut + zafer + oluşturan + alan
         const musteriPhone = normalizePhone(selectedTalep.iletisim);
