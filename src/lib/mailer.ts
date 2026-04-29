@@ -12,27 +12,40 @@ import nodemailer from "nodemailer";
  *   NEXT_PUBLIC_SITE_URL (banner gorseli icin), ENABLE_LEGACY_EMAIL=true
  */
 
+/**
+ * Tum env vars'lardan whitespace/newline trimle.
+ * Vercel UI'sinda kullanici Enter ile yapistirinca trailing \n eklenebilir,
+ * "smtp.gmail.com\n" gibi degerler DNS resolve'da getaddrinfo EBUSY hatasina
+ * yol acar. Bunu kaynakta temizliyoruz.
+ */
+function envClean(name: string): string | undefined {
+  const v = process.env[name];
+  if (typeof v !== "string") return undefined;
+  const trimmed = v.replace(/^[\s\r\n]+|[\s\r\n]+$/g, "");
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export const VISORA_OWNER_EMAIL =
-  process.env.VISORA_OWNER_EMAIL || "gmyusuf13@gmail.com";
+  envClean("VISORA_OWNER_EMAIL") || "gmyusuf13@gmail.com";
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  envClean("NEXT_PUBLIC_SITE_URL")?.replace(/\/$/, "") ||
   "https://visora.com.tr";
 
-const FROM_EMAIL = process.env.SMTP_FROM_EMAIL || "destek@destekvisora.com";
-const FROM_NAME = process.env.SMTP_FROM_NAME || "Visora";
+const FROM_EMAIL = envClean("SMTP_FROM_EMAIL") || "destek@destekvisora.com";
+const FROM_NAME = envClean("SMTP_FROM_NAME") || "Visora";
 
 let cachedTransporter: nodemailer.Transporter | null = null;
 
 function getTransporter(): nodemailer.Transporter {
   if (cachedTransporter) return cachedTransporter;
 
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = Number(process.env.SMTP_PORT || 465);
+  const host = envClean("SMTP_HOST") || "smtp.gmail.com";
+  const port = Number(envClean("SMTP_PORT") || 465);
   const secure =
-    String(process.env.SMTP_SECURE || "true").toLowerCase() === "true";
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
+    (envClean("SMTP_SECURE") || "true").toLowerCase() === "true";
+  const user = envClean("SMTP_USER");
+  const pass = envClean("SMTP_PASSWORD");
 
   if (!user || !pass) {
     throw new Error(
@@ -67,9 +80,9 @@ interface SendArgs {
  *  - Hicbiri yoksa skip eder; build/test guvenligi.
  */
 function isMailEnabled(): boolean {
-  if (process.env.ENABLE_LEGACY_EMAIL?.toLowerCase() === "true") return true;
-  if (process.env.ENABLE_VISORA_EMAIL?.toLowerCase() === "false") return false;
-  return Boolean(process.env.SMTP_USER && process.env.SMTP_PASSWORD);
+  if (envClean("ENABLE_LEGACY_EMAIL")?.toLowerCase() === "true") return true;
+  if (envClean("ENABLE_VISORA_EMAIL")?.toLowerCase() === "false") return false;
+  return Boolean(envClean("SMTP_USER") && envClean("SMTP_PASSWORD"));
 }
 
 export async function sendVisoraEmail(args: SendArgs) {

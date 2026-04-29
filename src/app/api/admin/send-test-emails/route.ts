@@ -90,8 +90,10 @@ async function runTests(request: NextRequest) {
   }
 
   // SMTP credential kontrolu — yokluk durumunda hicbir mail gitmez,
-  // bu yuzden net hata don.
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+  // bu yuzden net hata don. Trim ile kullanici newline yapistirsa bile sorun olmaz.
+  const smtpUser = (process.env.SMTP_USER || "").replace(/^[\s\r\n]+|[\s\r\n]+$/g, "");
+  const smtpPass = (process.env.SMTP_PASSWORD || "").replace(/^[\s\r\n]+|[\s\r\n]+$/g, "");
+  if (!smtpUser || !smtpPass) {
     return NextResponse.json(
       {
         ok: false,
