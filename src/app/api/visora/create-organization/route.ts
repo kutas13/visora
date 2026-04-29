@@ -6,6 +6,7 @@ import {
 } from "@/lib/platform/auth";
 import { DEFAULT_COMMISSION_ROWS } from "@/lib/saas/defaultCommissionRates";
 import { sanitizeInput } from "@/lib/security";
+import { sendWelcomeEmail } from "@/lib/mailer";
 
 export const dynamic = "force-dynamic";
 
@@ -96,14 +97,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3) Komisyon oranları (caller oturumuyla)
+  // 3) Komisyon oranları
+  //    Service role ile yaziyoruz: RLS politikasi (commission_rates_mutate_org)
+  //    yazici kullanicinin organization_id'sinin satirla ayni olmasini sart
+  //    kosuyor; platform owner farkli bir org icin yazdigindan policy reddeder.
+  //    Yetki kontrolu zaten requirePlatformOwner ile en basta yapildi.
   const seedRows = DEFAULT_COMMISSION_ROWS.map((r) => ({
     organization_id: organizationId,
     country: r.country,
     amount: r.amount,
     currency: r.currency,
   }));
-  const { error: comErr } = await userClient.from("commission_rates").insert(seedRows);
+  const { error: comErr } = await admin.from("commission_rates").insert(seedRows);
   if (comErr) {
     return NextResponse.json(
       { error: `Şirket oluştu, kullanıcı oluştu fakat komisyon oranları yüklenemedi: ${comErr.message}` },
@@ -111,16 +116,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4) Abonelik (caller oturumuyla)
+  // 4) Abonelik
   //    15 günlük ücretsiz deneme süresi: trial_ends_at = bugün + 15 gün.
   //    Ücretli aylık tahakkuk, deneme süresinin bittiği aydan SONRAKİ ay başlar.
+  //    Yine service role; commission_rates ile ayni RLS gerekcesi gecerli.
   const TRIAL_DAYS = 15;
   const today = new Date();
   const trialEnd = new Date(today.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
   const trialEndsAtISO = `${trialEnd.getFullYear()}-${String(trialEnd.getMonth() + 1).padStart(2, "0")}-${String(trialEnd.getDate()).padStart(2, "0")}`;
   const startedAtISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const { error: subErr } = await userClient.from("platform_subscriptions").insert({
+  const { error: subErr } = await admin.from("platform_subscriptions").insert({
     organization_id: organizationId,
     monthly_fee: monthlyFee,
     plan_name: planName,
@@ -135,10 +141,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 5) Hosgeldin maili — gonderilemese bile sirket olusumunu bozma
+  let emailStatus: "sent" | "skipped" | "error" = "skipped";
+  let emailError: string | undefined;
+  try {
+    const result = await sendWelcomeEmail({
+      gmEmail: adminEmail,
+      gmName: adminName,
+      organizationName: orgName,
+    });
+    emailStatus = result?.skipped ? "skipped" : "sent";
+  } catch (e: any) {
+    emailStatus = "error";
+    emailError = e?.message || String(e);
+    console.error("[create-organization] welcome email error:", emailError);
+  }
+
   return NextResponse.json({
     organizationId,
     adminUserId: created.user.id,
     trialEndsAt: trialEndsAtISO,
+    emailStatus,
+    emailError,
     message: `Şirket, genel müdür ve abonelik oluşturuldu. ${TRIAL_DAYS} gün ücretsiz deneme süresi başlatıldı (bitiş: ${trialEndsAtISO}).`,
   });
 }
