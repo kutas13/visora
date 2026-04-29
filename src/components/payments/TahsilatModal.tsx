@@ -169,9 +169,9 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
       // Migration 028 henuz calismadiysa kolonsuz fallback ile tahsilati yine kaydet.
       if (payErr && /hesap_sahibi|dekont_url/i.test(payErr.message || "")) {
         const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
-        if (legacyErr) throw legacyErr;
+        if (legacyErr) throw new Error(legacyErr.message || "Tahsilat kaydı yapılamadı");
       } else if (payErr) {
-        throw payErr;
+        throw new Error(payErr.message || "Tahsilat kaydı yapılamadı");
       }
 
       const { error: upErr } = await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);

@@ -556,9 +556,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
             // Migration 028 henuz calismadiysa kolonsuz fallback ile yine kaydet.
             if (payErr && /hesap_sahibi|dekont_url/i.test(payErr.message || "")) {
               const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
-              if (legacyErr) throw legacyErr;
+              if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
             } else if (payErr) {
-              throw payErr;
+              throw new Error(payErr.message || "Peşin ödeme kaydı yapılamadı");
             }
             await fetch("/api/send-tahsilat-email", {
               method: "POST",
@@ -655,9 +655,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
             });
             if (payInsertErr && /hesap_sahibi|dekont_url/i.test(payInsertErr.message || "")) {
               const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
-              if (legacyErr) throw legacyErr;
+              if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
             } else if (payInsertErr) {
-              throw payInsertErr;
+              throw new Error(payInsertErr.message || "Peşin ödeme kaydı yapılamadı");
             }
 
             const validPesinEntries = pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0);

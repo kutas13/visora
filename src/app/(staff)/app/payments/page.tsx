@@ -383,9 +383,9 @@ export default function PaymentsPage() {
 
       if (paymentError && /hesap_sahibi|dekont_url/i.test(paymentError.message || "")) {
         const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
-        if (legacyErr) throw legacyErr;
+        if (legacyErr) throw new Error(legacyErr.message || "Tahsilat kaydı yapılamadı");
       } else if (paymentError) {
-        throw paymentError;
+        throw new Error(paymentError.message || "Tahsilat kaydı yapılamadı");
       }
 
       const { error: updateError } = await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", selectedFile.id);
@@ -597,9 +597,9 @@ export default function PaymentsPage() {
         });
         if (bulkInsertErr && /hesap_sahibi|dekont_url/i.test(bulkInsertErr.message || "")) {
           const { error: legacyBulkErr } = await supabase.from("payments").insert(bulkPaymentPayload);
-          if (legacyBulkErr) throw legacyBulkErr;
+          if (legacyBulkErr) throw new Error(legacyBulkErr.message || "Toplu tahsilat kaydı yapılamadı");
         } else if (bulkInsertErr) {
-          throw bulkInsertErr;
+          throw new Error(bulkInsertErr.message || "Toplu tahsilat kaydı yapılamadı");
         }
         await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);
         await supabase.from("activity_logs").insert({
