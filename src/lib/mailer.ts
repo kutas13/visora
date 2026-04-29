@@ -840,3 +840,60 @@ export async function sendRandevuAlindiEmail(args: RandevuAlindiEmailArgs) {
     html,
   });
 }
+
+/* ============================================================
+ *  ŞİFRE SIFIRLAMA MAİLİ
+ * ============================================================ */
+export async function sendPasswordResetEmail({
+  to,
+  resetLink,
+}: {
+  to: string;
+  resetLink: string;
+}) {
+  const html = baseTemplate(
+    `
+    <h2 style="margin:0 0 8px 0;font-size:22px;font-weight:800;color:#0f172a !important;">
+      Şifre Sıfırlama
+    </h2>
+    <p style="margin:0 0 20px 0;font-size:15px;color:#475569 !important;line-height:1.6;">
+      Hesabınız için şifre sıfırlama talebinde bulundunuz.<br/>
+      Aşağıdaki butona tıklayarak yeni şifrenizi belirleyebilirsiniz.
+    </p>
+
+    <div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:12px;padding:18px 20px;margin:0 0 20px 0;">
+      <p style="margin:0 0 6px 0;font-size:12px;color:#64748b !important;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">
+        Bu link 1 saat geçerlidir
+      </p>
+      <p style="margin:0;font-size:13px;color:#94a3b8 !important;word-break:break-all;">
+        Talebi siz yapmadıysanız bu maili görmezden gelin. Şifreniz değişmeyecektir.
+      </p>
+    </div>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;">
+      <tr>
+        <td style="border-radius:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);">
+          <a href="${resetLink}"
+             style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:700;color:#ffffff !important;text-decoration:none;border-radius:10px;letter-spacing:0.01em;">
+            Şifremi Sıfırla →
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 8px 0;font-size:12px;color:#94a3b8 !important;">
+      Buton çalışmıyorsa aşağıdaki linki tarayıcınıza yapıştırın:
+    </p>
+    <p style="margin:0 0 24px 0;font-size:11px;color:#6366f1 !important;word-break:break-all;">
+      <a href="${resetLink}" style="color:#6366f1 !important;">${resetLink}</a>
+    </p>
+    `,
+    { preheader: "Visora şifre sıfırlama bağlantınız hazır." }
+  );
+
+  return sendVisoraEmail({
+    to,
+    subject: "Visora — Şifre Sıfırlama",
+    html,
+  });
+}

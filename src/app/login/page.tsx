@@ -126,7 +126,7 @@ export default function LoginPage() {
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (forgotLoading) return;
-    const trimmed = forgotEmail.trim() || email.trim();
+    const trimmed = (forgotEmail.trim() || email.trim()).toLowerCase();
     if (!trimmed) {
       setForgotError("E-posta adresinizi girin.");
       return;
@@ -134,11 +134,13 @@ export default function LoginPage() {
     setForgotLoading(true);
     setForgotError(null);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed }),
       });
-      if (error) throw error;
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Bir hata oluştu.");
       setForgotSent(true);
     } catch (err: any) {
       setForgotError(err?.message || "Bir hata oluştu.");
