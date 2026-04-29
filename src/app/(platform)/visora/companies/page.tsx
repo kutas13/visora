@@ -97,6 +97,12 @@ export default function VisoraCompaniesPage() {
   const [resetBusy, setResetBusy] = useState(false);
   const [resetMsg, setResetMsg] = useState<string | null>(null);
 
+  // Sirket silme onay modali
+  const [deleteRow, setDeleteRow] = useState<CompanyRow | null>(null);
+  const [deleteText, setDeleteText] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
@@ -227,6 +233,44 @@ export default function VisoraCompaniesPage() {
       await load();
     } finally {
       setCBusy(false);
+    }
+  }
+
+  function openDelete(row: CompanyRow) {
+    setDeleteRow(row);
+    setDeleteText("");
+    setDeleteMsg(null);
+  }
+
+  async function handleDelete(e: React.FormEvent) {
+    e.preventDefault();
+    if (!deleteRow) return;
+    setDeleteBusy(true);
+    setDeleteMsg(null);
+    try {
+      const res = await fetch("/api/visora/delete-organization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId: deleteRow.org.id,
+          confirmName: deleteText.trim(),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDeleteMsg(json.error || "Silme başarısız.");
+        return;
+      }
+      setDeleteMsg(json.message || "Şirket silindi.");
+      await load();
+      setTimeout(() => {
+        setDeleteRow(null);
+        setDeleteMsg(null);
+      }, 1400);
+    } catch (e: unknown) {
+      setDeleteMsg(e instanceof Error ? e.message : "Bilinmeyen hata");
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -387,12 +431,20 @@ export default function VisoraCompaniesPage() {
                       )}
                     </p>
                   </div>
-                  <button
-                    onClick={() => openEdit(row)}
-                    className="text-xs px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  >
-                    Düzenle
-                  </button>
+                  <div className="flex flex-col gap-1.5 shrink-0">
+                    <button
+                      onClick={() => openEdit(row)}
+                      className="text-xs px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    >
+                      Düzenle
+                    </button>
+                    <button
+                      onClick={() => openDelete(row)}
+                      className="text-xs px-3 py-1.5 rounded-md bg-red-50 hover:bg-red-100 text-red-700 ring-1 ring-red-200"
+                    >
+                      Şirketi Sil
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
@@ -614,6 +666,83 @@ export default function VisoraCompaniesPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* TEK SIRKET SILME — onay metni: sirket adi */}
+      <Modal
+        isOpen={!!deleteRow}
+        onClose={() => {
+          if (!deleteBusy) {
+            setDeleteRow(null);
+            setDeleteText("");
+            setDeleteMsg(null);
+          }
+        }}
+        title={deleteRow ? `Şirketi Sil: ${deleteRow.org.name}` : "Şirketi Sil"}
+        size="md"
+      >
+        {deleteRow && (
+          <form onSubmit={handleDelete} className="space-y-4">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 space-y-1">
+              <p className="font-bold">Bu işlem geri alınamaz.</p>
+              <p>
+                <b>{deleteRow.org.name}</b> şirketi ve bağlı her şey silinecek:
+              </p>
+              <ul className="list-disc pl-5 text-xs">
+                <li>Genel müdür + personel hesapları ({deleteRow.members.length})</li>
+                <li>Tüm vize dosyaları, ödemeler, raporlar</li>
+                <li>Cari kayıtları, randevu talepleri, aktivite günlükleri</li>
+                <li>Banka hesapları, abonelik geçmişi</li>
+              </ul>
+            </div>
+            <div className="text-sm text-slate-700">
+              Onaylamak için şirket adını <b>aynen</b> yazın:{" "}
+              <code className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-xs">
+                {deleteRow.org.name}
+              </code>
+            </div>
+            <input
+              value={deleteText}
+              onChange={(e) => setDeleteText(e.target.value)}
+              placeholder={deleteRow.org.name}
+              className="w-full px-3 py-2 rounded-lg border border-red-300 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+              disabled={deleteBusy}
+              autoFocus
+            />
+            {deleteMsg && (
+              <p
+                className={`text-sm ${
+                  deleteMsg.includes("silindi") || deleteMsg.includes("başarılı")
+                    ? "text-emerald-700"
+                    : "text-red-600"
+                }`}
+              >
+                {deleteMsg}
+              </p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setDeleteRow(null);
+                  setDeleteText("");
+                  setDeleteMsg(null);
+                }}
+                disabled={deleteBusy}
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={deleteBusy || deleteText.trim() !== deleteRow.org.name}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleteBusy ? "Siliniyor…" : "Şirketi Sil"}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   );

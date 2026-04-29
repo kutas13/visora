@@ -16,17 +16,28 @@ const nextConfig = {
       'recharts',
       'jszip',
       'nodemailer',
+      '@react-pdf/renderer',
+      'exceljs',
+      'pdfjs-dist',
+      'imapflow',
     ],
+    // CSS chunk'lari paralel yukle (sayfa gecislerinde algi hizini artirir)
+    optimisticClientCache: true,
   },
-  
+
   // Production optimizasyonları - error ve warn loglarını koru (hata ayıklama için)
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error', 'warn'] } : false,
   },
-  
+
+  // Production: minify + Brotli/gzip (Vercel zaten otomatik aciyor; istek bazli)
+  swcMinify: true,
+  productionBrowserSourceMaps: false,
+  compress: true,
+
   // Poweredby header'ı kaldır (güvenlik)
   poweredByHeader: false,
-  
+
   // Strict mode
   reactStrictMode: true,
 
