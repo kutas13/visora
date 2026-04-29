@@ -363,7 +363,7 @@ export default function PaymentsPage() {
         }
       }
 
-      const { error: paymentError } = await supabase.from("payments").insert({
+      const paymentPayload = {
         file_id: selectedFile.id,
         tutar: primaryAmount,
         yontem: yontem as "nakit" | "hesaba" | "pos",
@@ -373,11 +373,20 @@ export default function PaymentsPage() {
         created_by: user.id,
         pos_doviz_tutar: posDovizNum,
         pos_doviz_currency: posDovizCurr,
+      };
+
+      const { error: paymentError } = await supabase.from("payments").insert({
+        ...paymentPayload,
         hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
         dekont_url: dekontUrlForPayment,
       });
 
-      if (paymentError) throw paymentError;
+      if (paymentError && /hesap_sahibi|dekont_url/i.test(paymentError.message || "")) {
+        const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+        if (legacyErr) throw legacyErr;
+      } else if (paymentError) {
+        throw paymentError;
+      }
 
       const { error: updateError } = await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", selectedFile.id);
       if (updateError) throw updateError;
@@ -570,7 +579,7 @@ export default function PaymentsPage() {
         const filePosDoviz =
           bulkYontem === "pos" && (fcur === "USD" || fcur === "EUR") ? getTotalDosyaAmount(file) : null;
         const filePosCurr = filePosDoviz ? (fcur as "USD" | "EUR") : null;
-        await supabase.from("payments").insert({
+        const bulkPaymentPayload = {
           file_id: file.id,
           tutar: perFileAmount,
           yontem: bulkYontem as "nakit" | "hesaba" | "pos",
@@ -580,9 +589,18 @@ export default function PaymentsPage() {
           created_by: user.id,
           pos_doviz_tutar: filePosDoviz,
           pos_doviz_currency: filePosCurr,
+        };
+        const { error: bulkInsertErr } = await supabase.from("payments").insert({
+          ...bulkPaymentPayload,
           hesap_sahibi: bulkYontem === "hesaba" ? bulkHesapSahibi : null,
           dekont_url: bulkDekontUrl,
         });
+        if (bulkInsertErr && /hesap_sahibi|dekont_url/i.test(bulkInsertErr.message || "")) {
+          const { error: legacyBulkErr } = await supabase.from("payments").insert(bulkPaymentPayload);
+          if (legacyBulkErr) throw legacyBulkErr;
+        } else if (bulkInsertErr) {
+          throw bulkInsertErr;
+        }
         await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);
         await supabase.from("activity_logs").insert({
           type: "payment_added",

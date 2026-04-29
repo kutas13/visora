@@ -535,7 +535,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               }
             }
 
-            await supabase.from("payments").insert({
+            const paymentPayload = {
               file_id: file.id,
               tutar: tKayit,
               yontem: yDb,
@@ -545,9 +545,21 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               created_by: user.id,
               pos_doviz_tutar: pdn,
               pos_doviz_currency: pdc,
+            };
+
+            const { error: payErr } = await supabase.from("payments").insert({
+              ...paymentPayload,
               hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
               dekont_url: dekontUrlForPayment,
             });
+
+            // Migration 028 henuz calismadiysa kolonsuz fallback ile yine kaydet.
+            if (payErr && /hesap_sahibi|dekont_url/i.test(payErr.message || "")) {
+              const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+              if (legacyErr) throw legacyErr;
+            } else if (payErr) {
+              throw payErr;
+            }
             await fetch("/api/send-tahsilat-email", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -571,8 +583,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                 },
               }),
             });
-          } catch (emailErr) {
-            console.error("Peşin güncelleme email hatası:", emailErr);
+          } catch (pesinErr) {
+            console.error("Peşin ödeme kaydı hatası:", pesinErr);
+            throw pesinErr;
           }
         }
 
@@ -623,7 +636,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               }
             }
 
-            const { error: payInsertErr } = await supabase.from("payments").insert({
+            const paymentPayload = {
               file_id: newFile.id,
               tutar: tKayit,
               yontem: yDb,
@@ -633,11 +646,18 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               created_by: user.id,
               pos_doviz_tutar: pdn,
               pos_doviz_currency: pdc,
+            };
+
+            const { error: payInsertErr } = await supabase.from("payments").insert({
+              ...paymentPayload,
               hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
               dekont_url: dekontUrlForPayment,
             });
-            if (payInsertErr) {
-              console.error("Pesin satis payment insert hatasi:", payInsertErr);
+            if (payInsertErr && /hesap_sahibi|dekont_url/i.test(payInsertErr.message || "")) {
+              const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+              if (legacyErr) throw legacyErr;
+            } else if (payInsertErr) {
+              throw payInsertErr;
             }
 
             const validPesinEntries = pesinEntries.filter(e => e.amount && parseFloat(e.amount) > 0);

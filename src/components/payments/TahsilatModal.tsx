@@ -149,7 +149,7 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         }
       }
 
-      const { error: payErr } = await supabase.from("payments").insert({
+      const paymentPayload = {
         file_id: file.id,
         tutar: primaryAmount,
         yontem: yontem as "nakit" | "hesaba" | "pos",
@@ -159,10 +159,20 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         created_by: user.id,
         pos_doviz_tutar: posDovizNum,
         pos_doviz_currency: posDovizCurr,
+      };
+
+      const { error: payErr } = await supabase.from("payments").insert({
+        ...paymentPayload,
         hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
         dekont_url: dekontUrlForPayment,
       });
-      if (payErr) throw payErr;
+      // Migration 028 henuz calismadiysa kolonsuz fallback ile tahsilati yine kaydet.
+      if (payErr && /hesap_sahibi|dekont_url/i.test(payErr.message || "")) {
+        const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+        if (legacyErr) throw legacyErr;
+      } else if (payErr) {
+        throw payErr;
+      }
 
       const { error: upErr } = await supabase.from("visa_files").update({ odeme_durumu: "odendi" }).eq("id", file.id);
       if (upErr) throw upErr;
@@ -220,7 +230,8 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Tahsilat kaydedilirken hata oluştu");
+      const msg = err instanceof Error ? err.message : "Bilinmeyen hata";
+      alert(`Tahsilat kaydedilirken hata oluştu: ${msg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -384,6 +395,56 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
                 </div>
               )}
           </div>
+
+          {/* Hızlı Döviz Butonları */}
+          {file.ucret_currency !== "TL" && yontem !== "pos" && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hızlı Seçim</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tlAmount = (getTotalDosyaAmount(file) * (exchangeRates[file.ucret_currency || "TL"] || 1)).toFixed(0);
+                    setPaymentEntries([{ amount: tlAmount, currency: "TL" }]);
+                  }}
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                >
+                  TL Al
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentEntries([{ amount: String(getTotalDosyaAmount(file)), currency: (file.ucret_currency || "TL") as ParaBirimi }])}
+                  className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  {file.ucret_currency || "TL"} Al
+                </button>
+                {file.ucret_currency === "USD" && exchangeRates.EUR && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const eurAmount = (getTotalDosyaAmount(file) * (exchangeRates.USD || 1) / exchangeRates.EUR).toFixed(0);
+                      setPaymentEntries([{ amount: eurAmount, currency: "EUR" }]);
+                    }}
+                    className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100"
+                  >
+                    EUR Al
+                  </button>
+                )}
+                {file.ucret_currency === "EUR" && exchangeRates.USD && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const usdAmount = (getTotalDosyaAmount(file) * (exchangeRates.EUR || 1) / exchangeRates.USD).toFixed(0);
+                      setPaymentEntries([{ amount: usdAmount, currency: "USD" }]);
+                    }}
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                  >
+                    USD Al
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           <Select
             label="Ödeme Yöntemi"
