@@ -85,7 +85,7 @@ function monthLabelTr(year: number, month: number) {
   return new Date(year, month - 1, 1).toLocaleDateString("tr-TR", { month: "long", year: "numeric" });
 }
 
-/** Personel tablosu altındaki toplam satırı (Davut tam rapor) */
+/** Personel tablosu altindaki toplam satiri (Genel Mudur tam raporu) */
 export function sumStaffBuckets(
   byStaff: Array<{ total: number; approved: number; rejected: number; avgDaysToResult: number | null; revenue: CurrencyBucket }>
 ): SummaryBucket {

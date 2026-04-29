@@ -31,6 +31,10 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [viewerName, setViewerName] = useState("");
+  // Genel Mudur (admin) rolu tum sirket genelini gorur; staff ise yalniz
+  // kendi atanan dosyalarini gorur. Eskiden viewerName === "DAVUT" ile
+  // kontrol ediliyordu; artik role bazli.
+  const [viewerIsAdmin, setViewerIsAdmin] = useState(false);
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
   const [reportMode, setReportMode] = useState<"org" | "staff" | null>(null);
   const [rawCount, setRawCount] = useState(0);
@@ -56,6 +60,7 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
         return;
       }
       setViewerName(profile?.name || "");
+      setViewerIsAdmin(role === "admin");
       setAllowed(true);
     })();
   }, [router, loginRedirectPath]);
@@ -125,7 +130,7 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-600">Analiz</p>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">Aylık Vize Özeti</h1>
           <p className="text-slate-500 text-sm mt-1 max-w-2xl">
-            Görünüm: <span className="font-bold text-indigo-600">{viewerName}</span> · {viewerName === "DAVUT"
+            Görünüm: <span className="font-bold text-indigo-600">{viewerName}</span> · {viewerIsAdmin
               ? "Tüm personelin birleşik özeti."
               : "Yalnızca size atanmış dosyalar."} Veri: seçilen ayda sonuç tarihi bulunan onaylı / reddedilen dosyalar.
           </p>
@@ -148,7 +153,7 @@ export default function AylikOzetRaporContent({ loginRedirectPath }: Props) {
             <span className="bg-gradient-to-r from-indigo-200 via-violet-200 to-fuchsia-200 bg-clip-text text-transparent">{viewerName}</span> · özet rapor
           </h2>
           <p className="mt-1.5 text-white/70 text-sm max-w-2xl">
-            {viewerName === "DAVUT"
+            {viewerIsAdmin
               ? "Tüm personelin birleşik özeti. PDF tüm ekibi ve personel tablosu altında toplamları içerir."
               : "Yalnızca size atanmış dosyalar. PDF dosya adı: ADINIZ + AY + AYLIK ÖZET."}
           </p>

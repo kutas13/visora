@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Eksik alanlar" }, { status: 400 });
     }
 
-    const smtpPass = process.env.SMTP_PASS_DAVUT;
+    // SMTP sifresi: yeni generic ad SMTP_PASS, eski tek-firma kalintisi
+    // SMTP_PASS_DAVUT geriye donuk uyumluluk icin korunuyor.
+    const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASS_DAVUT;
     if (!smtpPass) {
       return NextResponse.json({ error: "SMTP şifresi tanımlı değil" }, { status: 500 });
     }

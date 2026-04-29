@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       const totalAmt = Number(tutar).toLocaleString("tr-TR");
       const totalCs = cSym(currency);
       const tarih = new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" });
-      const methodLabel = yontem === "nakit" ? "Nakit" : yontem === "pos" ? "POS" : `Hesaba${hesapSahibi && hesapSahibi !== "DAVUT_TURGUT" ? ` (${hesapSahibi === "SIRRI_TURGUT" ? "Sırrı Turgut hesabı" : ""})` : ""}`;
+      const methodLabel = yontem === "nakit" ? "Nakit" : yontem === "pos" ? "POS" : `Hesaba${hesapSahibi ? ` (${hesapSahibi} hesabı)` : ""}`;
 
       const bulkSubject = `TOPLU TAHSİLAT \u2022 ${customers.length} müşteri \u2022 ${totalAmt}${totalCs}`;
 
@@ -197,8 +197,8 @@ export async function POST(request: NextRequest) {
       ? `${Number(ucretDetay.vizeTutar || 0).toLocaleString("tr-TR")} ${cText(ucretDetay.vizeCurrency)} vize + ${Number(ucretDetay.davetiyeTutar || 0).toLocaleString("tr-TR")} ${cText(ucretDetay.davetiyeCurrency)} davetiye ücretidir`
       : null;
 
-    // Hesap bilgisi
-    const hesapBilgisi = hesapSahibi && hesapSahibi !== "DAVUT_TURGUT" ? ` (${hesapSahibi === "SIRRI_TURGUT" ? "Sırrı Turgut hesabı" : ""})` : "";
+    // Hesap bilgisi — hesap sahibi adi serbest metin (bank_accounts.name)
+    const hesapBilgisi = hesapSahibi ? ` (${hesapSahibi} hesabı)` : "";
 
     // Firma bilgisi
     const firmaBilgisi = companyInfo ? ` - ${companyInfo.firma_adi}` : "";
@@ -367,7 +367,7 @@ export async function POST(request: NextRequest) {
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:2px;color:#475569;font-weight:700;">Hesap</span>
           </td>
           <td style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:right;">
-            <span style="font-size:14px;color:#e2e8f0;font-weight:500;">${hesapSahibi === "DAVUT_TURGUT" ? "Davut Turgut" : "S\u0131rr\u0131 Turgut"}</span>
+            <span style="font-size:14px;color:#e2e8f0;font-weight:500;">${hesapSahibi || ""}</span>
           </td>
         </tr>` : ""}
         ${onOdemeGecmisi ? `<tr>

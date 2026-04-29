@@ -19,6 +19,7 @@ const pageTitles: Record<string, string> = {
   "/admin/raporlar": "Raporlar",
   "/admin/payments": "Ödemeler",
   "/admin/kasa": "Kasa",
+  "/admin/banka-hesaplari": "Banka Hesapları",
   "/admin/cari-hesap": "Cari Hesap",
   "/admin/aylik-ozet-rapor": "Aylık vize özeti",
   "/admin/logs": "Sistem Logları",

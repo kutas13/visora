@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Modal, Input, Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { notifyPaymentReceived } from "@/lib/notifications";
-import { ODEME_YONTEMLERI, HESAP_SAHIPLERI } from "@/lib/constants";
-import type { VisaFile, ParaBirimi, HesapSahibi } from "@/lib/supabase/types";
+import { ODEME_YONTEMLERI } from "@/lib/constants";
+import type { VisaFile, ParaBirimi, HesapSahibi, BankAccount } from "@/lib/supabase/types";
 
 type PaymentEntry = { amount: string; currency: ParaBirimi };
 
@@ -30,7 +30,13 @@ function getTotalDosyaAmount(file: VisaFile) {
 export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: TahsilatModalProps) {
   const [step, setStep] = useState<"form" | "confirm">("form");
   const [yontem, setYontem] = useState("nakit");
-  const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi>("DAVUT_TURGUT");
+  // Hesap sahibi listesi artik bank_accounts'tan dinamik geliyor;
+  // ilk aktif hesabin adi default olur (ilk fetch'ten sonra atanir).
+  const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi>("");
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const hesapSahibiOptions = bankAccounts
+    .filter((a) => a.is_active)
+    .map((a) => ({ value: a.name, label: a.bank_name ? `${a.name} — ${a.bank_name}` : a.name }));
   const [notlar, setNotlar] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
@@ -48,8 +54,25 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
       setNotlar("");
       setDekontFile(null);
       void loadExchangeRates();
+      void loadBankAccounts();
     }
   }, [isOpen, file]);
+
+  const loadBankAccounts = async () => {
+    try {
+      const res = await fetch("/api/bank-accounts");
+      if (res.ok) {
+        const json = await res.json();
+        const accounts = (json.data || []) as BankAccount[];
+        setBankAccounts(accounts);
+        const firstActive = accounts.find((a) => a.is_active);
+        if (firstActive) setHesapSahibi(firstActive.name);
+        else setHesapSahibi("");
+      }
+    } catch (err) {
+      console.error("Banka hesaplari alinamadi:", err);
+    }
+  };
 
   const loadExchangeRates = async () => {
     try {
@@ -352,12 +375,18 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
 
           {yontem === "hesaba" && (
             <div className="space-y-3">
-              <Select
-                label="Hesap Sahibi"
-                options={HESAP_SAHIPLERI}
-                value={hesapSahibi}
-                onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)}
-              />
+              {hesapSahibiOptions.length > 0 ? (
+                <Select
+                  label="Hesap Sahibi"
+                  options={hesapSahibiOptions}
+                  value={hesapSahibi}
+                  onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)}
+                />
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Henüz tanımlı banka hesabı yok. Genel müdür <a href="/admin/banka-hesaplari" className="font-semibold underline">Banka Hesapları</a> sayfasından bir hesap eklemeli.
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Dekont (opsiyonel)</label>
                 <input
@@ -416,7 +445,7 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
                 ? "Nakit"
                 : yontem === "pos"
                 ? "POS"
-                : `Hesaba (${(HESAP_SAHIPLERI.find((h) => h.value === hesapSahibi) || { label: "" }).label})`}
+                : `Hesaba (${hesapSahibi || "-"})`}
             </p>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">

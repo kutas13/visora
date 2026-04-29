@@ -80,20 +80,22 @@ export async function POST(request: NextRequest) {
   let createdCount = 0;
 
   try {
-    // Admin kullanıcıyı bul (DAVUT)
-    const { data: adminProfile } = await supabase
+    // Cok-firma: her sirketin kendi admin'i (Genel Mudur) farkli.
+    // Tum admin profillerini cek, organization_id -> adminId map'i kur.
+    const { data: adminProfiles } = await supabase
       .from("profiles")
-      .select("id")
-      .eq("name", "DAVUT")
-      .eq("role", "admin")
-      .single();
+      .select("id, organization_id")
+      .eq("role", "admin");
 
-    const adminId = adminProfile?.id;
+    const adminByOrg = new Map<string, string>();
+    for (const a of (adminProfiles as { id: string; organization_id: string | null }[] | null) || []) {
+      if (a.organization_id) adminByOrg.set(a.organization_id, a.id);
+    }
 
-    // Tüm aktif dosyaları getir
+    // Tum aktif dosyalari getir (assignee + organization_id ile)
     const { data: files } = await supabase
       .from("visa_files")
-      .select("*, profiles:assigned_user_id(id, name)");
+      .select("*, profiles:assigned_user_id(id, name, organization_id)");
 
     if (!files) {
       return NextResponse.json({ success: true, created: 0, message: "Dosya bulunamadı" });
@@ -101,6 +103,12 @@ export async function POST(request: NextRequest) {
 
     for (const file of files) {
       const staffId = file.assigned_user_id;
+      // Bu dosyanin sirketinin Genel Muduru'nu (admin) bul.
+      const fileOrgId =
+        (file as { organization_id?: string | null }).organization_id ||
+        (file as { profiles?: { organization_id?: string | null } | null }).profiles?.organization_id ||
+        null;
+      const adminId = fileOrgId ? adminByOrg.get(fileOrgId) || null : null;
 
       // ==========================================
       // KURAL 1: Randevuya 15 gün kala
@@ -255,12 +263,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Activity log
+    // Activity log — actor olarak ilk dosyanin assignee'sini kullan
+    // (cok-firma cron'u tek bir admin'e baglanmamali).
     if (createdCount > 0) {
       await supabase.from("activity_logs").insert({
         type: "notification_created",
         message: `Otomatik bildirim sistemi ${createdCount} bildirim oluşturdu`,
-        actor_id: adminId || files[0]?.assigned_user_id,
+        actor_id: files[0]?.assigned_user_id,
       });
     }
 

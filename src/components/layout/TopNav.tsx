@@ -98,6 +98,12 @@ const ADMIN_GROUPS: NavGroup[] = [
         icon: "M3 10h18M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zM12 14v2m-3-2h6",
       },
       {
+        href: "/admin/banka-hesaplari",
+        label: "Banka Hesapları",
+        description: "Banka hesaplarını yönet, hesap geçmişini gör",
+        icon: "M4 10h16M4 6l8-3 8 3M5 10v8m4-8v8m6-8v8m4-8v8M3 21h18",
+      },
+      {
         href: "/admin/payments",
         label: "Ödemeler",
         description: "Tüm tahsilat & ödemeler",

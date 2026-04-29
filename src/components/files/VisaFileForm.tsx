@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Button, Input, Select, Modal } from "@/components/ui";
-import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME_PLANLARI_EXTENDED, HESAP_SAHIPLERI, FATURA_TIPLERI, ALL_USERS } from "@/lib/constants";
+import { TARGET_COUNTRIES, ISLEM_TIPLERI, EVRAK_DURUMLARI, PARA_BIRIMLERI, ODEME_PLANLARI_EXTENDED, FATURA_TIPLERI, ALL_USERS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileCreated, notifyFileUpdated } from "@/lib/notifications";
-import type { VisaFile, IslemTipi, EvrakDurumu, ParaBirimi, OdemePlani, HesapSahibi, FaturaTipi, Company } from "@/lib/supabase/types";
+import type { VisaFile, IslemTipi, EvrakDurumu, ParaBirimi, OdemePlani, HesapSahibi, FaturaTipi, Company, BankAccount } from "@/lib/supabase/types";
 
 type UIPaymentPlan = "pesin" | "cari" | "firma_cari";
 
@@ -94,6 +94,19 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   // Sirketin diger personelleri (sadece admin gorur). Admin dosya olustururken
   // her personelin carisini ayri secenek olarak secebilir.
   const [staffCariNames, setStaffCariNames] = useState<string[]>([]);
+  // Sirketin banka hesaplari (Genel Mudur tarafindan olusturulur).
+  // "Hesaba" odeme yontemi secildiginde Hesap Sahibi listesi bu hesaplardan gelir.
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const hesapSahibiOptions = useMemo(
+    () =>
+      bankAccounts
+        .filter((a) => a.is_active)
+        .map((a) => ({
+          value: a.name,
+          label: a.bank_name ? `${a.name} — ${a.bank_name}` : a.name,
+        })),
+    [bankAccounts]
+  );
   
   // Firma cari
   const [companySearch, setCompanySearch] = useState("");
@@ -265,6 +278,22 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
     };
     loadCompanies();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Banka hesaplari yukle (sirket bazli, admin tarafindan tanimli).
+  useEffect(() => {
+    const loadBankAccounts = async () => {
+      try {
+        const res = await fetch("/api/bank-accounts");
+        if (res.ok) {
+          const json = await res.json();
+          setBankAccounts((json.data || []) as BankAccount[]);
+        }
+      } catch (err) {
+        console.error("Banka hesaplari alinamadi:", err);
+      }
+    };
+    loadBankAccounts();
   }, []);
 
   // Pasaport numarası ile geçmiş başvuru kontrolü
@@ -1163,7 +1192,21 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                 Nakit
               </label>
               <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${pesinYontem === "hesaba" ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
-                <input type="radio" name="pesinYontem" checked={pesinYontem === "hesaba"} onChange={() => { setPesinYontem("hesaba"); setHesapSahibi("DAVUT_TURGUT"); }} className="sr-only" />
+                <input
+                  type="radio"
+                  name="pesinYontem"
+                  checked={pesinYontem === "hesaba"}
+                  onChange={() => {
+                    setPesinYontem("hesaba");
+                    // Eski "DAVUT_TURGUT" sabit secimi kaldirildi.
+                    // Sirketin tanimli ilk banka hesabini sec; yoksa bos birak,
+                    // kullanici Select'ten secsin (yoksa olusturmasi icin admin
+                    // Banka Hesaplari sayfasina yonlendirilir).
+                    const first = bankAccounts.find((a) => a.is_active);
+                    setHesapSahibi(first ? first.name : null);
+                  }}
+                  className="sr-only"
+                />
                 Hesaba
               </label>
               <label className={`p-2.5 border rounded-lg cursor-pointer text-center text-sm transition-all ${pesinYontem === "pos" ? "border-green-500 bg-white text-green-700 font-medium" : "border-navy-200 text-navy-600"}`}>
@@ -1304,9 +1347,22 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               </div>
             )}
 
-            {pesinYontem === "hesaba" && hesapSahibi && (
+            {pesinYontem === "hesaba" && (
               <>
-                <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi || ""} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
+                {hesapSahibiOptions.length > 0 ? (
+                  <Select
+                    label="Hesap Sahibi"
+                    options={hesapSahibiOptions}
+                    value={hesapSahibi || ""}
+                    onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)}
+                  />
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    Henüz tanımlı banka hesabınız yok. {userRole === "admin"
+                      ? <>Lütfen <a href="/admin/banka-hesaplari" className="font-semibold underline">Banka Hesapları</a> sayfasından bir hesap ekleyin.</>
+                      : <>Genel müdürünüzün <span className="font-semibold">Banka Hesapları</span> sayfasından bir hesap eklemesi gerekiyor.</>}
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-green-700 mb-1">Dekont Yükle (PDF veya Görsel)</label>
                   <input

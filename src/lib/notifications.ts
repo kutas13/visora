@@ -1,8 +1,45 @@
-// Bildirim yardımcı fonksiyonları
+// Bildirim yardimci fonksiyonlari
 import { createClient } from "@/lib/supabase/client";
 
-// Admin DAVUT'un UUID'si
-export const ADMIN_UUID = "d81c3235-d082-4563-a9b5-7c511cfbb8a5";
+/**
+ * Tek-firma kalintisi olan ADMIN_UUID kaldirildi. Cok-firma modelde her
+ * sirketin kendi Genel Muduru (admin) farkli bir UUID. Belirli bir
+ * kullanicinin bagli oldugu Genel Muduru runtime'da cozer ve bildirimi
+ * o kullaniciya yazariz. Eski "ADMIN_UUID" sabitiyle yapilan disaridan
+ * referanslar bozulmasin diye bos string export edilir (deprecated).
+ *
+ * @deprecated Use `getOrgAdminUserId()` instead.
+ */
+export const ADMIN_UUID = "";
+
+/**
+ * Verilen kullanicinin bagli oldugu sirketteki Genel Muduru (role='admin')
+ * bulup id'sini doner. Bulunamazsa null doner; bu durumda admin bildirimi
+ * yazilmaz (auth akisini kirmaz).
+ */
+async function getOrgAdminUserId(actorId: string): Promise<string | null> {
+  try {
+    const supabase = createClient();
+    const { data: actor } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("id", actorId)
+      .maybeSingle();
+    const orgId = (actor as { organization_id?: string | null } | null)?.organization_id;
+    if (!orgId) return null;
+    const { data: admin } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("role", "admin")
+      .limit(1)
+      .maybeSingle();
+    return (admin as { id?: string } | null)?.id || null;
+  } catch (e) {
+    console.error("getOrgAdminUserId hata:", e);
+    return null;
+  }
+}
 
 interface NotificationData {
   user_id: string;
@@ -55,10 +92,11 @@ export async function notifyFileCreated(
     unique_key: `file:${fileId}:created:${creatorId}:${timestamp}`,
   });
 
-  // Admin'e bildirim (eğer oluşturan admin değilse)
-  if (creatorId !== ADMIN_UUID) {
+  // Sirket Genel Muduru'na (admin) bildirim
+  const adminId = await getOrgAdminUserId(creatorId);
+  if (adminId && adminId !== creatorId) {
     await createNotification({
-      user_id: ADMIN_UUID,
+      user_id: adminId,
       file_id: fileId,
       kind: "file_created",
       title: "Yeni Dosya Oluşturuldu",
@@ -88,10 +126,10 @@ export async function notifyFileUpdated(
     unique_key: `file:${fileId}:updated:${updaterId}:${timestamp}`,
   });
 
-  // Admin'e bildirim
-  if (updaterId !== ADMIN_UUID) {
+  const adminId = await getOrgAdminUserId(updaterId);
+  if (adminId && adminId !== updaterId) {
     await createNotification({
-      user_id: ADMIN_UUID,
+      user_id: adminId,
       file_id: fileId,
       kind: "file_updated",
       title: "Dosya Güncellendi",
@@ -122,10 +160,10 @@ export async function notifyFileStatusChanged(
     unique_key: `file:${fileId}:status:${actorId}:${timestamp}`,
   });
 
-  // Admin'e bildirim
-  if (actorId !== ADMIN_UUID) {
+  const adminId = await getOrgAdminUserId(actorId);
+  if (adminId && adminId !== actorId) {
     await createNotification({
-      user_id: ADMIN_UUID,
+      user_id: adminId,
       file_id: fileId,
       kind: "status_change",
       title: statusTitle,
@@ -204,10 +242,10 @@ export async function notifyPaymentReceived(
     unique_key: `file:${fileId}:payment:${collectorId}:${timestamp}`,
   });
 
-  // Admin'e bildirim
-  if (collectorId !== ADMIN_UUID) {
+  const adminId = await getOrgAdminUserId(collectorId);
+  if (adminId && adminId !== collectorId) {
     await createNotification({
-      user_id: ADMIN_UUID,
+      user_id: adminId,
       file_id: fileId,
       kind: "payment",
       title: "Yeni Tahsilat",

@@ -55,9 +55,13 @@ export default function LoginPage() {
 
   const routeByRole = async (userId: string): Promise<{ ok: true } | { ok: false; reason: string }> => {
     const supabase = createClient();
+    // Eskiden 2 ayri sorgu (profiles + organizations) cekiyorduk; tek
+    // join'le indirdik. Bu, login sonrasi "bekleme" suresini onemli olcude
+    // dusuruyor. router.refresh() de cikarildi: router.push() zaten yeni
+    // sayfaya gidiyor ve yeni sayfanin SSR'i taze cookie'yi okuyor.
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, organization_id")
+      .select("role, organization_id, organizations:organization_id ( status, name )")
       .eq("id", userId)
       .single();
 
@@ -68,25 +72,18 @@ export default function LoginPage() {
     // Platform owner -> dogrudan visora paneline
     if (profile.role === "platform_owner") {
       router.push("/visora/companies");
-      router.refresh();
       return { ok: true };
     }
 
     // Sirket statu kontrolu (sadece sirketle iliskilendirilmis kullanicilar icin)
     if (profile.organization_id) {
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("status, name")
-        .eq("id", profile.organization_id)
-        .single();
-
+      const org = (profile as unknown as { organizations: { status: string; name: string } | null }).organizations;
       if (!org) {
         return {
           ok: false,
           reason: "Şirketiniz sistemde bulunamadı. Lütfen platform sahibine bildirin.",
         };
       }
-
       if (org.status !== "active") {
         const statusMsg =
           org.status === "suspended"
@@ -105,7 +102,6 @@ export default function LoginPage() {
     } else {
       router.push("/app");
     }
-    router.refresh();
     return { ok: true };
   };
 

@@ -18,8 +18,25 @@ export type OdemePlani = "pesin" | "cari";
 // Ödeme tipi
 export type PaymentType = "pesin_satis" | "tahsilat" | "firma_cari";
 
-// Hesap sahipleri
-export type HesapSahibi = "DAVUT_TURGUT" | "SIRRI_TURGUT";
+// Hesap sahipleri — artik dinamik bank_accounts.name'inden gelen serbest metin.
+// Eski sabit "DAVUT_TURGUT"/"SIRRI_TURGUT" enum'u kaldirildi.
+// Geriye donuk uyumluluk icin tip TEXT/string olarak korunuyor.
+export type HesapSahibi = string;
+
+// Banka hesabi (sirket bazli, dinamik)
+export interface BankAccount {
+  id: string;
+  organization_id: string;
+  name: string;
+  bank_name: string | null;
+  iban: string | null;
+  currency: ParaBirimi;
+  notes: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 // Cari tipi
 export type CariTipi = "kullanici_cari" | "firma_cari";

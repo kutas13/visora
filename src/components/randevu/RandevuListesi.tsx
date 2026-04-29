@@ -374,7 +374,12 @@ export default function RandevuListesi() {
   const [selectedTalep, setSelectedTalep] = useState<RandevuRow | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
-  const [isSirri, setIsSirri] = useState(false);
+  // Eski tek-firma kalintisi: ismi "SIRRI" olan kullaniciya bu sayfayi
+  // kapatan hardcoded bir kontrol vardi. Cok-firma modelde anlami kalmadi —
+  // erisim kontrolu artik rol/RLS ile yapiliyor. State korundu (false sabit)
+  // ki dusuk asagidaki bagimliliklari kirmadan referanslar calismaya devam
+  // etsin; bir sonraki temizlikte tamamen cikarilabilir.
+  const [isSirri] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterUlke, setFilterUlke] = useState("");
@@ -433,7 +438,6 @@ export default function RandevuListesi() {
 
     if (profile) {
       setCurrentUser({ id: profile.id, name: profile.name });
-      setIsSirri(profile.name === "SIRRI");
     }
 
     const { data, error } = await supabase
@@ -654,7 +658,7 @@ export default function RandevuListesi() {
 
         await sendWpMsg(musteriPhone, musteriMsg);
 
-        // 5) Ekip mesajı (Davut + oluşturan + alan)
+        // 5) Ekip mesaji (Genel Mudur + olusturan + alan)
         const ekipMsg =
           `📋 *RANDEVU ALINDI*\n\n` +
           `👤 Müşteri: *${selectedTalep.dosya_adi}*\n` +
@@ -1151,7 +1155,7 @@ export default function RandevuListesi() {
           </div>
           <p className="text-xs text-navy-400">
             Pasaport görselleri + randevu mektubu müşteriye WhatsApp ile gönderilecek.
-            Davut, oluşturan ve alan kişiye bildirim gidecek.
+            Genel müdür, oluşturan ve alan kişiye bildirim gidecek.
           </p>
           <Button onClick={handleRandevuAl} disabled={randevuSaving || !randevuTarihi || (!!selectedTalep && selectedTalep.ulkeler.length > 1 && !randevuUlke)} className="w-full bg-green-600 hover:bg-green-700">
             {randevuSaving ? "Randevu alınıyor..." : "Randevuyu Onayla"}

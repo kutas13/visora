@@ -7,8 +7,8 @@ import { Card, Button, Badge, Modal, Input, Select, CustomerAvatar, resolveAvata
 const FileDetailModal = dynamic(() => import("@/components/files/FileDetailModal"), { ssr: false });
 import { createClient } from "@/lib/supabase/client";
 import { notifyPaymentReceived } from "@/lib/notifications";
-import { ODEME_YONTEMLERI, PARA_BIRIMLERI, HESAP_SAHIPLERI } from "@/lib/constants";
-import type { Payment, VisaFile, ParaBirimi, HesapSahibi } from "@/lib/supabase/types";
+import { ODEME_YONTEMLERI, PARA_BIRIMLERI } from "@/lib/constants";
+import type { Payment, VisaFile, ParaBirimi, HesapSahibi, BankAccount } from "@/lib/supabase/types";
 
 type PaymentWithFile = Payment & { visa_files: Pick<VisaFile, "musteri_ad" | "hedef_ulke" | "ucret" | "ucret_currency"> | null };
 type PaymentEntry = { amount: string; currency: ParaBirimi };
@@ -53,7 +53,12 @@ export default function PaymentsPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<VisaFile | null>(null);
   const [yontem, setYontem] = useState("nakit");
-  const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi>("DAVUT_TURGUT");
+  // Hesap sahibi listesi sirket bazli bank_accounts'tan dinamik gelir.
+  const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi>("");
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const hesapSahibiOptions = bankAccounts
+    .filter((a) => a.is_active)
+    .map((a) => ({ value: a.name, label: a.bank_name ? `${a.name} — ${a.bank_name}` : a.name }));
   const [notlar, setNotlar] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -76,7 +81,7 @@ export default function PaymentsPage() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showBulkConfirmModal, setShowBulkConfirmModal] = useState(false);
   const [bulkYontem, setBulkYontem] = useState("nakit");
-  const [bulkHesapSahibi, setBulkHesapSahibi] = useState<HesapSahibi>("DAVUT_TURGUT");
+  const [bulkHesapSahibi, setBulkHesapSahibi] = useState<HesapSahibi>("");
   const [bulkNotlar, setBulkNotlar] = useState("");
   const [bulkPaymentEntries, setBulkPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
   const [bulkDekontFile, setBulkDekontFile] = useState<File | null>(null);
@@ -186,7 +191,25 @@ export default function PaymentsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); loadExchangeRates(); }, []);
+  useEffect(() => { loadData(); loadExchangeRates(); loadBankAccounts(); }, []);
+
+  const loadBankAccounts = async () => {
+    try {
+      const res = await fetch("/api/bank-accounts");
+      if (res.ok) {
+        const json = await res.json();
+        const accounts = (json.data || []) as BankAccount[];
+        setBankAccounts(accounts);
+        const first = accounts.find((a) => a.is_active);
+        if (first) {
+          setHesapSahibi(first.name);
+          setBulkHesapSahibi(first.name);
+        }
+      }
+    } catch (err) {
+      console.error("Banka hesaplari alinamadi:", err);
+    }
+  };
 
   const fetchExchangeRatesFromApi = async (fallback: Record<string, number>): Promise<Record<string, number>> => {
     try {
@@ -1011,7 +1034,13 @@ export default function PaymentsPage() {
 
             {yontem === "hesaba" && (
               <div className="space-y-3">
-                <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={hesapSahibi} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
+                {hesapSahibiOptions.length > 0 ? (
+                  <Select label="Hesap Sahibi" options={hesapSahibiOptions} value={hesapSahibi} onChange={(e) => setHesapSahibi(e.target.value as HesapSahibi)} />
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    Henüz tanımlı banka hesabı yok. Genel müdür <strong>Banka Hesapları</strong> sayfasından bir hesap eklemeli.
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Dekont Yükle</label>
                   <input
@@ -1082,7 +1111,7 @@ export default function PaymentsPage() {
                 <p className="text-xs text-emerald-600 mt-2 bg-emerald-100 rounded-full px-3 py-1 inline-block">Karışık döviz ödemesi</p>
               )}
               <p className="text-xs text-slate-500 mt-2">
-                {yontem === "nakit" ? "Nakit" : yontem === "pos" ? "POS" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === hesapSahibi) || {label: ""}).label})`}
+                {yontem === "nakit" ? "Nakit" : yontem === "pos" ? "POS" : `Hesaba (${hesapSahibi || "-"})`}
               </p>
             </div>
 
@@ -1226,7 +1255,13 @@ export default function PaymentsPage() {
 
           {bulkYontem === "hesaba" && (
             <div className="space-y-3">
-              <Select label="Hesap Sahibi" options={HESAP_SAHIPLERI} value={bulkHesapSahibi} onChange={(e) => setBulkHesapSahibi(e.target.value as HesapSahibi)} />
+              {hesapSahibiOptions.length > 0 ? (
+                <Select label="Hesap Sahibi" options={hesapSahibiOptions} value={bulkHesapSahibi} onChange={(e) => setBulkHesapSahibi(e.target.value as HesapSahibi)} />
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Henüz tanımlı banka hesabı yok. Genel müdür <strong>Banka Hesapları</strong> sayfasından bir hesap eklemeli.
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Dekont Yükle</label>
                 <input type="file" accept="image/*,.pdf" onChange={(e) => { const f = e.target.files?.[0] || null; setBulkDekontFile(f); setBulkDekontPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null); }} className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 text-slate-600" />
@@ -1266,7 +1301,7 @@ export default function PaymentsPage() {
               <p key={i} className="text-2xl font-black text-emerald-700">{formatCurrency(parseFloat(e.amount), e.currency)}</p>
             ))}
             <p className="text-xs text-slate-500 mt-2">
-              {bulkYontem === "nakit" ? "Nakit" : bulkYontem === "pos" ? "POS" : `Hesaba (${(HESAP_SAHIPLERI.find(h => h.value === bulkHesapSahibi) || {label: ""}).label})`}
+              {bulkYontem === "nakit" ? "Nakit" : bulkYontem === "pos" ? "POS" : `Hesaba (${bulkHesapSahibi || "-"})`}
             </p>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">

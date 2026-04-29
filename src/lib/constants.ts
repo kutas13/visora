@@ -138,11 +138,17 @@ export const FILE_STATUS_BADGES = {
   red: { label: "Reddedildi", color: "bg-red-100 text-red-700" },
 } as const;
 
-// Hesap sahipleri
-export const HESAP_SAHIPLERI = [
-  { value: "DAVUT_TURGUT", label: "Davut Turgut" },
-  { value: "SIRRI_TURGUT", label: "Sırrı Turgut" },
-] as const;
+// Hesap sahipleri (LEGACY)
+// ----------------------------------------------------------------------
+// Eskiden buradaki sabit liste (Davut Turgut, Sırrı Turgut) dosya formlari
+// ve tahsilat akislarinda dropdown olarak kullaniliyordu. Cok-firma
+// modeline gectikten sonra bu liste her sirketin kendi "Banka Hesaplari"
+// (public.bank_accounts) tablosundan dinamik olarak yukleniyor; eski
+// importlar build'i kirmasin diye bos diziyle birakildi.
+//
+// Yeni kullanim: GET /api/bank-accounts -> { data: BankAccount[] }
+// ----------------------------------------------------------------------
+export const HESAP_SAHIPLERI: { value: string; label: string }[] = [];
 
 // Cari tipleri
 export const CARI_TIPLERI = [
