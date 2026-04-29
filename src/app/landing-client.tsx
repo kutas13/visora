@@ -946,6 +946,14 @@ export default function LandingClient() {
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Destek</p>
               <ul className="mt-3 space-y-2 text-sm">
                 <li>
+                  <a
+                    href="mailto:destek@destekvisora.com"
+                    className="text-slate-300 hover:text-white transition-colors"
+                  >
+                    destek@destekvisora.com
+                  </a>
+                </li>
+                <li>
                   <button
                     onClick={() => openLead("callback")}
                     className="text-slate-300 hover:text-white transition-colors text-left"
