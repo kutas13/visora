@@ -166,9 +166,16 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
         dekont_url: dekontUrlForPayment,
       });
-      // Migration 028 henuz calismadiysa kolonsuz fallback ile tahsilati yine kaydet.
-      if (payErr && /hesap_sahibi|dekont_url/i.test(payErr.message || "")) {
-        const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+      // Migration eksik / schema cache hatasi olursa minimum payload ile yine kaydet.
+      if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(payErr.message || "")) {
+        const minimal = {
+          file_id: paymentPayload.file_id,
+          tutar: paymentPayload.tutar,
+          yontem: paymentPayload.yontem,
+          durum: paymentPayload.durum,
+          created_by: paymentPayload.created_by,
+        };
+        const { error: legacyErr } = await supabase.from("payments").insert(minimal);
         if (legacyErr) throw new Error(legacyErr.message || "Tahsilat kaydı yapılamadı");
       } else if (payErr) {
         throw new Error(payErr.message || "Tahsilat kaydı yapılamadı");

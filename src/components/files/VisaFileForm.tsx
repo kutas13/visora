@@ -553,9 +553,16 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               dekont_url: dekontUrlForPayment,
             });
 
-            // Migration 028 henuz calismadiysa kolonsuz fallback ile yine kaydet.
-            if (payErr && /hesap_sahibi|dekont_url/i.test(payErr.message || "")) {
-              const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+            // Migration eksik / schema cache hatasi olursa minimum payload ile yine kaydet.
+            if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(payErr.message || "")) {
+              const minimal = {
+                file_id: paymentPayload.file_id,
+                tutar: paymentPayload.tutar,
+                yontem: paymentPayload.yontem,
+                durum: paymentPayload.durum,
+                created_by: paymentPayload.created_by,
+              };
+              const { error: legacyErr } = await supabase.from("payments").insert(minimal);
               if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
             } else if (payErr) {
               throw new Error(payErr.message || "Peşin ödeme kaydı yapılamadı");
@@ -653,8 +660,15 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
               dekont_url: dekontUrlForPayment,
             });
-            if (payInsertErr && /hesap_sahibi|dekont_url/i.test(payInsertErr.message || "")) {
-              const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+            if (payInsertErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(payInsertErr.message || "")) {
+              const minimal = {
+                file_id: paymentPayload.file_id,
+                tutar: paymentPayload.tutar,
+                yontem: paymentPayload.yontem,
+                durum: paymentPayload.durum,
+                created_by: paymentPayload.created_by,
+              };
+              const { error: legacyErr } = await supabase.from("payments").insert(minimal);
               if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
             } else if (payInsertErr) {
               throw new Error(payInsertErr.message || "Peşin ödeme kaydı yapılamadı");

@@ -381,8 +381,15 @@ export default function PaymentsPage() {
         dekont_url: dekontUrlForPayment,
       });
 
-      if (paymentError && /hesap_sahibi|dekont_url/i.test(paymentError.message || "")) {
-        const { error: legacyErr } = await supabase.from("payments").insert(paymentPayload);
+      if (paymentError && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(paymentError.message || "")) {
+        const minimal = {
+          file_id: paymentPayload.file_id,
+          tutar: paymentPayload.tutar,
+          yontem: paymentPayload.yontem,
+          durum: paymentPayload.durum,
+          created_by: paymentPayload.created_by,
+        };
+        const { error: legacyErr } = await supabase.from("payments").insert(minimal);
         if (legacyErr) throw new Error(legacyErr.message || "Tahsilat kaydı yapılamadı");
       } else if (paymentError) {
         throw new Error(paymentError.message || "Tahsilat kaydı yapılamadı");
@@ -595,8 +602,15 @@ export default function PaymentsPage() {
           hesap_sahibi: bulkYontem === "hesaba" ? bulkHesapSahibi : null,
           dekont_url: bulkDekontUrl,
         });
-        if (bulkInsertErr && /hesap_sahibi|dekont_url/i.test(bulkInsertErr.message || "")) {
-          const { error: legacyBulkErr } = await supabase.from("payments").insert(bulkPaymentPayload);
+        if (bulkInsertErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz/i.test(bulkInsertErr.message || "")) {
+          const minimalBulk = {
+            file_id: bulkPaymentPayload.file_id,
+            tutar: bulkPaymentPayload.tutar,
+            yontem: bulkPaymentPayload.yontem,
+            durum: bulkPaymentPayload.durum,
+            created_by: bulkPaymentPayload.created_by,
+          };
+          const { error: legacyBulkErr } = await supabase.from("payments").insert(minimalBulk);
           if (legacyBulkErr) throw new Error(legacyBulkErr.message || "Toplu tahsilat kaydı yapılamadı");
         } else if (bulkInsertErr) {
           throw new Error(bulkInsertErr.message || "Toplu tahsilat kaydı yapılamadı");
