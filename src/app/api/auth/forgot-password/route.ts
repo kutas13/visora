@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const siteUrl =
       envClean("NEXT_PUBLIC_SITE_URL")?.replace(/\/$/, "") || "https://visora.com.tr";
 
-    // Service role ile şifre sıfırlama linki üret
+    // Service role ile şifre sıfırlama token'ı üret
     const { data, error } = await admin.auth.admin.generateLink({
       type: "recovery",
       email: email.trim().toLowerCase(),
@@ -45,10 +45,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const resetLink = data?.properties?.action_link;
-    if (!resetLink) {
-      console.error("[forgot-password] action_link bulunamadi.");
-      return NextResponse.json({ ok: true });
+    // hashed_token kullanarak Supabase redirect ayarlarından bağımsız link oluştur.
+    // action_link Supabase'in kendi domain'i üzerinden geçiyor ve Dashboard'daki
+    // Site URL'e bağlı — onu kullanmak yerine token_hash'i alıp kendi URL'imizi kuruyoruz.
+    const hashedToken = (data?.properties as any)?.hashed_token;
+    let resetLink: string;
+
+    if (hashedToken) {
+      resetLink = `${siteUrl}/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`;
+    } else {
+      // Fallback: action_link varsa kullan
+      const actionLink = (data?.properties as any)?.action_link as string | undefined;
+      if (!actionLink) {
+        console.error("[forgot-password] hashed_token ve action_link bulunamadi.");
+        return NextResponse.json({ ok: true });
+      }
+      resetLink = actionLink;
     }
 
     // Bizim SMTP'den gönder

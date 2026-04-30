@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button, Input, Card } from "@/components/ui";
@@ -11,6 +11,7 @@ type Step = "loading" | "form" | "success" | "error";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>("loading");
   const [errMsg, setErrMsg] = useState("");
 
@@ -21,20 +22,36 @@ export default function ResetPasswordPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Supabase reset linkleri hash fragment icinde access_token tasir.
-    // Oturum kurulup kurulmadagini kontrol ediyoruz.
     const supabase = createClient();
 
+    // Yöntem 1: URL'de token_hash parametresi var (bizim custom link)
+    const tokenHash = searchParams?.get("token_hash");
+    const type = searchParams?.get("type");
+
+    if (tokenHash) {
+      // OTP verify ile oturum aç — Supabase redirect URL ayarlarından bağımsız
+      supabase.auth
+        .verifyOtp({ token_hash: tokenHash, type: (type as any) || "recovery" })
+        .then(({ error }) => {
+          if (error) {
+            console.error("[reset-password] verifyOtp error:", error.message);
+            setErrMsg("Bağlantı geçersiz veya süresi dolmuş. Yeniden şifremi unuttum talebi oluşturun.");
+            setStep("error");
+          } else {
+            setStep("form");
+          }
+        });
+      return;
+    }
+
+    // Yöntem 2: Supabase hash fragment üzerinden (eski action_link fallback)
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setStep("form");
-      } else if (event === "SIGNED_IN") {
-        // Bazi istemci surumleri SIGNED_IN atiyor; form'a git.
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setStep((prev) => (prev === "loading" ? "form" : prev));
       }
     });
 
-    // 4 saniye icinde event gelmezse hata goster
+    // 5 saniye içinde event gelmezse hata göster
     const timer = setTimeout(() => {
       setStep((prev) => {
         if (prev === "loading") {
@@ -43,13 +60,13 @@ export default function ResetPasswordPage() {
         }
         return prev;
       });
-    }, 4000);
+    }, 5000);
 
     return () => {
       listener?.subscription.unsubscribe();
       clearTimeout(timer);
     };
-  }, []);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +87,7 @@ export default function ResetPasswordPage() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       setStep("success");
-      // 2 sn sonra login'e yonlendir
-      setTimeout(() => router.push("/login"), 2000);
+      setTimeout(() => router.push("/login"), 2500);
     } catch (err: any) {
       setFormError(err?.message || "Şifre güncellenemedi.");
     } finally {
@@ -87,6 +103,7 @@ export default function ResetPasswordPage() {
       </div>
 
       <Card className="relative z-10 w-full max-w-md p-8" variant="elevated">
+        {/* Logo */}
         <div className="text-center mb-6">
           <div className="relative w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 ring-1 ring-indigo-100 flex items-center justify-center">
             <Image src="/visora-logo.png" alt="Visora" width={44} height={44} priority className="object-contain" />
