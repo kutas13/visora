@@ -1,10 +1,12 @@
 "use client";
 
-import { Fragment, useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo, useCallback } from "react";
 import { Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { PARA_BIRIMLERI } from "@/lib/constants";
 import type { Payment, VisaFile, Profile, Company } from "@/lib/supabase/types";
+import CashMovementModal from "@/components/kasa/CashMovementModal";
+import CashMovementDetailModal, { type CashMovement } from "@/components/kasa/CashMovementDetailModal";
 
 type PaymentRow = Payment & {
   visa_files:
@@ -149,43 +151,62 @@ export default function KasaPage() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [firmaCariFiles, setFirmaCariFiles] = useState<FirmaCariFile[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [movements, setMovements] = useState<CashMovement[]>([]);
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 0, EUR: 0, TL: 1 });
   const [filterCurrency, setFilterCurrency] = useState("all");
   const [filterRange, setFilterRange] = useState<"today" | "week" | "month" | "all">("all");
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("pesin");
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [showMovementModal, setShowMovementModal] = useState(false);
+  const [detailMovement, setDetailMovement] = useState<CashMovement | null>(null);
+  const [movementFilter, setMovementFilter] = useState<"all" | "gelir" | "gider">("all");
+
+  const fetchMovements = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("cash_movements")
+      .select("id, type, description, amount, currency, tl_karsilik, exchange_rate, created_by, created_at, profiles:created_by(name)")
+      .order("created_at", { ascending: false });
+    setMovements((data as unknown as CashMovement[]) || []);
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const [paymentsRes, firmaRes, expensesRes, movementsRes, ratesRes] = await Promise.all([
+      supabase
+        .from("payments")
+        .select(
+          "*, visa_files(id, musteri_ad, hedef_ulke, cari_tipi, company_id, ucret, ucret_currency, davetiye_ucreti, davetiye_ucreti_currency), profiles:created_by(name)"
+        )
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("visa_files")
+        .select("*, profiles:assigned_user_id(name)")
+        .eq("cari_tipi", "firma_cari")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("visa_file_expenses")
+        .select("id, file_id, expense_type, amount, currency, tl_karsilik, exchange_rate, note, created_at"),
+      supabase
+        .from("cash_movements")
+        .select("id, type, description, amount, currency, tl_karsilik, exchange_rate, created_by, created_at, profiles:created_by(name)")
+        .order("created_at", { ascending: false }),
+      fetch("/api/exchange-rates").then((r) => r.json()).catch(() => ({ rates: null })),
+    ]);
+    setPayments((paymentsRes.data as PaymentRow[]) || []);
+    setFirmaCariFiles((firmaRes.data as FirmaCariFile[]) || []);
+    setExpenses((expensesRes.data as ExpenseRow[]) || []);
+    setMovements((movementsRes.data as unknown as CashMovement[]) || []);
+    if (ratesRes && ratesRes.rates) {
+      setExchangeRates({ ...{ USD: 0, EUR: 0, TL: 1 }, ...(ratesRes.rates as Record<string, number>) });
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const supabase = createClient();
-      const [paymentsRes, firmaRes, expensesRes, ratesRes] = await Promise.all([
-        supabase
-          .from("payments")
-          .select(
-            "*, visa_files(id, musteri_ad, hedef_ulke, cari_tipi, company_id, ucret, ucret_currency, davetiye_ucreti, davetiye_ucreti_currency), profiles:created_by(name)"
-          )
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("visa_files")
-          .select("*, profiles:assigned_user_id(name)")
-          .eq("cari_tipi", "firma_cari")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("visa_file_expenses")
-          .select("id, file_id, expense_type, amount, currency, tl_karsilik, exchange_rate, note, created_at"),
-        fetch("/api/exchange-rates").then((r) => r.json()).catch(() => ({ rates: null })),
-      ]);
-      setPayments((paymentsRes.data as PaymentRow[]) || []);
-      setFirmaCariFiles((firmaRes.data as FirmaCariFile[]) || []);
-      setExpenses((expensesRes.data as ExpenseRow[]) || []);
-      if (ratesRes && ratesRes.rates) {
-        setExchangeRates({ ...{ USD: 0, EUR: 0, TL: 1 }, ...(ratesRes.rates as Record<string, number>) });
-      }
-      setLoading(false);
-    }
-    load();
-  }, []);
+    loadAll();
+  }, [loadAll]);
 
   // Dosya bazli toplam TL gider haritasi
   const expenseByFileTl = useMemo(() => {
@@ -368,20 +389,62 @@ export default function KasaPage() {
     return data;
   }, [payments, firmaCariFiles, dateFilterFn, filterCurrency]);
 
+  // Tarih araliginda olan manuel kasa hareketleri
+  const filteredMovements = useMemo(() => {
+    return movements.filter((m) => dateFilterFn(m.created_at));
+  }, [movements, dateFilterFn]);
+
+  // Manuel hareketlerin currency basina toplamlari (gelir +, gider -)
+  const movementTotals = useMemo(() => {
+    const g: Totals = {};
+    filteredMovements.forEach((m) => {
+      if (filterCurrency !== "all" && m.currency !== filterCurrency) return;
+      const sign = m.type === "gelir" ? 1 : -1;
+      const amt = (Number(m.amount) || 0) * sign;
+      g[m.currency] = (g[m.currency] || 0) + amt;
+    });
+    return g;
+  }, [filteredMovements, filterCurrency]);
+
+  const movementGelirTotals = useMemo(() => {
+    const g: Totals = {};
+    filteredMovements
+      .filter((m) => m.type === "gelir" && (filterCurrency === "all" || m.currency === filterCurrency))
+      .forEach((m) => {
+        g[m.currency] = (g[m.currency] || 0) + (Number(m.amount) || 0);
+      });
+    return g;
+  }, [filteredMovements, filterCurrency]);
+
+  const movementGiderTotals = useMemo(() => {
+    const g: Totals = {};
+    filteredMovements
+      .filter((m) => m.type === "gider" && (filterCurrency === "all" || m.currency === filterCurrency))
+      .forEach((m) => {
+        g[m.currency] = (g[m.currency] || 0) + (Number(m.amount) || 0);
+      });
+    return g;
+  }, [filteredMovements, filterCurrency]);
+
   // Toplam ciro: tum kategoriler artik DISJOINT (duplicate yok), hepsini topla
+  // + manuel gelirler eklenir / manuel giderler dusulur
   const grandTotals = useMemo(() => {
     const g: Totals = {};
-    const add = (totals: Totals) => {
+    const add = (totals: Totals, sign: number = 1) => {
       Object.entries(totals).forEach(([c, v]) => {
-        g[c] = (g[c] || 0) + v;
+        g[c] = (g[c] || 0) + v * sign;
       });
     };
     add(categoryData.pesin.totals);
     add(categoryData.nakit.totals);
     add(categoryData.hesaba_eft.totals);
     add(categoryData.firma_cari.totals);
+    // manuel hareketler (gelir = +, gider = -)
+    Object.entries(movementTotals).forEach(([c, v]) => {
+      g[c] = (g[c] || 0) + v;
+    });
     return g;
-  }, [categoryData]);
+  }, [categoryData, movementTotals]);
 
   // Toplam gider (TL bazinda) — secili tarih araliginda
   const totalExpenseTl = useMemo(() => {
@@ -441,6 +504,16 @@ export default function KasaPage() {
               onChange={(e) => setFilterCurrency(e.target.value)}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => setShowMovementModal(true)}
+            className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-extrabold text-white bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:brightness-110 shadow-lg shadow-amber-500/30 transition-all hover:-translate-y-0.5"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            Gelir / Gider Ekle
+          </button>
         </div>
       </div>
 
@@ -460,13 +533,27 @@ export default function KasaPage() {
             <h2 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight">
               Peşin + Tahsilat + Firma Cari toplamı
             </h2>
-            <p className="mt-1.5 text-white/60 text-sm">Seçili tarih aralığında biriken tüm kasa tutarı (artık duplicate yok)</p>
-            {totalExpenseTl > 0 && (
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-500/15 ring-1 ring-rose-400/30 text-rose-200 text-[11.5px] font-bold">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                Toplam Gider (TL): {Math.round(totalExpenseTl).toLocaleString("tr-TR")} ₺
-              </div>
-            )}
+            <p className="mt-1.5 text-white/60 text-sm">Seçili tarih aralığında biriken tüm kasa tutarı + manuel gelir/gider</p>
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              {totalExpenseTl > 0 && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-500/15 ring-1 ring-rose-400/30 text-rose-200 text-[11.5px] font-bold">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                  Dosya Giderleri (TL): {Math.round(totalExpenseTl).toLocaleString("tr-TR")} ₺
+                </div>
+              )}
+              {Object.entries(movementGelirTotals).length > 0 && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-400/30 text-emerald-200 text-[11.5px] font-bold">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                  Manuel Gelir: {Object.entries(movementGelirTotals).map(([c, v]) => fmtCur(v, c)).join(" · ")}
+                </div>
+              )}
+              {Object.entries(movementGiderTotals).length > 0 && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-500/15 ring-1 ring-rose-400/30 text-rose-200 text-[11.5px] font-bold">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                  Manuel Gider: {Object.entries(movementGiderTotals).map(([c, v]) => fmtCur(v, c)).join(" · ")}
+                </div>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2.5 md:flex md:flex-row md:items-end md:gap-3">
             {(["TL", "EUR", "USD"] as const).map((c) => (
@@ -530,8 +617,11 @@ export default function KasaPage() {
         })}
       </div>
 
+      {/* GRID: SOL = DETAY TABLO, SAĞ = MANUEL KASA HAREKETLERİ LOGLARI */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-4">
+
       {/* DETAY TABLO */}
-      <div className="rounded-2xl bg-white ring-1 ring-slate-200/70 overflow-hidden">
+      <div className="rounded-2xl bg-white ring-1 ring-slate-200/70 overflow-hidden min-w-0">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <span className="w-1 h-7 rounded-full bg-gradient-to-b from-indigo-500 via-violet-500 to-fuchsia-500" />
@@ -793,6 +883,169 @@ export default function KasaPage() {
           </div>
         )}
       </div>
+
+      {/* SAĞ PANEL: MANUEL KASA HAREKETLERİ LOGLARI */}
+      <aside className="rounded-2xl bg-white ring-1 ring-slate-200/70 overflow-hidden flex flex-col">
+        <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-b from-amber-50/50 to-white">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1 h-6 rounded-full bg-gradient-to-b from-amber-500 to-rose-500" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-extrabold text-slate-900 tracking-tight">Kasa Hareketleri</p>
+              <p className="text-[10px] text-slate-500">Manuel gelir &amp; gider kayıtları</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowMovementModal(true)}
+              className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-500 text-white shadow-md hover:bg-amber-600 transition-colors"
+              title="Yeni hareket ekle"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex items-center gap-1">
+            {([
+              { v: "all", l: "Tümü", c: filteredMovements.length },
+              { v: "gelir", l: "Gelir", c: filteredMovements.filter((m) => m.type === "gelir").length },
+              { v: "gider", l: "Gider", c: filteredMovements.filter((m) => m.type === "gider").length },
+            ] as const).map((opt) => {
+              const isActive = movementFilter === opt.v;
+              const colorMap: Record<string, string> = {
+                all: isActive ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700",
+                gelir: isActive ? "bg-emerald-600 text-white" : "bg-emerald-50 text-emerald-700",
+                gider: isActive ? "bg-rose-600 text-white" : "bg-rose-50 text-rose-700",
+              };
+              return (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setMovementFilter(opt.v as typeof movementFilter)}
+                  className={`flex-1 px-2 py-1.5 rounded-lg text-[10.5px] font-extrabold uppercase tracking-wider transition-colors ${colorMap[opt.v]}`}
+                >
+                  {opt.l} <span className="opacity-70">({opt.c})</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex-1 max-h-[640px] overflow-y-auto divide-y divide-slate-100">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-6 h-6 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
+            </div>
+          ) : (() => {
+            const list = filteredMovements
+              .filter((m) => movementFilter === "all" || m.type === movementFilter)
+              .filter((m) => filterCurrency === "all" || m.currency === filterCurrency);
+            if (list.length === 0) {
+              return (
+                <div className="text-center py-12 px-4">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 mx-auto mb-2 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-700">Henüz hareket yok</p>
+                  <p className="text-[10.5px] text-slate-400 mt-0.5">Üstteki + butonu ile yeni gelir veya gider ekleyin</p>
+                </div>
+              );
+            }
+            return list.map((m) => {
+              const isGelir = m.type === "gelir";
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setDetailMovement(m)}
+                  className="w-full text-left px-4 py-3 hover:bg-slate-50/80 transition-colors group"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm ${
+                      isGelir ? "bg-gradient-to-br from-emerald-500 to-green-600" : "bg-gradient-to-br from-rose-500 to-red-600"
+                    }`}>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {isGelir ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        )}
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isGelir ? "text-emerald-700" : "text-rose-700"}`}>
+                          {isGelir ? "Gelir" : "Gider"}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-400 tabular-nums">{fmtDate(m.created_at)}</span>
+                      </div>
+                      <p className="mt-0.5 text-[12.5px] font-bold text-slate-800 truncate" title={m.description}>
+                        {m.description}
+                      </p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className={`text-sm font-black tabular-nums ${isGelir ? "text-emerald-700" : "text-rose-700"}`}>
+                          {isGelir ? "+" : "−"} {Math.round(Number(m.amount) || 0).toLocaleString("tr-TR")} {SYM[m.currency] || m.currency}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 group-hover:text-indigo-800 transition-colors">
+                          Detay
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </span>
+                      </div>
+                      {m.currency !== "TL" && typeof m.tl_karsilik === "number" && m.tl_karsilik > 0 && (
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          ≈ {Math.round(m.tl_karsilik).toLocaleString("tr-TR")} ₺
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            });
+          })()}
+        </div>
+
+        {/* Sag panel toplam ozeti */}
+        {filteredMovements.length > 0 && (
+          <div className="border-t border-slate-100 px-4 py-3 bg-slate-50/60 space-y-1.5">
+            {Object.entries(movementGelirTotals).length > 0 && (
+              <div className="flex items-center justify-between text-[11.5px]">
+                <span className="font-bold text-emerald-700">Toplam Gelir</span>
+                <span className="font-extrabold text-emerald-700 tabular-nums">
+                  {Object.entries(movementGelirTotals).map(([c, v]) => fmtCur(v, c)).join(" · ")}
+                </span>
+              </div>
+            )}
+            {Object.entries(movementGiderTotals).length > 0 && (
+              <div className="flex items-center justify-between text-[11.5px]">
+                <span className="font-bold text-rose-700">Toplam Gider</span>
+                <span className="font-extrabold text-rose-700 tabular-nums">
+                  {Object.entries(movementGiderTotals).map(([c, v]) => fmtCur(v, c)).join(" · ")}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </aside>
+
+      </div>
+      {/* /GRID */}
+
+      {/* MODALS */}
+      <CashMovementModal
+        isOpen={showMovementModal}
+        onClose={() => setShowMovementModal(false)}
+        onSuccess={() => fetchMovements()}
+      />
+      <CashMovementDetailModal
+        isOpen={Boolean(detailMovement)}
+        onClose={() => setDetailMovement(null)}
+        movement={detailMovement}
+        canDelete={true}
+        onDeleted={() => fetchMovements()}
+      />
     </div>
   );
 }
