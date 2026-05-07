@@ -94,7 +94,13 @@ const ADMIN_GROUPS: NavGroup[] = [
       {
         href: "/admin/kasa",
         label: "Kasa",
-        description: "Nakit, peşin, hesaba EFT, cari",
+        description: "Nakit + banka cüzdanları, gelir/gider/transfer",
+        icon: "M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-1M16 12h5M18 9l3 3-3 3",
+      },
+      {
+        href: "/admin/ciro",
+        label: "Ciro İşlemleri",
+        description: "Nakit, peşin, hesaba EFT, cari kırılımları",
         icon: "M3 10h18M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zM12 14v2m-3-2h6",
       },
       {

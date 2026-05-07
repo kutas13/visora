@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { CashAccount } from "@/lib/supabase/types";
 
 export type ExpenseType =
   | "konsolosluk"
@@ -18,6 +19,10 @@ export interface ExpenseDraft {
   amount: string;
   currency: ExpenseCurrency;
   note?: string;
+  /** Kasa secimi: hangi kasadan dusulecek (cash_accounts.id) */
+  cash_account_id?: string | null;
+  /** "cash" veya "bank" — kullanicinin sectigi kasanin tipi */
+  method?: "cash" | "bank";
 }
 
 interface ExpenseTypeMeta {
@@ -92,6 +97,36 @@ interface ExpensesPanelProps {
 export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPanelProps) {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([]);
+  const [balances, setBalances] = useState<Map<string, number>>(new Map());
+
+  // Kasalari yukle
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const [accRes, txRes] = await Promise.all([
+          supabase.from("cash_accounts").select("*").eq("is_active", true),
+          supabase.from("cash_transactions").select("account_id, direction, amount"),
+        ]);
+        if (cancelled) return;
+        const accs = (accRes.data as CashAccount[]) || [];
+        setCashAccounts(accs);
+        const m = new Map<string, number>();
+        for (const a of accs) m.set(a.id, 0);
+        for (const t of (txRes.data || [])) {
+          const cur = m.get(t.account_id as string) || 0;
+          const amt = Number(t.amount) || 0;
+          m.set(t.account_id as string, cur + (t.direction === "in" ? amt : -amt));
+        }
+        setBalances(m);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!fileId || loaded) return;
@@ -102,7 +137,7 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
         const supabase = createClient();
         const { data, error } = await supabase
           .from("visa_file_expenses")
-          .select("id, expense_type, amount, currency, note")
+          .select("id, expense_type, amount, currency, note, cash_account_id, method")
           .eq("file_id", fileId)
           .order("created_at", { ascending: true });
         if (!cancelled) {
@@ -114,6 +149,8 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
                 amount: String(r.amount ?? ""),
                 currency: (r.currency as ExpenseCurrency) || "TL",
                 note: (r.note as string | null) || "",
+                cash_account_id: (r.cash_account_id as string | null) || null,
+                method: (r.method as "cash" | "bank" | null) || undefined,
               }))
             );
           }
@@ -132,15 +169,34 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
   }, [fileId]);
 
   const addExpense = (type: ExpenseType) => {
+    // Default: TL nakit kasasi
+    const defaultAcc = cashAccounts.find((a) => a.kind === "cash" && a.currency === "TL");
     onChange([
       ...drafts,
-      { expense_type: type, amount: "", currency: "TL", note: "" },
+      {
+        expense_type: type,
+        amount: "",
+        currency: "TL",
+        note: "",
+        cash_account_id: defaultAcc?.id || null,
+        method: "cash",
+      },
     ]);
   };
 
   const updateAt = (idx: number, patch: Partial<ExpenseDraft>) => {
     const next = [...drafts];
     next[idx] = { ...next[idx], ...patch };
+    // Currency veya method degisirse, kasa secimini guncelle
+    if (patch.currency !== undefined || patch.method !== undefined) {
+      const cur = patch.currency || next[idx].currency;
+      const meth = patch.method || next[idx].method || "cash";
+      const matching = cashAccounts.filter((a) => a.is_active && a.currency === cur && a.kind === meth);
+      const stillValid = next[idx].cash_account_id && matching.some((m) => m.id === next[idx].cash_account_id);
+      if (!stillValid) {
+        next[idx].cash_account_id = matching[0]?.id || null;
+      }
+    }
     onChange(next);
   };
 
@@ -209,6 +265,12 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
         <div className="space-y-2.5">
           {drafts.map((d, idx) => {
             const meta = EXPENSE_TYPES.find((m) => m.key === d.expense_type) || EXPENSE_TYPES[0];
+            const meth = d.method || "cash";
+            const filteredAccs = cashAccounts.filter((a) => a.is_active && a.currency === d.currency && a.kind === meth);
+            const selectedAcc = cashAccounts.find((a) => a.id === d.cash_account_id);
+            const accBalance = selectedAcc ? (balances.get(selectedAcc.id) || 0) : 0;
+            const amt = parseFloat(d.amount || "0");
+            const insufficient = amt > 0 && selectedAcc && amt > accBalance;
             return (
               <div
                 key={idx}
@@ -240,6 +302,7 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
                     placeholder="0"
                     value={d.amount}
                     onChange={(e) => updateAt(idx, { amount: e.target.value })}
+                    onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                     className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
                   />
                   <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden">
@@ -259,6 +322,63 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
                     ))}
                   </div>
                 </div>
+
+                {/* KASA SECIMI: Kasa tipi + Hangi kasa */}
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-2">
+                  {/* Tip toggle: Nakit / Banka */}
+                  <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden self-start">
+                    {(["cash", "bank"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => updateAt(idx, { method: m })}
+                        className={`px-3 py-2 text-[11.5px] font-bold transition-all ${
+                          meth === m
+                            ? m === "cash"
+                              ? "bg-emerald-600 text-white"
+                              : "bg-violet-600 text-white"
+                            : "bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        {m === "cash" ? "Nakit Kasa" : "Banka Hesabı"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Kasa secici dropdown */}
+                  <select
+                    value={d.cash_account_id || ""}
+                    onChange={(e) => updateAt(idx, { cash_account_id: e.target.value || null })}
+                    className={`px-3 py-2 border rounded-lg text-[12.5px] font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400 ${
+                      filteredAccs.length === 0 ? "border-amber-300 bg-amber-50 text-amber-800" : "border-slate-200 text-slate-800"
+                    }`}
+                  >
+                    {filteredAccs.length === 0 ? (
+                      <option value="">— {d.currency} {meth === "bank" ? "banka hesabı" : "nakit kasası"} yok —</option>
+                    ) : (
+                      <>
+                        <option value="">— Kasa seçin —</option>
+                        {filteredAccs.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name} · Bakiye: {Math.round(balances.get(a.id) || 0).toLocaleString("tr-TR")} {SYM[a.currency as ExpenseCurrency]}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* Bakiye uyarisi */}
+                {meth === "bank" && filteredAccs.length === 0 && (
+                  <div className="mt-2 px-3 py-2 rounded-lg bg-amber-50 ring-1 ring-amber-200 text-amber-800 text-[11px] font-semibold">
+                    {d.currency} para biriminde aktif banka hesabı yok. <a className="underline font-bold" href="/admin/banka-hesaplari" target="_blank" rel="noreferrer">Banka Hesapları</a> sayfasından ekleyin.
+                  </div>
+                )}
+                {selectedAcc && insufficient && (
+                  <div className="mt-2 px-3 py-2 rounded-lg bg-rose-50 ring-1 ring-rose-200 text-rose-800 text-[11px] font-semibold">
+                    ⚠ Yetersiz bakiye! Kasada {Math.round(accBalance).toLocaleString("tr-TR")} {SYM[d.currency]} var, {Math.round(amt).toLocaleString("tr-TR")} {SYM[d.currency]} düşülemez.
+                  </div>
+                )}
 
                 <input
                   type="text"

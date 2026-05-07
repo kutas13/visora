@@ -38,6 +38,40 @@ export interface BankAccount {
   updated_at: string;
 }
 
+// ============= KASA / CÜZDAN =============
+export type CashAccountKind = "cash" | "bank";
+export type CashTransactionDirection = "in" | "out";
+export type CashTransactionSource = "manual" | "payment" | "file_expense" | "transfer";
+
+export interface CashAccount {
+  id: string;
+  organization_id: string;
+  kind: CashAccountKind;
+  currency: ParaBirimi;
+  name: string;
+  bank_account_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashTransaction {
+  id: string;
+  organization_id: string;
+  account_id: string;
+  direction: CashTransactionDirection;
+  source: CashTransactionSource;
+  amount: number;
+  currency: ParaBirimi;
+  description: string | null;
+  related_payment_id: string | null;
+  related_file_expense_id: string | null;
+  transfer_pair_id: string | null;
+  transfer_rate: number | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 // Cari tipi
 export type CariTipi = "kullanici_cari" | "firma_cari";
 

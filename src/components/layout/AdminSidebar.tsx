@@ -54,7 +54,8 @@ const menuGroups: { title: string; items: Item[] }[] = [
   {
     title: "Finans",
     items: [
-      { href: "/admin/kasa", label: "Kasa", icon: <Icon d="M3 10h18M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zM12 14v2m-3-2h6" /> },
+      { href: "/admin/kasa", label: "Kasa", icon: <Icon d="M21 12V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2v-1M16 12h5M18 9l3 3-3 3" /> },
+      { href: "/admin/ciro", label: "Ciro İşlemleri", icon: <Icon d="M3 10h18M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zM12 14v2m-3-2h6" /> },
       { href: "/admin/banka-hesaplari", label: "Banka Hesapları", icon: <Icon d="M4 10h16M4 6l8-3 8 3M5 10v8m4-8v8m6-8v8m4-8v8M3 21h18" /> },
       { href: "/admin/cari-hesap", label: "Cari Hesap", icon: <Icon d="M3 10h18M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" /> },
       { href: "/admin/payments", label: "Ödemeler", icon: <Icon d="M3 7h18M3 12h18M3 17h12" /> },

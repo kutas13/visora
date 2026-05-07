@@ -665,13 +665,15 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                 tl_karsilik: tl,
                 exchange_rate: e.currency === "TL" ? 1 : (rate || null),
                 note: e.note?.trim() || null,
+                cash_account_id: e.cash_account_id || null,
+                method: e.method || null,
                 created_by: user.id,
               };
             });
           if (validExpenses.length > 0) {
             const { error: expIns } = await supabase.from("visa_file_expenses").insert(validExpenses);
-            // Schema cache eski olabilir; tl_karsilik/exchange_rate olmadan tekrar dene
-            if (expIns && /tl_karsilik|exchange_rate|schema cache|Could not find/i.test(expIns.message || "")) {
+            // Schema cache eski olabilir; opsiyonel kolonlar olmadan tekrar dene
+            if (expIns && /tl_karsilik|exchange_rate|cash_account_id|method|schema cache|Could not find/i.test(expIns.message || "")) {
               const minimal = validExpenses.map((e) => ({
                 file_id: e.file_id,
                 expense_type: e.expense_type,
@@ -907,12 +909,14 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                   tl_karsilik: tl,
                   exchange_rate: e.currency === "TL" ? 1 : (rate || null),
                   note: e.note?.trim() || null,
+                  cash_account_id: e.cash_account_id || null,
+                  method: e.method || null,
                   created_by: user.id,
                 };
               });
             if (validExpenses.length > 0) {
               const { error: expIns } = await supabase.from("visa_file_expenses").insert(validExpenses);
-              if (expIns && /tl_karsilik|exchange_rate|schema cache|Could not find/i.test(expIns.message || "")) {
+              if (expIns && /tl_karsilik|exchange_rate|cash_account_id|method|schema cache|Could not find/i.test(expIns.message || "")) {
                 const minimal = validExpenses.map((e) => ({
                   file_id: e.file_id,
                   expense_type: e.expense_type,
