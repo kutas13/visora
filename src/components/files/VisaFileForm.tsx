@@ -84,6 +84,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   // Ödeme bilgileri
   const [ucret, setUcret] = useState(file?.ucret?.toString() || "");
   const [ucretCurrency, setUcretCurrency] = useState<ParaBirimi>(file?.ucret_currency || "TL");
+  // Kullanici ucret birimini elle degistirdiyse, ulke degisimi otomatik
+  // overwrite etmesin. Edit modunda zaten dokunulmaz.
+  const userTouchedUcretCurrencyRef = useRef<boolean>(Boolean(file));
   const [showDavetiyeUcreti, setShowDavetiyeUcreti] = useState((Number(file?.davetiye_ucreti) || 0) > 0);
   const [davetiyeUcreti, setDavetiyeUcreti] = useState(file?.davetiye_ucreti ? String(file.davetiye_ucreti) : "");
   const [davetiyeUcretiCurrency, setDavetiyeUcretiCurrency] = useState<ParaBirimi>(file?.davetiye_ucreti_currency || "USD");
@@ -185,12 +188,17 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
 
   useEffect(() => {
     if (!activeCountry) return;
+    // Edit modunda asla overwrite etme (kullanicinin sectigi para birimi korunur).
+    if (file) return;
+    // Kullanici ucret birimini manuel degistirdiyse, ulke degisimi otomatik
+    // EUR/USD'ye dondurmesin.
+    if (userTouchedUcretCurrencyRef.current) return;
     if (isUsdDefaultCountry(activeCountry)) {
       setUcretCurrency("USD");
     } else if (isSchengenCountry(activeCountry)) {
       setUcretCurrency("EUR");
     }
-  }, [activeCountry]);
+  }, [activeCountry, file]);
 
   useEffect(() => {
     if (!isChinaSelected) {
@@ -1366,7 +1374,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           <div className="col-span-2">
             <Input label="Ücret" type="number" placeholder="0" value={ucret} onChange={(e) => setUcret(e.target.value)} required />
           </div>
-          <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => setUcretCurrency(e.target.value as ParaBirimi)} />
+          <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => { userTouchedUcretCurrencyRef.current = true; setUcretCurrency(e.target.value as ParaBirimi); }} />
         </div>
 
         {/* Pesin TL/USD/EUR butonlari asagidaki "tahsilat" bolumunde zaten
