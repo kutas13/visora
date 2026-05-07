@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Badge, Modal, Input } from "@/components/ui";
-import VisaFileForm from "@/components/files/VisaFileForm";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Group } from "@/lib/supabase/types";
 
@@ -27,6 +27,7 @@ function getStatusLabel(file: VisaFile) {
 }
 
 export default function GroupsPage() {
+  const router = useRouter();
   const [groups, setGroups] = useState<GroupWithStats[]>([]);
   const [myFiles, setMyFiles] = useState<VisaFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,11 +35,9 @@ export default function GroupsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAddFileModal, setShowAddFileModal] = useState(false);
-  const [showEditFileModal, setShowEditFileModal] = useState(false);
   const [grupAdi, setGrupAdi] = useState("");
   const [grupNot, setGrupNot] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<GroupWithStats | null>(null);
-  const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = async () => {
@@ -193,7 +192,7 @@ export default function GroupsPage() {
                       </div>
                       <Badge variant={file.odeme_durumu === "odendi" ? "success" : "error"} size="sm">{file.odeme_durumu === "odendi" ? "Ödendi" : "Bekliyor"}</Badge>
                       <div className="flex gap-1">
-                        <button onClick={() => { setEditingFile(file); setShowEditFileModal(true); }} className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors">
+                        <button onClick={() => router.push(`/app/files/${file.id}/edit`)} className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                         <button onClick={() => handleRemoveFile(file.id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
@@ -233,9 +232,6 @@ export default function GroupsPage() {
       </Modal>
 
       {/* Düzenle */}
-      <Modal isOpen={showEditFileModal} onClose={() => { setShowEditFileModal(false); setEditingFile(null); }} title="Düzenle" size="xl">
-        <VisaFileForm file={editingFile} onSuccess={() => { setShowEditFileModal(false); setEditingFile(null); loadData(); }} onCancel={() => { setShowEditFileModal(false); setEditingFile(null); }} />
-      </Modal>
     </div>
   );
 }

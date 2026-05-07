@@ -1,22 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Badge, Modal, Select, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { notifyFileTransferred } from "@/lib/notifications";
 import FileDetailModal from "@/components/files/FileDetailModal";
 import FileActions from "@/components/files/FileActions";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
-
-const VisaFileForm = dynamic(() => import("@/components/files/VisaFileForm"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex justify-center py-12">
-      <div className="w-8 h-8 border-[3px] border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-    </div>
-  ),
-});
 
 type VisaFileWithProfile = VisaFile & { profiles: Pick<Profile, "name"> | null };
 
@@ -52,6 +43,7 @@ function StaffPill({ name }: { name: string }) {
 type ViewMode = "active" | "islemden_cikti";
 
 export default function AdminFilesPage() {
+  const router = useRouter();
   const [files, setFiles] = useState<VisaFileWithProfile[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,8 +59,6 @@ export default function AdminFilesPage() {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("active");
   const [islemdenCiktiCount, setIslemdenCiktiCount] = useState<number>(0);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [fileToEdit, setFileToEdit] = useState<VisaFileWithProfile | null>(null);
 
   const loadData = async (mode: ViewMode = viewMode) => {
     setLoading(true);
@@ -404,7 +394,7 @@ export default function AdminFilesPage() {
                           Görüntüle
                         </button>
                         <button
-                          onClick={() => { setFileToEdit(file); setShowEditModal(true); }}
+                          onClick={() => router.push(`/admin/files/${file.id}/edit`)}
                           className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                           title="Düzenle"
                         >
@@ -472,26 +462,6 @@ export default function AdminFilesPage() {
         scrollToHistoryOnOpen
         title="Dosya ve işlem geçmişi"
       />
-
-      {/* Düzenleme Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => { setShowEditModal(false); setFileToEdit(null); }}
-        title="Dosyayı Düzenle"
-        size="xl"
-      >
-        {fileToEdit && (
-          <VisaFileForm
-            file={fileToEdit}
-            onSuccess={() => {
-              setShowEditModal(false);
-              setFileToEdit(null);
-              loadData(viewMode);
-            }}
-            onCancel={() => { setShowEditModal(false); setFileToEdit(null); }}
-          />
-        )}
-      </Modal>
 
       {/* Silme Modal */}
       <Modal isOpen={showDeleteModal} onClose={() => { setShowDeleteModal(false); setFileToDelete(null); }} title="Dosyayı Sil" size="sm">

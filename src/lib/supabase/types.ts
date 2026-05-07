@@ -118,6 +118,8 @@ export interface VisaFile {
   prim_tarihi?: string | null;
   takip_no: string | null;
   dogum_tarihi: string | null;
+  pasaport_image_url?: string | null;
+  pasaport_son_kullanma?: string | null;
   created_at: string;
   updated_at: string;
 }

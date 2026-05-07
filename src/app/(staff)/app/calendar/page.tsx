@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Modal } from "@/components/ui";
-import VisaFileForm from "@/components/files/VisaFileForm";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
 
@@ -38,12 +37,11 @@ function monthDates(d: Date) {
 const DAY_NAMES = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
 
 export default function CalendarPage() {
+  const router = useRouter();
   const [appointments, setAppointments] = useState<VisaFileWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"day"|"week"|"month">("week");
   const [sel, setSel] = useState(new Date());
-  const [editFile, setEditFile] = useState<VisaFile|null>(null);
-  const [showEdit, setShowEdit] = useState(false);
   const [uid, setUid] = useState<string|null>(null);
 
   const load = async () => {
@@ -95,7 +93,7 @@ export default function CalendarPage() {
 
   const onEdit = (f: VisaFile) => {
     if (f.assigned_user_id !== uid) { alert("Bu dosya size ait değil."); return; }
-    setEditFile(f); setShowEdit(true);
+    router.push(`/app/files/${f.id}/edit`);
   };
 
   const nav = (d: number) => {
@@ -296,9 +294,6 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="Dosyayı Düzenle" size="xl">
-        <VisaFileForm file={editFile} onSuccess={() => { setShowEdit(false); setEditFile(null); load(); }} onCancel={() => setShowEdit(false)} />
-      </Modal>
     </div>
   );
 }

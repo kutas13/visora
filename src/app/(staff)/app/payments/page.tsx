@@ -104,13 +104,14 @@ export default function PaymentsPage() {
     setUserName(profileName);
     setUserEmail(profile?.email || user.email || "");
 
+    // Tum cari (firma_cari dahil) odenmemis dosyalar Odenmemisler tabinda
+    // listelenir; tahsilat alindiginda Tahsilatlarim tabina gecer.
     const { data: unpaid } = await supabase
       .from("visa_files")
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("odeme_plani", "cari")
       .eq("odeme_durumu", "odenmedi")
-      .neq("cari_tipi", "firma_cari")
       .order("created_at", { ascending: false });
 
     setUnpaidFiles(unpaid || []);
@@ -122,12 +123,13 @@ export default function PaymentsPage() {
       .order("created_at", { ascending: false })
       .limit(50);
 
-    // Firma cari dosyaları da tahsilat olarak ekle
+    // Sadece ODENMIS firma_cari dosyalar Tahsilatlarim tabinda fatura olarak gosterilir.
     const { data: firmaCariFiles } = await supabase
       .from("visa_files")
       .select("*")
       .eq("assigned_user_id", user.id)
       .eq("cari_tipi", "firma_cari")
+      .eq("odeme_durumu", "odendi")
       .order("created_at", { ascending: false })
       .limit(25);
 
@@ -844,7 +846,14 @@ export default function PaymentsPage() {
                       )}
                       <CustomerAvatar name={file.musteri_ad} size="md" status={resolveAvatarStatus(file)} />
                       <div className="min-w-0">
-                        <p className="font-semibold text-slate-800 text-sm truncate">{file.musteri_ad}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-800 text-sm truncate">{file.musteri_ad}</p>
+                          {file.cari_tipi === "firma_cari" && (
+                            <span className="text-[9.5px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider bg-fuchsia-50 text-fuchsia-700 ring-1 ring-fuchsia-200 flex-shrink-0">
+                              Firma Cari
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-400">{file.hedef_ulke} · {file.pasaport_no}</p>
                       </div>
                     </div>

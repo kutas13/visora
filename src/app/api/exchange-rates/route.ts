@@ -43,7 +43,7 @@ export async function GET() {
     return NextResponse.json({ 
       rates, 
       cached: false, 
-      lastUpdate: new Date().toLocaleString("tr-TR")
+      lastUpdate: new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })
     });
 
   } catch (error) {
@@ -56,7 +56,7 @@ export async function GET() {
       rates: fallbackRates, 
       error: 'TCMB API unavailable, using fallback rates',
       cached: false,
-      lastUpdate: new Date().toLocaleString("tr-TR")
+      lastUpdate: new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })
     });
   }
 }

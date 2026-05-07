@@ -28,6 +28,9 @@ function posOdemeCumlesi(tlTutar: number, dosyaTutar: unknown, dosyaCurrency: un
   return `${tlStr} TL POS üzerinden tahsil edilmiştir.`;
 }
 
+// Spyke Turizm gibi kara listeli adresler/orgs icin mail engellemesi.
+const BLOCKED_SENDER_PATTERNS: RegExp[] = [/spyke/i, /spyketurizm/i];
+
 export async function POST(request: NextRequest) {
   if (!isLegacyEmailEnabled()) {
     return NextResponse.json({ ok: true, disabled: true, message: LEGACY_EMAIL_DISABLED_MESSAGE });
@@ -48,6 +51,17 @@ export async function POST(request: NextRequest) {
 
     if (!senderEmail || !musteriAd || !tutar || !currency) {
       return NextResponse.json({ error: "Eksik alanlar" }, { status: 400 });
+    }
+
+    // KARA LISTE: Spyke Turizm gibi engellenmis sender'lardan gelen mailler
+    // hicbir sekilde gonderilmez. (senderName/musteriAd da kontrol edilir.)
+    const guard = `${senderEmail || ""} ${senderName || ""} ${companyInfo?.firmaAdi || ""}`;
+    if (BLOCKED_SENDER_PATTERNS.some((re) => re.test(guard))) {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "Sender/firma kara listede; mail atlandi.",
+      });
     }
 
     const envKey = SMTP_PASSWORD_MAP[senderEmail.toLowerCase()];

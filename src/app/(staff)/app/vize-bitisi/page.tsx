@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Card, Button, Badge, Modal } from "@/components/ui";
-import VisaFileForm from "@/components/files/VisaFileForm";
+import { useRouter } from "next/navigation";
+import { Card, Button, Badge } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile } from "@/lib/supabase/types";
 
@@ -34,11 +34,10 @@ function isChinaCountry(ulke: string | null | undefined): boolean {
 }
 
 export default function VizeBitisiPage() {
+  const router = useRouter();
   const [files, setFiles] = useState<VisaFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "30" | "60">("all");
-  const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   const loadData = async () => {
     const supabase = createClient();
@@ -86,8 +85,7 @@ export default function VizeBitisiPage() {
   }, [files]);
 
   const handleEditFile = (file: VisaFile) => {
-    setEditingFile(file);
-    setShowEditModal(true);
+    router.push(`/app/files/${file.id}/edit`);
   };
 
   if (loading) {
@@ -325,10 +323,6 @@ export default function VizeBitisiPage() {
         </div>
       </Card>
 
-      {/* Edit Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Dosyayı Düzenle" size="xl">
-        <VisaFileForm file={editingFile} onSuccess={() => { setShowEditModal(false); setEditingFile(null); loadData(); }} onCancel={() => setShowEditModal(false)} />
-      </Modal>
     </div>
   );
 }

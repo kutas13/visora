@@ -23,7 +23,16 @@ type Customer = {
   lastUcret: number;
   lastUcretCurrency: ParaBirimi;
   lastUpdatedAt: string | null;
+  pasaportSonKullanma: string | null;
 };
+
+function passportDaysLeft(d: string | null) {
+  if (!d) return null;
+  const exp = new Date(d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
 
 function norm(s: string) {
   return s.toLowerCase()
@@ -62,6 +71,13 @@ function CustomerFlipCard({
   const isReturning = c.fileCount > 1;
   const detailHref = `/app/musteriler/${encodeURIComponent(c.pasaport_no)}`;
 
+  const passportDays = passportDaysLeft(c.pasaportSonKullanma);
+  const passportWarn =
+    passportDays !== null && passportDays >= 0 && passportDays <= 365
+      ? { critical: passportDays <= 90, days: passportDays }
+      : null;
+  const passportExpired = passportDays !== null && passportDays < 0;
+
   const successBarClass =
     c.successRate >= 70 ? "bg-emerald-500" :
     c.successRate >= 40 ? "bg-navy-500" :
@@ -98,6 +114,27 @@ function CustomerFlipCard({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               Tekrarlayan
+            </span>
+          )}
+          {(passportWarn || passportExpired) && (
+            <span
+              className={`absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                passportExpired
+                  ? "border-rose-300 bg-rose-50 text-rose-700"
+                  : passportWarn?.critical
+                    ? "border-rose-300 bg-rose-50 text-rose-700 animate-pulse"
+                    : "border-amber-300 bg-amber-50 text-amber-700"
+              }`}
+              title={
+                passportExpired
+                  ? "Pasaport süresi dolmuş"
+                  : `Pasaportun bitmesine ${passportWarn?.days} gün kaldı`
+              }
+            >
+              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+              {passportExpired ? "Süresi Doldu" : "Pasaport"}
             </span>
           )}
           <div className="flex items-center gap-3 pr-20">
@@ -150,6 +187,24 @@ function CustomerFlipCard({
               <div className="flex items-center justify-between gap-2">
                 <span>Telefon</span>
                 <span className="truncate font-mono text-[10px] font-semibold text-navy-700">{c.telefon}</span>
+              </div>
+            )}
+            {c.pasaportSonKullanma && (
+              <div className="flex items-center justify-between gap-2">
+                <span>Pasaport bitiş</span>
+                <span
+                  className={`font-semibold ${
+                    passportExpired
+                      ? "text-rose-700"
+                      : passportWarn?.critical
+                        ? "text-rose-700"
+                        : passportWarn
+                          ? "text-amber-700"
+                          : "text-navy-700"
+                  }`}
+                >
+                  {formatDate(c.pasaportSonKullanma)}
+                </span>
               </div>
             )}
           </div>
@@ -286,8 +341,15 @@ export default function MusterilerPage() {
           lastUcret: 0,
           lastUcretCurrency: "TL",
           lastUpdatedAt: null,
+          pasaportSonKullanma: null,
         };
         map.set(key, c);
+      }
+      if ((f as any).pasaport_son_kullanma) {
+        const incoming = (f as any).pasaport_son_kullanma as string;
+        if (!c.pasaportSonKullanma || incoming > c.pasaportSonKullanma) {
+          c.pasaportSonKullanma = incoming;
+        }
       }
       c.fileCount += 1;
       if (f.sonuc === "vize_onay") c.approved += 1;

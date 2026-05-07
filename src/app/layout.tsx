@@ -120,6 +120,22 @@ export default function RootLayout({
             <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} crossOrigin="anonymous" />
           </>
         ) : null}
+        {/* Number input alanlarında mouse wheel ile değer değişmesini engelle.
+            Sadece klavye ile artıp azaltılabilsin. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                document.addEventListener('wheel', function(e){
+                  var el = document.activeElement;
+                  if (el && el.tagName === 'INPUT' && el.type === 'number') {
+                    el.blur();
+                  }
+                }, { passive: true });
+              })();
+            `,
+          }}
+        />
         {/* JSON-LD: Organization yapısal verisi — Google Rich Results için */}
         <script
           type="application/ld+json"

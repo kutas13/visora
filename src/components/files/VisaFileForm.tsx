@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadBase64ToStorage } from "@/lib/supabase/storage";
 import { notifyFileCreated, notifyFileUpdated } from "@/lib/notifications";
 import { notifyEmail } from "@/lib/notifyEmail";
+import PassportOcrPanel, { type PassportOcrResult } from "@/components/files/PassportOcrPanel";
+import ExpensesPanel, { type ExpenseDraft } from "@/components/files/ExpensesPanel";
 import type { VisaFile, IslemTipi, EvrakDurumu, ParaBirimi, OdemePlani, HesapSahibi, FaturaTipi, Company, BankAccount } from "@/lib/supabase/types";
 
 type UIPaymentPlan = "pesin" | "cari" | "firma_cari";
@@ -53,7 +55,18 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   const isEdit = !!file;
   
   const [musteriAd, setMusteriAd] = useState(file?.musteri_ad || "");
+  const [musteriTelefon, setMusteriTelefon] = useState(file?.musteri_telefon || "");
   const [pasaportNo, setPasaportNo] = useState(file?.pasaport_no || "");
+  // OCR / pasaport görseli
+  const [pasaportImageUrl, setPasaportImageUrl] = useState<string | null>(
+    (file as any)?.pasaport_image_url || null
+  );
+  const [pasaportSonKullanma, setPasaportSonKullanma] = useState<string>(
+    (file as any)?.pasaport_son_kullanma || ""
+  );
+  const [dogumTarihi, setDogumTarihi] = useState<string>(
+    (file as any)?.dogum_tarihi || ""
+  );
   const [hedefUlke, setHedefUlke] = useState(file?.hedef_ulke || "");
   const [ulkeManuelMi, setUlkeManuelMi] = useState(file?.ulke_manuel_mi || false);
   const [manuelUlke, setManuelUlke] = useState(file?.ulke_manuel_mi ? file.hedef_ulke : "");
@@ -132,6 +145,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   };
 
   const [eskiPasaport, setEskiPasaport] = useState(file?.eski_pasaport || false);
+
+  // Giderler (her dosyaya bagli coklu kalem)
+  const [expenses, setExpenses] = useState<ExpenseDraft[]>([]);
 
   const [dekontFile, setDekontFile] = useState<File | null>(null);
   const [dekontPreview, setDekontPreview] = useState<string | null>(null);
@@ -373,6 +389,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
     setError(null);
 
     if (!musteriAd.trim()) { setError("Müşteri adı zorunludur"); return; }
+    if (!musteriTelefon.trim()) { setError("Telefon numarası zorunludur"); return; }
     if (!pasaportNo.trim()) { setError("Pasaport numarası zorunludur"); return; }
     if (ulkeManuelMi && !manuelUlke.trim()) { setError("Hedef ülke zorunludur"); return; }
     if (islemTipi === "randevulu" && !randevuTarihi) { setError("Randevulu işlem için randevu tarihi zorunludur"); return; }
@@ -451,7 +468,11 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
 
       const fileData = {
         musteri_ad: musteriAd.trim(),
+        musteri_telefon: musteriTelefon.trim() || null,
         pasaport_no: pasaportNo.trim(),
+        pasaport_image_url: pasaportImageUrl || null,
+        pasaport_son_kullanma: pasaportSonKullanma || null,
+        dogum_tarihi: dogumTarihi || null,
         hedef_ulke: finalUlke,
         ulke_manuel_mi: ulkeManuelMi,
         islem_tipi: islemTipi,
@@ -618,6 +639,45 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           file_id: file.id,
           actor_id: user.id,
         });
+
+        // Giderleri sync et (delete + insert pattern; en basit/saglam)
+        try {
+          await supabase.from("visa_file_expenses").delete().eq("file_id", file.id);
+          const validExpenses = expenses
+            .filter((e) => e.amount && parseFloat(e.amount) > 0)
+            .map((e) => {
+              const amt = parseFloat(e.amount);
+              const rate = e.currency === "TL" ? 1 : Number(exchangeRates[e.currency]) || 0;
+              const tl = rate > 0 ? Math.round(amt * rate * 100) / 100 : null;
+              return {
+                file_id: file.id,
+                expense_type: e.expense_type,
+                amount: amt,
+                currency: e.currency,
+                tl_karsilik: tl,
+                exchange_rate: e.currency === "TL" ? 1 : (rate || null),
+                note: e.note?.trim() || null,
+                created_by: user.id,
+              };
+            });
+          if (validExpenses.length > 0) {
+            const { error: expIns } = await supabase.from("visa_file_expenses").insert(validExpenses);
+            // Schema cache eski olabilir; tl_karsilik/exchange_rate olmadan tekrar dene
+            if (expIns && /tl_karsilik|exchange_rate|schema cache|Could not find/i.test(expIns.message || "")) {
+              const minimal = validExpenses.map((e) => ({
+                file_id: e.file_id,
+                expense_type: e.expense_type,
+                amount: e.amount,
+                currency: e.currency,
+                note: e.note,
+                created_by: e.created_by,
+              }));
+              await supabase.from("visa_file_expenses").insert(minimal);
+            }
+          }
+        } catch (expErr) {
+          console.error("Gider kaydedilemedi:", expErr);
+        }
 
         await notifyFileUpdated(file.id, musteriAd.trim(), user.id, userName, `${musteriAd} dosyası güncellendi${changedToFirmaCari ? " - firma cariye geçirildi" : ""}`);
       } else {
@@ -823,6 +883,43 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
             }
           }
 
+          // Giderleri kaydet (yeni dosyaya bagli)
+          try {
+            const validExpenses = expenses
+              .filter((e) => e.amount && parseFloat(e.amount) > 0)
+              .map((e) => {
+                const amt = parseFloat(e.amount);
+                const rate = e.currency === "TL" ? 1 : Number(exchangeRates[e.currency]) || 0;
+                const tl = rate > 0 ? Math.round(amt * rate * 100) / 100 : null;
+                return {
+                  file_id: newFile.id,
+                  expense_type: e.expense_type,
+                  amount: amt,
+                  currency: e.currency,
+                  tl_karsilik: tl,
+                  exchange_rate: e.currency === "TL" ? 1 : (rate || null),
+                  note: e.note?.trim() || null,
+                  created_by: user.id,
+                };
+              });
+            if (validExpenses.length > 0) {
+              const { error: expIns } = await supabase.from("visa_file_expenses").insert(validExpenses);
+              if (expIns && /tl_karsilik|exchange_rate|schema cache|Could not find/i.test(expIns.message || "")) {
+                const minimal = validExpenses.map((e) => ({
+                  file_id: e.file_id,
+                  expense_type: e.expense_type,
+                  amount: e.amount,
+                  currency: e.currency,
+                  note: e.note,
+                  created_by: e.created_by,
+                }));
+                await supabase.from("visa_file_expenses").insert(minimal);
+              }
+            }
+          } catch (expErr) {
+            console.error("Gider kaydedilemedi:", expErr);
+          }
+
           await notifyFileCreated(newFile.id, musteriAd.trim(), finalUlke, user.id, userName);
 
           // Modern Visora bildirim maili (banner + GM + Visora owner CC).
@@ -887,18 +984,21 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   // Her harf yazdıkça kademeli artar - 5 aşama x 20 puan = 100
   const formProgress = useMemo(() => {
     // Karakter başına 20 puana doğru kademeli: min(len/target, 1) * 20
-    const partial = (len: number, target: number) => Math.min(len / target, 1) * 20;
+    const partial = (len: number, target: number, weight: number) => Math.min(len / target, 1) * weight;
 
     let score = 0;
 
-    // 1) Müşteri adı (hedef: 10 karakter)
-    score += partial(musteriAd.trim().length, 10);
+    // 1) Müşteri adı (hedef: 10 karakter) — 10 puan
+    score += partial(musteriAd.trim().length, 10, 10);
 
-    // 2) Pasaport numarası (hedef: 8 karakter)
-    score += partial(pasaportNo.trim().length, 8);
+    // 2) Telefon (hedef: 10 karakter) — 10 puan
+    score += partial(musteriTelefon.trim().length, 10, 10);
 
-    // 3) Hedef ülke (hedef: 4 karakter - dropdown seçiminde anında tamamlanır)
-    score += partial(activeCountry.trim().length, 4);
+    // 3) Pasaport numarası (hedef: 8 karakter) — 20 puan
+    score += partial(pasaportNo.trim().length, 8, 20);
+
+    // 4) Hedef ülke (hedef: 4 karakter - dropdown seçiminde anında tamamlanır)
+    score += partial(activeCountry.trim().length, 4, 20);
 
     // 4) Ödeme: ücret (10 puan kademeli) + plan seçimi (10 puan)
     const ucretDigits = (ucret || "").replace(/\D/g, "").length;
@@ -927,6 +1027,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
     return Math.min(100, Math.round(score));
   }, [
     musteriAd,
+    musteriTelefon,
     pasaportNo,
     activeCountry,
     ucret,
@@ -954,6 +1055,19 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
         </div>
       )}
 
+      {/* Pasaport OCR Panel - en üstte; ad/pasaport/son kullanma otomatik dolar */}
+      <PassportOcrPanel
+        initialImageUrl={pasaportImageUrl}
+        onImageUploaded={(url) => setPasaportImageUrl(url)}
+        onOcrResult={(data: PassportOcrResult) => {
+          const fullName = [data.ad, data.soyad].filter(Boolean).join(" ").trim();
+          if (fullName && !musteriAd) setMusteriAd(fullName);
+          if (data.pasaport_no && !pasaportNo) setPasaportNo(data.pasaport_no);
+          if (data.son_kullanma) setPasaportSonKullanma(data.son_kullanma);
+          if (data.dogum_tarihi) setDogumTarihi(data.dogum_tarihi);
+        }}
+      />
+
       {/* Müşteri Bilgileri */}
       <fieldset className="space-y-3">
         <legend className="w-full">
@@ -963,13 +1077,36 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-bold text-navy-800">Müşteri Bilgileri</h3>
-              <p className="text-[11px] text-navy-500">Ad soyad ve pasaport numarası</p>
+              <p className="text-[11px] text-navy-500">Ad soyad, telefon, pasaport bilgileri</p>
             </div>
           </div>
         </legend>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Input label="Ad Soyad" value={musteriAd} onChange={(e) => setMusteriAd(e.target.value)} placeholder="Ahmet Yılmaz" required />
+          <Input label="Telefon" type="tel" value={musteriTelefon} onChange={(e) => setMusteriTelefon(e.target.value)} placeholder="0532 123 4567" required />
           <Input label="Pasaport No" value={pasaportNo} onChange={(e) => setPasaportNo(e.target.value)} placeholder="U12345678" required />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-navy-700 mb-1">Pasaport Son Kullanma</label>
+            <input
+              type="date"
+              value={pasaportSonKullanma}
+              onChange={(e) => setPasaportSonKullanma(e.target.value)}
+              className="w-full rounded-lg border border-navy-200 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+            />
+            <p className="mt-1 text-[10px] text-navy-400">OCR ile otomatik dolar; manuel düzenlenebilir.</p>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-navy-700 mb-1">Doğum Tarihi</label>
+            <input
+              type="date"
+              value={dogumTarihi}
+              onChange={(e) => setDogumTarihi(e.target.value)}
+              className="w-full rounded-lg border border-navy-200 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+            />
+            <p className="mt-1 text-[10px] text-navy-400">Opsiyonel.</p>
+          </div>
         </div>
         <label className="flex items-center gap-2 mt-2">
           <input type="checkbox" checked={eskiPasaport} onChange={(e) => setEskiPasaport(e.target.checked)} className="w-4 h-4 text-primary-600 bg-white border-gray-300 rounded focus:ring-primary-500" />
@@ -996,6 +1133,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                 const latest = pastFiles[0];
                 if (!latest) return;
                 if (!musteriAd) setMusteriAd(latest.musteri_ad);
+                if (!musteriTelefon && latest.musteri_telefon) setMusteriTelefon(latest.musteri_telefon);
                 const knownCountry = TARGET_COUNTRIES.find(c => c.value === latest.hedef_ulke);
                 if (knownCountry && !hedefUlke) {
                   setHedefUlke(latest.hedef_ulke);
@@ -1231,7 +1369,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           <Select label="Birim" options={PARA_BIRIMLERI} value={ucretCurrency} onChange={(e) => setUcretCurrency(e.target.value as ParaBirimi)} />
         </div>
 
-        {/* ANLIK DÖVİZLİ KARŞILIK (TCMB) */}
+        {/* ANLIK DÖVİZLİ KARŞILIK (TCMB) — Pesin'de tiklanabilir butonlar */}
         {ucret && parseFloat(ucret) > 0 && (
           (() => {
             const u = parseFloat(ucret) || 0;
@@ -1239,8 +1377,83 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
             const rUcret = r(ucretCurrency);
             if (rUcret <= 0) return null;
             const tlValue = ucretCurrency === "TL" ? u : Math.round(u * rUcret);
-            const usdValue = ucretCurrency === "USD" ? null : exchangeRates.USD > 0 ? (tlValue / exchangeRates.USD) : null;
-            const eurValue = ucretCurrency === "EUR" ? null : exchangeRates.EUR > 0 ? (tlValue / exchangeRates.EUR) : null;
+            const usdValue = ucretCurrency === "USD" ? u : (exchangeRates.USD > 0 ? Math.round((tlValue / exchangeRates.USD) * 100) / 100 : null);
+            const eurValue = ucretCurrency === "EUR" ? u : (exchangeRates.EUR > 0 ? Math.round((tlValue / exchangeRates.EUR) * 100) / 100 : null);
+            const isPesin = odemePlani === "pesin";
+
+            const btnTL = (active: boolean) =>
+              `group relative overflow-hidden rounded-lg border-2 px-3 py-2 text-left transition-all hover:shadow-md active:scale-[0.98] ${
+                active
+                  ? "border-emerald-500 bg-gradient-to-br from-emerald-100 to-emerald-50 shadow-sm"
+                  : "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white hover:border-emerald-400"
+              }`;
+            const btnUSD = (active: boolean) =>
+              `group relative overflow-hidden rounded-lg border-2 px-3 py-2 text-left transition-all hover:shadow-md active:scale-[0.98] ${
+                active
+                  ? "border-amber-500 bg-gradient-to-br from-amber-100 to-amber-50 shadow-sm"
+                  : "border-amber-200 bg-gradient-to-br from-amber-50 to-white hover:border-amber-400"
+              }`;
+            const btnEUR = (active: boolean) =>
+              `group relative overflow-hidden rounded-lg border-2 px-3 py-2 text-left transition-all hover:shadow-md active:scale-[0.98] ${
+                active
+                  ? "border-indigo-500 bg-gradient-to-br from-indigo-100 to-indigo-50 shadow-sm"
+                  : "border-indigo-200 bg-gradient-to-br from-indigo-50 to-white hover:border-indigo-400"
+              }`;
+
+            if (isPesin) {
+              return (
+                <div className="rounded-lg bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-200 px-3 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1.5">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                    Hangi para birimini aldın? (TCMB anlık kuru)
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      className={btnTL(ucretCurrency === "TL")}
+                      onClick={() => { setUcret(String(tlValue)); setUcretCurrency("TL"); }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-md bg-emerald-500 text-white text-[10px] font-bold shadow-sm">₺</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">TL Al</span>
+                      </div>
+                      <p className="text-sm font-black text-emerald-700 tabular-nums">{tlValue.toLocaleString("tr-TR")} ₺</p>
+                    </button>
+                    <button
+                      type="button"
+                      className={btnUSD(ucretCurrency === "USD")}
+                      disabled={usdValue == null}
+                      onClick={() => { if (usdValue == null) return; setUcret(String(usdValue)); setUcretCurrency("USD"); }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-md bg-amber-500 text-white text-[10px] font-bold shadow-sm">$</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">USD Al</span>
+                      </div>
+                      <p className="text-sm font-black text-amber-700 tabular-nums">
+                        {usdValue != null ? `${usdValue.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} $` : "—"}
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      className={btnEUR(ucretCurrency === "EUR")}
+                      disabled={eurValue == null}
+                      onClick={() => { if (eurValue == null) return; setUcret(String(eurValue)); setUcretCurrency("EUR"); }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-md bg-indigo-500 text-white text-[10px] font-bold shadow-sm">€</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">EUR Al</span>
+                      </div>
+                      <p className="text-sm font-black text-indigo-700 tabular-nums">
+                        {eurValue != null ? `${eurValue.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} €` : "—"}
+                      </p>
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-emerald-700/70 mt-2 italic">Butona basınca ücret ve döviz birimi otomatik değişir. Tahsil ettiğin para birimini seç.</p>
+                </div>
+              );
+            }
 
             return (
               <div className="rounded-lg bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border border-emerald-200 px-3 py-2.5">
@@ -1255,21 +1468,21 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white ring-1 ring-emerald-200 text-[12px] font-bold text-slate-800">
                       <span className="text-emerald-600">₺</span>
                       <span className="tabular-nums">{tlValue.toLocaleString("tr-TR")}</span>
-                      <span className="text-slate-400 font-medium text-[10px]">TL aldım</span>
+                      <span className="text-slate-400 font-medium text-[10px]">TL</span>
                     </span>
                   )}
-                  {ucretCurrency !== "USD" && usdValue && (
+                  {ucretCurrency !== "USD" && usdValue != null && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white ring-1 ring-emerald-200 text-[12px] font-bold text-slate-800">
                       <span className="text-emerald-600">$</span>
                       <span className="tabular-nums">{usdValue.toLocaleString("tr-TR", { maximumFractionDigits: 0 })}</span>
-                      <span className="text-slate-400 font-medium text-[10px]">USD aldım</span>
+                      <span className="text-slate-400 font-medium text-[10px]">USD</span>
                     </span>
                   )}
-                  {ucretCurrency !== "EUR" && eurValue && (
+                  {ucretCurrency !== "EUR" && eurValue != null && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white ring-1 ring-emerald-200 text-[12px] font-bold text-slate-800">
                       <span className="text-emerald-600">€</span>
                       <span className="tabular-nums">{eurValue.toLocaleString("tr-TR", { maximumFractionDigits: 0 })}</span>
-                      <span className="text-slate-400 font-medium text-[10px]">EUR aldım</span>
+                      <span className="text-slate-400 font-medium text-[10px]">EUR</span>
                     </span>
                   )}
                 </div>
@@ -1823,6 +2036,13 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           <textarea value={evrakNot} onChange={(e) => setEvrakNot(e.target.value)} placeholder="Eksik evrakları yazın..." rows={2} className="w-full px-3 py-2.5 border border-navy-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
         </div>
       )}
+
+      {/* Giderler */}
+      <ExpensesPanel
+        fileId={file?.id || null}
+        drafts={expenses}
+        onChange={setExpenses}
+      />
 
       <div className="flex flex-col sm:flex-row gap-3 pt-5 mt-2 border-t border-navy-100">
         <button

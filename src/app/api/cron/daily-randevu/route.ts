@@ -66,8 +66,8 @@ export async function POST(request: NextRequest) {
       messageText += `📊 Toplam: *${targetFiles.length}* randevu\n\n`;
       targetFiles.forEach((file: any, index: number) => {
         const randevuTarihi = new Date(file.randevu_tarihi);
-        const tarih = randevuTarihi.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" });
-        const saat = randevuTarihi.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+        const tarih = randevuTarihi.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit", timeZone: "Europe/Istanbul" });
+        const saat = randevuTarihi.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" });
         messageText += `*${index + 1}.* ${file.musteri_ad}\n`;
         messageText += `    📅 ${tarih} — ${saat}\n`;
         messageText += `    🌍 ${file.hedef_ulke} · ${file.profiles?.name || "?"}\n\n`;

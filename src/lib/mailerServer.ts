@@ -48,6 +48,14 @@ export async function resolveOrgContextFromUser(
   return resolveOrgContextById(orgId);
 }
 
+/**
+ * Mail kara listesinde olan organizasyon adlari (case-insensitive eslesme).
+ * Bu listedeki org'lara hicbir Visora otomasyon maili gonderilmez.
+ */
+const BLOCKED_ORGANIZATION_NAME_PATTERNS: RegExp[] = [
+  /spyke/i,
+];
+
 export async function resolveOrgContextById(
   organizationId: string
 ): Promise<OrgContext | null> {
@@ -61,6 +69,13 @@ export async function resolveOrgContextById(
     .maybeSingle();
 
   if (!org?.id) return null;
+
+  // Kara listedeki org'lar (Spyke Turizm vb.) icin mail context donulmez,
+  // boylece notifyEmail/welcome/inactivity gibi tum bildirimler atlanir.
+  const orgName = ((org as any).name as string) || "";
+  if (BLOCKED_ORGANIZATION_NAME_PATTERNS.some((re) => re.test(orgName))) {
+    return null;
+  }
 
   const { data: gmProfile } = await admin
     .from("profiles")
@@ -79,7 +94,7 @@ export async function resolveOrgContextById(
 
   return {
     organizationId: org.id as string,
-    organizationName: (org as any).name as string,
+    organizationName: orgName,
     gmName: (gmProfile as any).name || "Genel Müdür",
     gmEmail,
     gmUserId: gmProfile.id as string,

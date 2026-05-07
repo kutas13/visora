@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // İlk girişte şifre değiştirmeyi zorunlu kıl
+  await supabase.from("profiles").update({ must_change_password: true }).eq("id", authUser.user.id);
+
   const rows = DEFAULT_COMMISSION_ROWS.map((r) => ({
     organization_id: organizationId,
     country: r.country,

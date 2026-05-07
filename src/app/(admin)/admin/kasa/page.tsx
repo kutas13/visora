@@ -1,19 +1,51 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Fragment, useState, useEffect, useMemo } from "react";
 import { Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { PARA_BIRIMLERI } from "@/lib/constants";
 import type { Payment, VisaFile, Profile, Company } from "@/lib/supabase/types";
 
 type PaymentRow = Payment & {
-  visa_files: Pick<VisaFile, "musteri_ad" | "hedef_ulke" | "cari_tipi" | "company_id"> | null;
+  visa_files:
+    | (Pick<VisaFile,
+        "id" |
+        "musteri_ad" |
+        "hedef_ulke" |
+        "cari_tipi" |
+        "company_id" |
+        "ucret" |
+        "ucret_currency" |
+        "davetiye_ucreti" |
+        "davetiye_ucreti_currency"
+      >)
+    | null;
   profiles: Pick<Profile, "name"> | null;
 };
 
 type FirmaCariFile = VisaFile & {
   profiles: Pick<Profile, "name"> | null;
   company?: Pick<Company, "id" | "firma_adi"> | null;
+};
+
+type ExpenseRow = {
+  id: string;
+  file_id: string;
+  expense_type: string;
+  amount: number;
+  currency: string;
+  tl_karsilik: number | null;
+  exchange_rate: number | null;
+  note: string | null;
+  created_at: string;
+};
+
+const EXPENSE_TYPE_LABELS: Record<string, string> = {
+  konsolosluk: "Konsolosluk Ödemesi",
+  araci_kurum: "Aracı Kurum Ödemesi",
+  saglik_sigortasi: "Sağlık Sigortası",
+  araci_kurum_vip: "Aracı Kurum VIP Hizmeti",
+  randevu_vip: "Randevu VIP (Bot)",
 };
 
 type CategoryKey = "nakit" | "pesin" | "firma_cari" | "hesaba_eft";
@@ -28,6 +60,7 @@ interface CategoryData {
 
 interface DisplayRow {
   id: string;
+  file_id: string | null;
   musteri_ad: string;
   hedef_ulke: string;
   tutar: number;
@@ -39,7 +72,19 @@ interface DisplayRow {
   badge?: string;
   /** TL karşılığı tahsil edildiyse, gerçekte alınan TL tutar (gösterim notu için) */
   tl_karsilik?: number | null;
+  /** Dosyanin kendi vize ucreti (gosterim icin) */
+  vize_ucreti?: number;
+  vize_ucreti_currency?: string;
+  davetiye_ucreti?: number | null;
+  davetiye_ucreti_currency?: string | null;
 }
+
+const YONTEM_BADGES: Record<string, { label: string; bg: string; text: string }> = {
+  nakit: { label: "Nakit", bg: "bg-emerald-50", text: "text-emerald-700" },
+  hesaba: { label: "Hesaba", bg: "bg-amber-50", text: "text-amber-700" },
+  pos: { label: "POS", bg: "bg-violet-50", text: "text-violet-700" },
+  firma_cari: { label: "Firma Cari", bg: "bg-fuchsia-50", text: "text-fuchsia-700" },
+};
 
 const SYM: Record<string, string> = { TL: "₺", EUR: "€", USD: "$" };
 function sym(c: string) { return SYM[c] || c; }
@@ -53,8 +98,8 @@ function getFileTotal(file: VisaFile) {
 
 const CATEGORY_META: Record<CategoryKey, { label: string; description: string; bg: string; ring: string; iconBg: string; iconText: string; accent: string; icon: string }> = {
   nakit: {
-    label: "Nakit",
-    description: "Elden veya kasaya alınan nakit tahsilatlar",
+    label: "Nakit Tahsilat",
+    description: "Cari kapanışlarında nakit ile alınan sonradan tahsilatlar",
     bg: "from-green-50 via-emerald-50 to-white",
     ring: "ring-green-200",
     iconBg: "bg-gradient-to-br from-green-500 to-emerald-600",
@@ -64,7 +109,7 @@ const CATEGORY_META: Record<CategoryKey, { label: string; description: string; b
   },
   pesin: {
     label: "Peşin Satış",
-    description: "Peşin satılan dosyaların toplam cirosu",
+    description: "Peşin satılan dosyalar (yöntem: nakit / hesaba / POS)",
     bg: "from-sky-50 via-blue-50 to-white",
     ring: "ring-sky-200",
     iconBg: "bg-gradient-to-br from-sky-500 to-blue-600",
@@ -84,7 +129,7 @@ const CATEGORY_META: Record<CategoryKey, { label: string; description: string; b
   },
   hesaba_eft: {
     label: "Hesaba / EFT",
-    description: "Banka hesabına EFT/Havale ile gelen tutarlar",
+    description: "Cari kapanışlarında EFT/Havale ile gelen sonradan tahsilatlar",
     bg: "from-amber-50 via-orange-50 to-white",
     ring: "ring-amber-200",
     iconBg: "bg-gradient-to-br from-amber-500 to-orange-600",
@@ -98,19 +143,22 @@ export default function KasaPage() {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [firmaCariFiles, setFirmaCariFiles] = useState<FirmaCariFile[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>({ USD: 0, EUR: 0, TL: 1 });
   const [filterCurrency, setFilterCurrency] = useState("all");
   const [filterRange, setFilterRange] = useState<"today" | "week" | "month" | "all">("all");
-  const [activeCategory, setActiveCategory] = useState<CategoryKey>("nakit");
+  const [activeCategory, setActiveCategory] = useState<CategoryKey>("pesin");
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       const supabase = createClient();
-      const [paymentsRes, firmaRes] = await Promise.all([
+      const [paymentsRes, firmaRes, expensesRes, ratesRes] = await Promise.all([
         supabase
           .from("payments")
           .select(
-            "*, visa_files(musteri_ad, hedef_ulke, cari_tipi, company_id), profiles:created_by(name)"
+            "*, visa_files(id, musteri_ad, hedef_ulke, cari_tipi, company_id, ucret, ucret_currency, davetiye_ucreti, davetiye_ucreti_currency), profiles:created_by(name)"
           )
           .order("created_at", { ascending: false }),
         supabase
@@ -118,13 +166,75 @@ export default function KasaPage() {
           .select("*, profiles:assigned_user_id(name)")
           .eq("cari_tipi", "firma_cari")
           .order("created_at", { ascending: false }),
+        supabase
+          .from("visa_file_expenses")
+          .select("id, file_id, expense_type, amount, currency, tl_karsilik, exchange_rate, note, created_at"),
+        fetch("/api/exchange-rates").then((r) => r.json()).catch(() => ({ rates: null })),
       ]);
       setPayments((paymentsRes.data as PaymentRow[]) || []);
       setFirmaCariFiles((firmaRes.data as FirmaCariFile[]) || []);
+      setExpenses((expensesRes.data as ExpenseRow[]) || []);
+      if (ratesRes && ratesRes.rates) {
+        setExchangeRates({ ...{ USD: 0, EUR: 0, TL: 1 }, ...(ratesRes.rates as Record<string, number>) });
+      }
       setLoading(false);
     }
     load();
   }, []);
+
+  // Dosya bazli toplam TL gider haritasi
+  const expenseByFileTl = useMemo(() => {
+    const map = new Map<string, number>();
+    expenses.forEach((e) => {
+      // Onceki kayitlarda tl_karsilik bos olabilir; o anki kurla geriye donuk hesapla
+      let tl = 0;
+      if (typeof e.tl_karsilik === "number" && e.tl_karsilik > 0) {
+        tl = e.tl_karsilik;
+      } else {
+        const amt = Number(e.amount) || 0;
+        if (e.currency === "TL") tl = amt;
+        else {
+          const r = Number(exchangeRates[e.currency]) || 0;
+          tl = r > 0 ? amt * r : 0;
+        }
+      }
+      const prev = map.get(e.file_id) || 0;
+      map.set(e.file_id, prev + tl);
+    });
+    return map;
+  }, [expenses, exchangeRates]);
+
+  // Dosya bazli gider listesi
+  const expensesByFile = useMemo(() => {
+    const map = new Map<string, ExpenseRow[]>();
+    expenses.forEach((e) => {
+      const arr = map.get(e.file_id) || [];
+      arr.push(e);
+      map.set(e.file_id, arr);
+    });
+    return map;
+  }, [expenses]);
+
+  // Dosya gider toplamlari (currency basina) — detay panelinde gosterim icin
+  const expenseTotalsByFile = useMemo(() => {
+    const map = new Map<string, Totals>();
+    expenses.forEach((e) => {
+      const totals = map.get(e.file_id) || {};
+      const amt = Number(e.amount) || 0;
+      totals[e.currency] = (totals[e.currency] || 0) + amt;
+      map.set(e.file_id, totals);
+    });
+    return map;
+  }, [expenses]);
+
+  // Bir tutari TL'ye cevir (display amaclı)
+  const toTl = (amount: number, currency: string, fallbackTl?: number | null): number => {
+    if (typeof fallbackTl === "number" && fallbackTl > 0) return fallbackTl;
+    if (!amount || amount <= 0) return 0;
+    if (currency === "TL") return amount;
+    const r = Number(exchangeRates[currency]) || 0;
+    return r > 0 ? amount * r : 0;
+  };
 
   // Tarih aralığı filtresi
   const dateFilterFn = useMemo(() => {
@@ -167,6 +277,7 @@ export default function KasaPage() {
       .forEach((p) => {
         const baseRow: DisplayRow = {
           id: p.id,
+          file_id: p.visa_files?.id || p.file_id || null,
           musteri_ad: p.visa_files?.musteri_ad || "—",
           hedef_ulke: p.visa_files?.hedef_ulke || "—",
           tutar: Number(p.tutar) || 0,
@@ -177,14 +288,22 @@ export default function KasaPage() {
           created_at: p.created_at,
           badge: p.payment_type === "pesin_satis" ? "Peşin" : "Tahsilat",
           tl_karsilik: typeof p.tl_karsilik === "number" ? p.tl_karsilik : null,
+          vize_ucreti: Number(p.visa_files?.ucret) || 0,
+          vize_ucreti_currency: p.visa_files?.ucret_currency || "TL",
+          davetiye_ucreti: typeof p.visa_files?.davetiye_ucreti === "number" ? p.visa_files?.davetiye_ucreti : null,
+          davetiye_ucreti_currency: p.visa_files?.davetiye_ucreti_currency || null,
         };
 
-        // Yöntem bazında: nakit / hesaba_eft
-        if (p.yontem === "nakit") addRow("nakit", baseRow);
-        else if (p.yontem === "hesaba") addRow("hesaba_eft", baseRow);
-
-        // Plan bazında: peşin satışlar
-        if (p.payment_type === "pesin_satis") addRow("pesin", baseRow);
+        // ARTIK DUPLICATE YOK:
+        //  - Pesin satis yalniz "pesin" kategorisinde gozukur (yontem badge ile)
+        //  - Sonradan tahsilat ise yontem-bazinda (nakit / hesaba_eft) gozukur
+        if (p.payment_type === "pesin_satis") {
+          addRow("pesin", baseRow);
+        } else {
+          if (p.yontem === "nakit") addRow("nakit", baseRow);
+          else if (p.yontem === "hesaba") addRow("hesaba_eft", baseRow);
+          else if (p.yontem === "pos") addRow("nakit", baseRow); // POS sonradan tahsilat — nakit gibi davranir
+        }
       });
 
     // Firma cari dosyaları (ayrı kayıt; payments tablosu yerine dosyanın kendisi)
@@ -193,6 +312,7 @@ export default function KasaPage() {
       .forEach((f) => {
         const row: DisplayRow = {
           id: `firma_${f.id}`,
+          file_id: f.id,
           musteri_ad: f.musteri_ad,
           hedef_ulke: f.hedef_ulke,
           tutar: getFileTotal(f),
@@ -202,6 +322,10 @@ export default function KasaPage() {
           personel: f.profiles?.name || "—",
           created_at: f.created_at,
           badge: "Firma Cari",
+          vize_ucreti: Number(f.ucret) || 0,
+          vize_ucreti_currency: f.ucret_currency || "TL",
+          davetiye_ucreti: typeof f.davetiye_ucreti === "number" ? f.davetiye_ucreti : null,
+          davetiye_ucreti_currency: f.davetiye_ucreti_currency || null,
         };
         addRow("firma_cari", row);
       });
@@ -214,7 +338,7 @@ export default function KasaPage() {
     return data;
   }, [payments, firmaCariFiles, dateFilterFn, filterCurrency]);
 
-  // Toplam ciro (tüm kategoriler birleştirildiğinde para birimi başına; nakit + hesaba + firma_cari kullanıyoruz, peşin sadece görsel için)
+  // Toplam ciro: tum kategoriler artik DISJOINT (duplicate yok), hepsini topla
   const grandTotals = useMemo(() => {
     const g: Totals = {};
     const add = (totals: Totals) => {
@@ -222,11 +346,30 @@ export default function KasaPage() {
         g[c] = (g[c] || 0) + v;
       });
     };
+    add(categoryData.pesin.totals);
     add(categoryData.nakit.totals);
     add(categoryData.hesaba_eft.totals);
     add(categoryData.firma_cari.totals);
     return g;
   }, [categoryData]);
+
+  // Toplam gider (TL bazinda) — secili tarih araliginda
+  const totalExpenseTl = useMemo(() => {
+    const allRows = [
+      ...categoryData.pesin.rows,
+      ...categoryData.nakit.rows,
+      ...categoryData.hesaba_eft.rows,
+      ...categoryData.firma_cari.rows,
+    ];
+    const seenFiles = new Set<string>();
+    let total = 0;
+    allRows.forEach((r) => {
+      if (!r.file_id || seenFiles.has(r.file_id)) return;
+      seenFiles.add(r.file_id);
+      total += expenseByFileTl.get(r.file_id) || 0;
+    });
+    return total;
+  }, [categoryData, expenseByFileTl]);
 
   const currencyOptions = [{ value: "all", label: "Tüm Birimler" }, ...PARA_BIRIMLERI];
   const rangeOptions = [
@@ -285,9 +428,15 @@ export default function KasaPage() {
               Toplam Ciro
             </div>
             <h2 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Nakit + Hesaba + Cari Firma toplamı
+              Peşin + Tahsilat + Firma Cari toplamı
             </h2>
-            <p className="mt-1.5 text-white/60 text-sm">Seçili tarih aralığında biriken tüm kasa tutarı</p>
+            <p className="mt-1.5 text-white/60 text-sm">Seçili tarih aralığında biriken tüm kasa tutarı (artık duplicate yok)</p>
+            {totalExpenseTl > 0 && (
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-500/15 ring-1 ring-rose-400/30 text-rose-200 text-[11.5px] font-bold">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                Toplam Gider (TL): {Math.round(totalExpenseTl).toLocaleString("tr-TR")} ₺
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-2.5 md:flex md:flex-row md:items-end md:gap-3">
             {(["TL", "EUR", "USD"] as const).map((c) => (
@@ -389,44 +538,195 @@ export default function KasaPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-gradient-to-b from-slate-50 to-slate-50/0">
-                  <th className="text-left py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Müşteri</th>
+                  <th className="w-8 py-3.5 px-2"></th>
+                  <th className="text-left py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Müşteri / Yöntem</th>
                   <th className="text-left py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Ülke</th>
-                  <th className="text-right py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Tutar</th>
-                  <th className="text-center py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Tip</th>
+                  <th className="text-right py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Satış / Gider / Kâr</th>
+                  <th className="text-right py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Vize Ücreti</th>
                   <th className="text-left py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Personel</th>
                   <th className="text-right py-3.5 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em]">Tarih</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {active.rows.map((r) => (
-                  <tr key={r.id} className="hover:bg-indigo-50/30 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900">{r.musteri_ad}</td>
-                    <td className="py-3 px-4 text-slate-700 font-medium">{r.hedef_ulke}</td>
-                    <td className="py-3 px-4 text-right font-extrabold text-slate-900">
-                      <div>{fmtCur(r.tutar, r.currency)}</div>
-                      {typeof r.tl_karsilik === "number" && r.tl_karsilik > 0 && r.currency !== "TL" && (
-                        <div className="text-[10px] font-semibold text-amber-600 mt-0.5">
-                          TL karşılığı: {Math.round(r.tl_karsilik).toLocaleString("tr-TR")} ₺
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                          r.payment_type === "pesin_satis"
-                            ? "bg-sky-50 text-sky-700"
-                            : r.payment_type === "firma_cari"
-                            ? "bg-fuchsia-50 text-fuchsia-700"
-                            : "bg-emerald-50 text-emerald-700"
-                        }`}
+                {active.rows.map((r) => {
+                  const yontemBadge = YONTEM_BADGES[r.yontem] || { label: r.yontem, bg: "bg-slate-100", text: "text-slate-700" };
+                  const satisTl = toTl(r.tutar, r.currency, r.tl_karsilik);
+                  const giderTl = r.file_id ? expenseByFileTl.get(r.file_id) || 0 : 0;
+                  const karTl = satisTl - giderTl;
+                  const sym = SYM[r.vize_ucreti_currency || "TL"] || "₺";
+                  const totalVize = (Number(r.vize_ucreti) || 0) + (Number(r.davetiye_ucreti) || 0);
+                  const fileExpenses = r.file_id ? expensesByFile.get(r.file_id) || [] : [];
+                  const fileExpenseTotals = r.file_id ? expenseTotalsByFile.get(r.file_id) || {} : {};
+                  const hasExpenses = fileExpenses.length > 0;
+                  const isExpanded = expandedRowId === r.id;
+                  return (
+                    <Fragment key={r.id}>
+                      <tr
+                        className={`transition-colors ${hasExpenses ? "cursor-pointer hover:bg-indigo-50/40" : "hover:bg-indigo-50/30"} ${isExpanded ? "bg-indigo-50/60" : ""}`}
+                        onClick={() => {
+                          if (!hasExpenses) return;
+                          setExpandedRowId(isExpanded ? null : r.id);
+                        }}
                       >
-                        {r.badge}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-700 font-semibold">{r.personel}</td>
-                    <td className="py-3 px-4 text-right text-[11.5px] font-semibold text-slate-500">{fmtDate(r.created_at)}</td>
-                  </tr>
-                ))}
+                        <td className="py-3 px-2 align-top">
+                          {hasExpenses ? (
+                            <button
+                              type="button"
+                              aria-label={isExpanded ? "Gider detayını kapat" : "Gider detayını aç"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedRowId(isExpanded ? null : r.id);
+                              }}
+                              className={`w-6 h-6 flex items-center justify-center rounded-md transition-all ${
+                                isExpanded
+                                  ? "bg-indigo-600 text-white shadow-sm"
+                                  : "bg-rose-50 text-rose-600 hover:bg-rose-100 ring-1 ring-rose-200"
+                              }`}
+                              title={`${fileExpenses.length} gider kalemi`}
+                            >
+                              <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          ) : (
+                            <span className="block w-6 h-6" />
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-slate-900">{r.musteri_ad}</div>
+                          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                            <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${yontemBadge.bg} ${yontemBadge.text}`}>
+                              {yontemBadge.label}
+                            </span>
+                            {r.payment_type === "pesin_satis" && (
+                              <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-sky-50 text-sky-700">
+                                Peşin
+                              </span>
+                            )}
+                            {r.payment_type === "firma_cari" && (
+                              <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-fuchsia-50 text-fuchsia-700">
+                                Firma Cari
+                              </span>
+                            )}
+                            {r.payment_type !== "pesin_satis" && r.payment_type !== "firma_cari" && (
+                              <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700">
+                                Tahsilat
+                              </span>
+                            )}
+                            {hasExpenses && (
+                              <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-rose-50 text-rose-700 ring-1 ring-rose-200">
+                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                                {fileExpenses.length} gider
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-700 font-medium">{r.hedef_ulke}</td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="font-extrabold text-slate-900">{fmtCur(r.tutar, r.currency)}</div>
+                          {r.currency !== "TL" && satisTl > 0 && (
+                            <div className="text-[10px] font-semibold text-amber-600 mt-0.5">
+                              ≈ {Math.round(satisTl).toLocaleString("tr-TR")} ₺
+                            </div>
+                          )}
+                          <div className="mt-1 inline-flex flex-col items-end gap-0.5 text-[10.5px] leading-tight">
+                            <span className="text-slate-500">
+                              Satış: <strong className="text-emerald-700">{Math.round(satisTl).toLocaleString("tr-TR")} ₺</strong>
+                            </span>
+                            <span className="text-slate-500">
+                              Gider: <strong className="text-rose-600">{Math.round(giderTl).toLocaleString("tr-TR")} ₺</strong>
+                            </span>
+                            <span className={`font-bold ${karTl >= 0 ? "text-indigo-700" : "text-rose-700"}`}>
+                              Kâr: {Math.round(karTl).toLocaleString("tr-TR")} ₺
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="text-[12px] font-bold text-slate-700">
+                            {Math.round(Number(r.vize_ucreti) || 0).toLocaleString("tr-TR")} {sym}
+                          </div>
+                          {Number(r.davetiye_ucreti) > 0 && (
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              +Davet: {Math.round(Number(r.davetiye_ucreti) || 0).toLocaleString("tr-TR")} {SYM[r.davetiye_ucreti_currency || "USD"] || "$"}
+                            </div>
+                          )}
+                          {Number(r.davetiye_ucreti) > 0 && (
+                            <div className="text-[10px] font-semibold text-slate-600 mt-0.5">
+                              Toplam: {Math.round(totalVize).toLocaleString("tr-TR")} {sym}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-slate-700 font-semibold">{r.personel}</td>
+                        <td className="py-3 px-4 text-right text-[11.5px] font-semibold text-slate-500">{fmtDate(r.created_at)}</td>
+                      </tr>
+                      {isExpanded && hasExpenses && (
+                        <tr className="bg-gradient-to-b from-rose-50/50 via-rose-50/30 to-transparent">
+                          <td colSpan={7} className="px-4 py-4">
+                            <div className="rounded-xl bg-white ring-1 ring-rose-200/70 overflow-hidden">
+                              <div className="px-4 py-2.5 border-b border-rose-100 bg-rose-50/60 flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-1 h-5 rounded-full bg-gradient-to-b from-rose-500 to-pink-500" />
+                                  <p className="text-[12px] font-extrabold text-rose-800 uppercase tracking-wider">
+                                    {r.musteri_ad} — Giderler ({fileExpenses.length} kalem)
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {Object.entries(fileExpenseTotals).map(([c, v]) => (
+                                    <span key={c} className="px-2 py-0.5 bg-white rounded-md text-[10.5px] font-bold ring-1 ring-rose-200 text-rose-700">
+                                      {fmtCur(v, c)}
+                                    </span>
+                                  ))}
+                                  <span className="px-2 py-0.5 bg-rose-600 text-white rounded-md text-[10.5px] font-bold">
+                                    ≈ {Math.round(giderTl).toLocaleString("tr-TR")} ₺
+                                  </span>
+                                </div>
+                              </div>
+                              <table className="w-full text-[12.5px]">
+                                <thead>
+                                  <tr className="border-b border-slate-100 bg-slate-50/50">
+                                    <th className="text-left py-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kalem</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tutar</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">TL Karşılığı</th>
+                                    <th className="text-left py-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Not</th>
+                                    <th className="text-right py-2 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tarih</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {fileExpenses.map((exp) => {
+                                    const tlKars = typeof exp.tl_karsilik === "number" && exp.tl_karsilik > 0
+                                      ? exp.tl_karsilik
+                                      : exp.currency === "TL"
+                                        ? Number(exp.amount) || 0
+                                        : (Number(exchangeRates[exp.currency]) || 0) * (Number(exp.amount) || 0);
+                                    return (
+                                      <tr key={exp.id} className="hover:bg-rose-50/40">
+                                        <td className="py-2 px-3 font-semibold text-slate-800">
+                                          {EXPENSE_TYPE_LABELS[exp.expense_type] || exp.expense_type}
+                                        </td>
+                                        <td className="py-2 px-3 text-right font-bold text-slate-900 tabular-nums">
+                                          {fmtCur(Number(exp.amount) || 0, exp.currency)}
+                                        </td>
+                                        <td className="py-2 px-3 text-right text-amber-700 font-semibold tabular-nums">
+                                          {exp.currency !== "TL" ? `≈ ${Math.round(tlKars).toLocaleString("tr-TR")} ₺` : "—"}
+                                        </td>
+                                        <td className="py-2 px-3 text-slate-500 text-[11.5px] max-w-[280px] truncate">
+                                          {exp.note || "—"}
+                                        </td>
+                                        <td className="py-2 px-3 text-right text-slate-400 text-[10.5px] tabular-nums">
+                                          {fmtDate(exp.created_at)}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

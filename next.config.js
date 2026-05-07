@@ -16,11 +16,12 @@ const nextConfig = {
       'recharts',
       'jszip',
       'nodemailer',
-      '@react-pdf/renderer',
       'exceljs',
       'pdfjs-dist',
       'imapflow',
     ],
+    // @react-pdf/renderer class component kullanıyor; bundle'a eklenmesin
+    serverComponentsExternalPackages: ['@react-pdf/renderer'],
     // CSS chunk'lari paralel yukle (sayfa gecislerinde algi hizini artirir)
     optimisticClientCache: true,
   },

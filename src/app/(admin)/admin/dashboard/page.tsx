@@ -59,13 +59,14 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
 
       const [profileRes, filesRes, staffRes, paymentsRes] = await Promise.all([
-        user ? supabase.from("profiles").select("name").eq("id", user.id).single<{ name: string }>() : null,
+        user ? supabase.from("profiles").select("name, organization_id").eq("id", user.id).single<{ name: string; organization_id: string | null }>() : null,
         supabase.from("visa_files").select("*").returns<VisaFile[]>(),
         supabase.from("profiles").select("*").eq("role", "staff").returns<Profile[]>(),
         supabase.from("payments").select("*").eq("durum", "odendi").returns<Payment[]>(),
       ]);
 
       if (profileRes?.data?.name) setAdminName(profileRes.data.name);
+      const orgId = profileRes?.data?.organization_id ?? null;
       const files = filesRes.data;
       const staffData = staffRes.data;
       const payments = paymentsRes.data;
@@ -119,11 +120,13 @@ export default function AdminDashboard() {
         setStaffStats(staffStatsArr.sort((a, b) => b.activeFiles - a.activeFiles));
       }
 
-      const { data: logs } = await supabase
+      const logsQuery = supabase
         .from("activity_logs")
         .select("*, profiles:actor_id(name), visa_files(musteri_ad, hedef_ulke)")
         .order("created_at", { ascending: false })
         .limit(10);
+      if (orgId) logsQuery.eq("organization_id", orgId);
+      const { data: logs } = await logsQuery;
 
       setRecentLogs(logs || []);
       setLoading(false);

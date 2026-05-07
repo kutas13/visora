@@ -44,7 +44,7 @@ async function makeAylikRaporPdf(): Promise<Buffer> {
     data: {
       organizationName: "Visora Demo Şirketi",
       ay: "Nisan 2026",
-      generatedAt: new Date().toLocaleString("tr-TR"),
+      generatedAt: new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" }),
       bannerUrl: `${SITE_URL}/visora-banner.png`,
       ozet: {
         dosyaSayisi: 47,

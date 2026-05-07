@@ -85,6 +85,70 @@ function isMailEnabled(): boolean {
   return Boolean(envClean("SMTP_USER") && envClean("SMTP_PASSWORD"));
 }
 
+/**
+ * Visora platform sahibi adresini CC listesinden ayıklar.
+ * Owner adresi CC'de gözükmesin diye her maili 2 ayrı sefer gönderiyoruz:
+ *   1) Asıl alıcılara (owner CC'den çıkarılmış halde)
+ *   2) Owner'a ayrıca aynı içerikle bilgi maili olarak
+ */
+function splitOwnerFromCc(cc: SendArgs["cc"]): { cleanCc: SendArgs["cc"]; ownerWasInCc: boolean } {
+  if (!cc) return { cleanCc: cc, ownerWasInCc: false };
+  const ownerEmail = VISORA_OWNER_EMAIL.toLowerCase();
+  const arr = Array.isArray(cc) ? cc : [cc];
+  const filtered = arr.filter((addr) => (addr || "").toLowerCase() !== ownerEmail);
+  const ownerWasInCc = filtered.length !== arr.length;
+  if (filtered.length === 0) return { cleanCc: undefined, ownerWasInCc };
+  return { cleanCc: Array.isArray(cc) ? filtered : filtered[0], ownerWasInCc };
+}
+
+function recipientsContainOwner(args: SendArgs): boolean {
+  const ownerEmail = VISORA_OWNER_EMAIL.toLowerCase();
+  const allTo = Array.isArray(args.to) ? args.to : [args.to];
+  return allTo.some((a) => (a || "").toLowerCase() === ownerEmail);
+}
+
+/**
+ * Mail gonderilmesi yasak (kara liste) e-posta pattern'leri.
+ *
+ * Kullanici talebi: Spyke Turizm firmasi/kullanicilarina hicbir sekilde
+ * Visora otomasyon maili gitmesin. Adresler dinamik olabildigi icin
+ * domain pattern'i ve "spyke" iceren her local-part eslesmesi yapilir.
+ *
+ * Yeni kara listeler eklemek icin bu listeye regex/string ekleyin.
+ */
+const BLOCKED_EMAIL_PATTERNS: RegExp[] = [
+  /spyke/i,
+  /spyketurizm/i,
+];
+
+function isBlockedAddress(addr: string): boolean {
+  if (!addr) return false;
+  const normalized = addr.toLowerCase().trim();
+  return BLOCKED_EMAIL_PATTERNS.some((re) => re.test(normalized));
+}
+
+/**
+ * to/cc icindeki engellenmis adresleri ayikla.
+ * to listesi tamamen boş kalırsa mail gönderilmez (sendVisoraEmail icinde kontrol edilir).
+ */
+function filterBlockedRecipients(args: SendArgs): SendArgs {
+  const cleanList = (val: string | string[] | undefined): string | string[] | undefined => {
+    if (!val) return val;
+    if (Array.isArray(val)) {
+      const filtered = val.filter((a) => !isBlockedAddress(a));
+      if (filtered.length === 0) return undefined;
+      return filtered;
+    }
+    return isBlockedAddress(val) ? undefined : val;
+  };
+
+  return {
+    ...args,
+    to: cleanList(args.to) as SendArgs["to"],
+    cc: cleanList(args.cc),
+  };
+}
+
 export async function sendVisoraEmail(args: SendArgs) {
   if (!isMailEnabled()) {
     console.warn(
@@ -93,16 +157,45 @@ export async function sendVisoraEmail(args: SendArgs) {
     return { skipped: true } as const;
   }
 
+  // Kara listede olan alicilari (ornek: Spyke Turizm) ayikla.
+  const filtered = filterBlockedRecipients(args);
+  if (!filtered.to || (Array.isArray(filtered.to) && filtered.to.length === 0)) {
+    console.warn("[mailer] Tum alicilar kara listede, mail atlanir.", {
+      original_to: args.to,
+      subject: args.subject,
+    });
+    return { skipped: true, reason: "blocked-recipients" } as const;
+  }
+
   const transporter = getTransporter();
+  const { cleanCc, ownerWasInCc } = splitOwnerFromCc(filtered.cc);
+
   const info = await transporter.sendMail({
     from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
-    to: args.to,
-    cc: args.cc,
-    subject: args.subject,
-    html: args.html,
-    text: args.text,
-    attachments: args.attachments,
+    to: filtered.to,
+    cc: cleanCc,
+    subject: filtered.subject,
+    html: filtered.html,
+    text: filtered.text,
+    attachments: filtered.attachments,
   });
+
+  // Owner CC'den ayıklandıysa, aynı maili owner'a ayrıca gönder
+  if (ownerWasInCc && !recipientsContainOwner(filtered)) {
+    try {
+      await transporter.sendMail({
+        from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+        to: VISORA_OWNER_EMAIL,
+        subject: `[BİLGİ KOPYASI] ${filtered.subject}`,
+        html: filtered.html,
+        text: filtered.text,
+        attachments: filtered.attachments,
+      });
+    } catch (err) {
+      console.warn("[mailer] Owner kopya maili gönderilemedi:", err);
+    }
+  }
+
   return { skipped: false, messageId: info.messageId } as const;
 }
 
@@ -200,12 +293,15 @@ function moneyFmt(n: number, c: string) {
 
 function dateFmt(d?: string | Date) {
   const dt = d ? new Date(d) : new Date();
+  // Vercel/Node sunucusu UTC'de calisir; mail icinde TR yerel saati gostermek
+  // icin timeZone'i acikca belirtiyoruz.
   return dt.toLocaleString("tr-TR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Istanbul",
   });
 }
 
@@ -272,12 +368,13 @@ export async function sendWelcomeEmail(args: WelcomeEmailArgs) {
     </table>
 
     <h2 style="margin:24px 0 14px 0;font-size:14px;font-weight:800;color:#4338ca !important;text-transform:uppercase;letter-spacing:.1em;">
-      Başlamanız için 3 adım
+      Başlamanız için 4 adım
     </h2>
 
-    ${stepCard("1", "Panele giriş yapın", "Aşağıdaki butonla yönetim paneline ulaşın.", "#4f46e5")}
-    ${stepCard("2", "Banka hesaplarınızı ekleyin", "Tahsilat & dosya akışında doğru hesaplar görünsün.", "#7c3aed")}
-    ${stepCard("3", "Personelinizi ekleyin", "Ekibinizi davet edip ilk vize dosyanızı oluşturun.", "#0ea5e9")}
+    ${stepCard("1", "Panele giriş yapın", "Aşağıdaki butonla yönetim paneline ulaşın — şifreniz artık doğrudan çalışıyor.", "#4f46e5")}
+    ${stepCard("2", "Profilinizi özelleştirin", "Sağ üstteki menüden \"Profili Düzenle\" diyerek foto ekleyin, dilerseniz şifrenizi güncelleyin.", "#7c3aed")}
+    ${stepCard("3", "Banka hesabı + personel", "Banka hesaplarınızı ve personelinizi ekleyerek operasyonu kurun.", "#0ea5e9")}
+    ${stepCard("4", "Dilekçe AI'ı deneyin", "Üst menüdeki \"Dilekçe AI\" ile saniyeler içinde Schengen dilekçesi oluşturun.", "#10b981")}
 
     <!-- CTA -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 10px 0;">
@@ -594,6 +691,57 @@ export async function sendInactivityEmail(args: InactivityEmailArgs) {
 }
 
 /* =========================================================
+ *  5b) GENEL MÜDÜRE KENDİ GİRİŞ HATIRLATMASI (2 gün)
+ * ========================================================= */
+
+export interface GmLoginReminderEmailArgs {
+  gmEmail: string;
+  gmName: string;
+  organizationName: string;
+  lastSeen?: string | null; // ISO
+  cc?: string;
+}
+
+export async function sendGmLoginReminderEmail(args: GmLoginReminderEmailArgs) {
+  const { gmEmail, gmName, organizationName, lastSeen, cc } = args;
+  const lastStr = lastSeen ? dateFmt(lastSeen) : "—";
+
+  const html = baseTemplate(
+    `
+    ${badge("Giriş hatırlatması", "amber")}
+    <h1 style="margin:14px 0 6px 0;font-size:20px;font-weight:800;color:#0f172a;">Merhaba ${gmName},</h1>
+    <p style="margin:0 0 16px 0;font-size:13.5px;color:#475569;">
+      <strong>${organizationName}</strong> hesabınıza son <strong>2 gündür</strong> giriş yapılmadı.
+      Hesabınızın güvenliği ve işlemlerin aksamadan devam etmesi için giriş yapmanızı öneririz.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${infoRow("Hesap", organizationName)}
+      ${infoRow("Son giriş", lastStr)}
+    </table>
+
+    <div style="text-align:center;margin:22px 0 4px 0;">
+      <a href="${SITE_URL}/login"
+         style="display:inline-block;background:#4f46e5;color:#ffffff;padding:12px 22px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:700;">
+        Şimdi Giriş Yap
+      </a>
+    </div>
+    <p style="margin:16px 0 0 0;font-size:11.5px;color:#94a3b8;text-align:center;">
+      Bu e-posta otomatik olarak gönderilmiştir. Giriş yaptıysanız bu bildirimi göz ardı edebilirsiniz.
+    </p>
+  `,
+    { preheader: `${organizationName} hesabınıza 2 gündür giriş yapılmadı` }
+  );
+
+  return sendVisoraEmail({
+    to: gmEmail,
+    cc: cc ?? VISORA_OWNER_EMAIL,
+    subject: `Hatırlatma — ${organizationName} hesabınıza 2 gündür giriş yapılmadı`,
+    html,
+  });
+}
+
+/* =========================================================
  *  6) PERSONELE HOSGELDIN (yeni staff hesabi)
  * ========================================================= */
 
@@ -662,9 +810,10 @@ export async function sendStaffWelcomeEmail(args: StaffWelcomeEmailArgs) {
       İlk girişin için
     </h2>
 
-    ${stepCard("1", "Giriş yap", "Aşağıdaki butonla panele ulaş.", "#4f46e5")}
-    ${stepCard("2", "Şifreni güncelle", "Profil sayfasından kendi şifreni belirle.", "#7c3aed")}
+    ${stepCard("1", "Giriş yap", "Aşağıdaki butonla panele ulaş — verilen şifreyle direkt giriş yapabilirsin.", "#4f46e5")}
+    ${stepCard("2", "Profilini özelleştir", "Sağ üstteki menüden \"Profili Düzenle\" diyerek foto ekle ve istersen şifreni güncelle.", "#7c3aed")}
     ${stepCard("3", "Çalışmaya başla", "Dosya, tahsilat, randevu, günlük rapor — hepsi senin erişiminde.", "#0ea5e9")}
+    ${stepCard("4", "Dilekçe AI'ı kullan", "Üst menüdeki \"Dilekçe AI\" ile vize dilekçelerini saniyeler içinde oluştur.", "#10b981")}
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 10px 0;">
       <tr>
@@ -723,7 +872,7 @@ export async function sendStaffCreatedEmail(args: StaffCreatedEmailArgs) {
 
     <p style="margin:18px 0 0 0;font-size:12.5px;color:#64748b;">
       Personeliniz <a href="${SITE_URL}/login" style="color:#4f46e5;text-decoration:none;">${SITE_URL.replace(/^https?:\/\//, "")}/login</a>
-      adresinden e-posta + size verilen şifreyle ilk girişini yapabilir.
+      adresinden e-posta + sizin verdiğiniz şifreyle anında giriş yapabilir. Dilerse "Profili Düzenle" sayfasından kendi şifresini güncelleyebilir.
     </p>
   `,
     { preheader: `${staffName} ${organizationName} ekibine eklendi` }

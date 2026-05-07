@@ -127,7 +127,15 @@ export default function FileDetailModal({
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="text-xl font-bold text-navy-900">{file.musteri_ad}</h3>
-                <p className="text-navy-500">{file.pasaport_no}</p>
+                <div className="flex items-center gap-3 text-navy-500">
+                  <span>{file.pasaport_no}</span>
+                  {file.musteri_telefon && (
+                    <span className="inline-flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
+                      {file.musteri_telefon}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-3 mt-2 flex-wrap">
                   <Badge variant="info">{file.hedef_ulke}</Badge>
                   <Badge variant={file.islem_tipi === "randevulu" ? "purple" : "default"}>

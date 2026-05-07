@@ -19,6 +19,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState<"checking" | "ok" | "denied">("checking");
   const [userName, setUserName] = useState<string>("Owner");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const title = pageTitles[pathname] || "Visora";
 
   useEffect(() => {
@@ -38,7 +39,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
       }
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role, name")
+        .select("role, name, avatar_url")
         .eq("id", user.id)
         .single();
 
@@ -46,6 +47,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
       if (profile?.role === "platform_owner") {
         setAuthorized("ok");
         if (profile.name) setUserName(profile.name);
+        if ((profile as any).avatar_url) setAvatarUrl((profile as any).avatar_url);
       } else {
         setAuthorized("denied");
       }
@@ -99,7 +101,7 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopNav variant="platform" userName={userName} />
+      <TopNav variant="platform" userName={userName} avatarUrl={avatarUrl} />
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-8 py-6">{children}</main>
     </div>
   );

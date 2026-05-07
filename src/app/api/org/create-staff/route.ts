@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
       name,
       role: "staff",
       organization_id: me.organization_id,
+      must_change_password: true,
     },
     { onConflict: "id" }
   );

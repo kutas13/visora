@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Modal } from "@/components/ui";
-import VisaFileForm from "@/components/files/VisaFileForm";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
 
@@ -38,14 +37,13 @@ function monthDates(d: Date) {
 const DAY_NAMES = ["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
 
 export default function AdminCalendarPage() {
+  const router = useRouter();
   const [allAppts, setAllAppts] = useState<VisaFileWithProfile[]>([]);
   const [staff, setStaff] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"day"|"week"|"month">("week");
   const [sel, setSel] = useState(new Date());
   const [filterStaff, setFilterStaff] = useState("all");
-  const [editFile, setEditFile] = useState<VisaFile|null>(null);
-  const [showEdit, setShowEdit] = useState(false);
 
   const load = async () => {
     const sb = createClient();
@@ -95,7 +93,7 @@ export default function AdminCalendarPage() {
     return appointments.filter(a => new Date(a.randevu_tarihi!)>=tm);
   }, [appointments]);
 
-  const onEdit = (f: VisaFile) => { setEditFile(f); setShowEdit(true); };
+  const onEdit = (f: VisaFile) => { router.push(`/admin/files/${f.id}/edit`); };
 
   const nav = (d: number) => {
     const n = new Date(sel);
@@ -287,9 +285,6 @@ export default function AdminCalendarPage() {
         </div>
       )}
 
-      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="Dosyayı Düzenle" size="xl">
-        <VisaFileForm file={editFile} onSuccess={() => { setShowEdit(false); setEditFile(null); load(); }} onCancel={() => setShowEdit(false)} />
-      </Modal>
     </div>
   );
 }

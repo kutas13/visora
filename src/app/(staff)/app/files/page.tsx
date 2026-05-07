@@ -6,15 +6,6 @@ import { useRouter } from "next/navigation";
 import { Card, Button, Input, Select, Modal, Badge, CustomerAvatar, resolveAvatarStatus } from "@/components/ui";
 import FileActions from "@/components/files/FileActions";
 
-const VisaFileForm = dynamic(() => import("@/components/files/VisaFileForm"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex justify-center py-16">
-      <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-    </div>
-  ),
-});
-
 const FileDetailModal = dynamic(() => import("@/components/files/FileDetailModal"), { ssr: false });
 import { TARGET_COUNTRIES, ISLEM_TIPLERI } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
@@ -58,8 +49,6 @@ export default function FilesPage() {
   const router = useRouter();
   const [allFiles, setAllFiles] = useState<VisaFileWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
   const [, setCurrentUserId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -153,8 +142,7 @@ export default function FilesPage() {
     return { total, active, approved, rejected, missing, ready };
   }, [allFiles]);
 
-  const handleFormSuccess = () => { setShowForm(false); setEditingFile(null); loadFiles(); };
-  const handleEdit = (file: VisaFile) => { setEditingFile(file); setShowForm(true); };
+  const handleEdit = (file: VisaFile) => { router.push(`/app/files/${file.id}/edit`); };
   const handleDetail = (fileId: string) => { setDetailFileId(fileId); setShowDetailModal(true); };
 
   const handleDeleteClick = (file: VisaFile) => { setFileToDelete(file); setShowDeleteModal(true); };
@@ -624,10 +612,6 @@ export default function FilesPage() {
             })()}
           </div>
         </div>
-
-        <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditingFile(null); }} title={editingFile ? "Dosyayı Düzenle" : "Yeni Vize Dosyası"} size="xl">
-          <VisaFileForm file={editingFile} onSuccess={handleFormSuccess} onCancel={() => { setShowForm(false); setEditingFile(null); }} />
-        </Modal>
 
         <FileDetailModal
           fileId={detailFileId}

@@ -214,7 +214,7 @@ export function MonthlySummaryPdfDocument({ data, showPersonelTotals }: MonthlyS
   const o = data.overall;
   const avg = o.avgDaysToResult != null ? `${o.avgDaysToResult} gün` : "—";
   const staffTotals = showPersonelTotals ? sumStaffBuckets(data.byStaff) : null;
-  const generated = new Date(data.generatedAt).toLocaleString("tr-TR");
+  const generated = new Date(data.generatedAt).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" });
   const countryRows = data.byCountry.slice(0, 28);
 
   return (

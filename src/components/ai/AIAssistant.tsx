@@ -278,16 +278,36 @@ export default function AIAssistant({ isAdmin = false, embedded = false }: { isA
   };
 
   const formatContent = (text: string) => {
-    return text.split("\n").map((line, i) => {
+    const cleaned = text.replace(/\[\[DILEKCE_AI\]\]/g, "");
+    const hasDilekceLink = text.includes("[[DILEKCE_AI]]");
+
+    const lines = cleaned.split("\n").map((line, i) => {
       let formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>');
       formatted = formatted.replace(/`(.*?)`/g, '<code class="bg-white/10 px-1.5 py-0.5 rounded text-primary-300 text-[11px]">$1</code>');
       return (
         <span key={i}>
           <span dangerouslySetInnerHTML={{ __html: formatted }} />
-          {i < text.split("\n").length - 1 && <br />}
+          {i < cleaned.split("\n").length - 1 && <br />}
         </span>
       );
     });
+
+    if (hasDilekceLink) {
+      lines.push(
+        <a
+          key="dilekce-link"
+          href="/dilekce-ai"
+          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 text-xs font-medium transition-colors border border-indigo-500/30"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Dilekçe AI&apos;ya Git
+        </a>
+      );
+    }
+
+    return lines;
   };
 
   const getTimeStr = (date: Date) => {

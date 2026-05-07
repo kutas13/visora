@@ -173,7 +173,7 @@ export default function ResetPasswordPage() {
             </div>
             <Input
               label="Yeni Şifre (Tekrar)"
-              type="password"
+              type={showPwd ? "text" : "password"}
               placeholder="Şifrenizi tekrar girin"
               value={newPasswordConfirm}
               onChange={(e) => setNewPasswordConfirm(e.target.value)}

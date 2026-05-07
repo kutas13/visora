@@ -94,7 +94,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopNav variant="staff" userName={profile?.name || "Kullanıcı"} orgName={orgName} />
+      <TopNav variant="staff" userName={profile?.name || "Kullanıcı"} orgName={orgName} avatarUrl={(profile as any)?.avatar_url || null} />
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 lg:px-8 py-6">{children}</main>
     </div>
   );

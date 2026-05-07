@@ -59,9 +59,11 @@ export default function AdminPaymentsPage() {
   const loadData = useCallback(async () => {
     const supabase = createClient();
     const [unpaidRes, paymentsRes, firmaCariRes] = await Promise.all([
-      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("odeme_plani", "cari").neq("cari_tipi", "firma_cari").eq("odeme_durumu", "odenmedi").order("created_at", { ascending: false }),
+      // Tum cari (kullanici_cari + firma_cari) odenmemis dosyalar Odenmemisler tabinda gosterilir.
+      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("odeme_plani", "cari").eq("odeme_durumu", "odenmedi").order("created_at", { ascending: false }),
       supabase.from("payments").select("*, visa_files(musteri_ad, hedef_ulke), profiles:created_by(name)").order("created_at", { ascending: false }),
-      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("cari_tipi", "firma_cari").order("created_at", { ascending: false }),
+      // Sadece ODENMIS firma_cari dosyalar Tahsilatlar tabina (fatura olarak) eklenir.
+      supabase.from("visa_files").select("*, profiles:assigned_user_id(name)").eq("cari_tipi", "firma_cari").eq("odeme_durumu", "odendi").order("created_at", { ascending: false }),
     ]);
 
     setUnpaidFiles(unpaidRes.data || []);
@@ -244,7 +246,14 @@ export default function AdminPaymentsPage() {
                         <div className="flex items-center gap-3">
                           <CustomerAvatar name={file.musteri_ad} size="sm" status={resolveAvatarStatus(file)} />
                           <div>
-                            <p className="font-bold text-slate-900">{file.musteri_ad}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-slate-900">{file.musteri_ad}</p>
+                              {file.cari_tipi === "firma_cari" && (
+                                <span className="text-[9.5px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider bg-fuchsia-50 text-fuchsia-700 ring-1 ring-fuchsia-200">
+                                  Firma Cari
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[11px] text-slate-400 font-mono">{file.pasaport_no}</p>
                           </div>
                         </div>

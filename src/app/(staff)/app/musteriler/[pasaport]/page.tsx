@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import FileDetailModal from "@/components/files/FileDetailModal";
+import PassportInfoCard from "@/components/customers/PassportInfoCard";
 import type { VisaFile } from "@/lib/supabase/types";
 
 function formatDate(d: string | null | undefined) {
@@ -175,6 +176,9 @@ export default function MusteriDetayPage() {
           </div>
         </div>
       </div>
+
+      {/* Pasaport Görseli + Geçerlilik */}
+      <PassportInfoCard files={files} />
 
       {/* Ana grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

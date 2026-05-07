@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   // 1) Şirket: caller (platform_owner) oturumuyla -> RLS geçer
   const { data: org, error: orgErr } = await userClient
     .from("organizations")
-    .insert({ name: orgName, billing_email: adminEmail })
+    .insert({ name: orgName, billing_email: adminEmail, admin_initial_password: adminPassword })
     .select("id")
     .single();
 
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       name: adminName,
       role: "admin",
       organization_id: organizationId,
+      must_change_password: true,
     },
     { onConflict: "id" }
   );

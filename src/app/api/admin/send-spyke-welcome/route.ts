@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendWelcomeEmail } from "@/lib/mailer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,17 +24,17 @@ export async function POST(_req: NextRequest) {
 }
 
 async function run() {
-  try {
-    const result = await sendWelcomeEmail({
-      gmEmail: "info@spyketurizm.com",
-      gmName: "Spyke Turizm Yetkilisi",
-      organizationName: "Spyke Turizm",
-    });
-    return NextResponse.json({ ok: true, result });
-  } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: e?.message || String(e) },
-      { status: 500 }
-    );
-  }
+  // KARA LISTE: Spyke Turizm'e hicbir mail gonderilmemesi icin bu
+  // endpoint disabled. Mailer.ts seviyesinde de pattern bazli engel var,
+  // burada erken donerek zaman da kazaniyoruz.
+  return NextResponse.json(
+    {
+      ok: false,
+      skipped: true,
+      reason: "Spyke Turizm kara listede; hicbir mail gonderilemez.",
+    },
+    { status: 410 }
+  );
+  // eski kod (referans icin):
+  // const result = await sendWelcomeEmail({ ... });
 }

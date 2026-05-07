@@ -12,6 +12,7 @@ type Org = {
   phone: string | null;
   notes: string | null;
   created_at: string;
+  admin_initial_password: string | null;
 };
 
 type ProfileLite = {
@@ -65,6 +66,128 @@ function getTrialState(sub: Subscription | null): TrialState {
   return { kind: "expired", endedAt: endsAt };
 }
 
+function GmPasswordSection({ password, orgId, adminId, onUpdated }: { password: string | null; orgId: string; adminId: string | null; onUpdated: () => void }) {
+  const [visible, setVisible] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [newPwd, setNewPwd] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const handleSetPassword = async () => {
+    if (newPwd.length < 8) { setMsg("En az 8 karakter."); return; }
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/visora/reset-gm-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId, adminId: adminId || "", newPassword: newPwd }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg((json as any).error || "Hata oluştu."); return; }
+      setEditing(false);
+      setNewPwd("");
+      setMsg(null);
+      onUpdated();
+    } catch (e: any) {
+      setMsg(e?.message || "Hata.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="mt-3 p-3 rounded-lg bg-indigo-50 ring-1 ring-indigo-200 space-y-2">
+        <p className="text-[11px] font-bold text-indigo-800">GM Şifresi Belirle / Sıfırla</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newPwd}
+            onChange={(e) => setNewPwd(e.target.value)}
+            placeholder="Yeni şifre (min 8)"
+            className="flex-1 h-8 px-2 rounded-md text-sm ring-1 ring-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <button
+            type="button"
+            onClick={handleSetPassword}
+            disabled={busy}
+            className="h-8 px-3 rounded-md bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {busy ? "..." : "Kaydet"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setEditing(false); setMsg(null); setNewPwd(""); }}
+            className="h-8 px-2 rounded-md text-xs text-slate-500 hover:bg-slate-100"
+          >
+            İptal
+          </button>
+        </div>
+        {msg && <p className="text-xs text-red-600">{msg}</p>}
+      </div>
+    );
+  }
+
+  if (!password) {
+    return (
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 ring-1 ring-indigo-200 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          GM Şifresi Belirle
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-2 px-2 py-2 rounded-lg bg-amber-50 ring-1 ring-amber-200">
+      <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+      </svg>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">GM Geçici Şifresi</p>
+        <p className="text-sm font-mono font-semibold text-slate-800 truncate">
+          {visible ? password : "••••••••"}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => setVisible(!visible)}
+        className="p-1.5 rounded-md hover:bg-amber-100 text-amber-600 transition-colors"
+        title={visible ? "Şifreyi gizle" : "Şifreyi göster"}
+      >
+        {visible ? (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="p-1.5 rounded-md hover:bg-amber-100 text-amber-600 transition-colors"
+        title="Şifreyi sıfırla"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function VisoraCompaniesPage() {
   const supabase = useMemo(() => createClient(), []);
   const [loading, setLoading] = useState(true);
@@ -109,7 +232,7 @@ export default function VisoraCompaniesPage() {
 
     const { data: orgs, error: oErr } = await supabase
       .from("organizations")
-      .select("id, name, status, billing_email, phone, notes, created_at")
+      .select("id, name, status, billing_email, phone, notes, created_at, admin_initial_password")
       .order("created_at", { ascending: true });
 
     if (oErr) {
@@ -120,20 +243,25 @@ export default function VisoraCompaniesPage() {
 
     const orgIds = (orgs || []).map((o) => o.id);
 
-    const [{ data: profs }, { data: subs }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, name, role, organization_id")
-        .in("organization_id", orgIds.length ? orgIds : ["00000000-0000-0000-0000-000000000000"]),
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || "";
+
+    const [membersRes, subsRes] = await Promise.all([
+      fetch(`/api/visora/company-members?orgIds=${orgIds.join(",")}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => r.json()).catch(() => ({ members: [] })),
       supabase
         .from("platform_subscriptions")
         .select("*")
         .in("organization_id", orgIds.length ? orgIds : ["00000000-0000-0000-0000-000000000000"]),
     ]);
 
+    const profs: ProfileLite[] = (membersRes.members as ProfileLite[]) || [];
+    const subs = subsRes.data;
+
     const grouped: CompanyRow[] = (orgs as Org[] | null || []).map((o) => ({
       org: o,
-      members: (profs as ProfileLite[] | null || []).filter((p) => p.organization_id === o.id),
+      members: profs.filter((p) => p.organization_id === o.id),
       subscription: (subs as Subscription[] | null || []).find((s) => s.organization_id === o.id) || null,
     }));
 
@@ -494,6 +622,13 @@ export default function VisoraCompaniesPage() {
                     </ul>
                   )}
                 </div>
+
+                <GmPasswordSection
+                  password={row.org.admin_initial_password}
+                  orgId={row.org.id}
+                  adminId={admin?.id || null}
+                  onUpdated={load}
+                />
               </Card>
             );
           })}

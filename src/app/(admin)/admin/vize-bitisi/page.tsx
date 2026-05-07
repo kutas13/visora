@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Badge, Modal, Select } from "@/components/ui";
-import VisaFileForm from "@/components/files/VisaFileForm";
+import { useRouter } from "next/navigation";
+import { Badge, Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
 
@@ -36,13 +36,12 @@ function isChinaCountry(ulke: string | null | undefined): boolean {
 }
 
 export default function AdminVizeBitisiPage() {
+  const router = useRouter();
   const [files, setFiles] = useState<VisaFileWithProfile[]>([]);
   const [staff, setStaff] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "30" | "60">("all");
   const [filterStaff, setFilterStaff] = useState("all");
-  const [editingFile, setEditingFile] = useState<VisaFile | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   const loadData = async () => {
     const supabase = createClient();
@@ -101,8 +100,7 @@ export default function AdminVizeBitisiPage() {
   }, [files, filterStaff]);
 
   const handleEditFile = (file: VisaFile) => {
-    setEditingFile(file);
-    setShowEditModal(true);
+    router.push(`/admin/files/${file.id}/edit`);
   };
 
   const staffOptions = [{ value: "all", label: "Tüm Personel" }, ...staff.map(s => ({ value: s.id, label: s.name }))];
@@ -276,10 +274,6 @@ export default function AdminVizeBitisiPage() {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Dosyayı Düzenle" size="xl">
-        <VisaFileForm file={editingFile} onSuccess={() => { setShowEditModal(false); setEditingFile(null); loadData(); }} onCancel={() => setShowEditModal(false)} />
-      </Modal>
     </div>
   );
 }
