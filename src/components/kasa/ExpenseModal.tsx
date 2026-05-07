@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Modal, Input, Button } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { CashAccount, ParaBirimi } from "@/lib/supabase/types";
-import { CURRENCY_SYMBOL, fmtCurrency } from "@/lib/kasa/helpers";
+import { CURRENCY_SYMBOL, fmtCurrency, parseTrNumber } from "@/lib/kasa/helpers";
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -52,9 +52,10 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, accounts, bal
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
   const balance = selectedAccount ? balances.get(selectedAccount.id) || 0 : 0;
-  const a = Number(amount) || 0;
+  const a = parseTrNumber(amount);
   const remaining = balance - a;
-  const insufficient = a > 0 && remaining < 0;
+  // Floating-point hassasiyet toleransi: 1 kurus alti negatif farklar yetersiz sayilmaz.
+  const insufficient = a > 0 && remaining < -0.005;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,10 +234,8 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, accounts, bal
         {/* Tutar */}
         <Input
           label="Tutar"
-          type="number"
+          type="text"
           inputMode="decimal"
-          step="0.01"
-          min="0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}

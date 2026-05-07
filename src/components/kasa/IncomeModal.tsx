@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Modal, Input, Button } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { CashAccount, ParaBirimi } from "@/lib/supabase/types";
-import { CURRENCY_SYMBOL, fmtCurrency } from "@/lib/kasa/helpers";
+import { CURRENCY_SYMBOL, fmtCurrency, parseTrNumber } from "@/lib/kasa/helpers";
 
 interface IncomeModalProps {
   isOpen: boolean;
@@ -51,7 +51,7 @@ export default function IncomeModal({ isOpen, onClose, onSuccess, accounts, bala
     e.preventDefault();
     setError(null);
 
-    const a = Number(amount);
+    const a = parseTrNumber(amount);
     if (!description.trim()) { setError("Açıklama zorunludur"); return; }
     if (!a || a <= 0) { setError("Geçerli bir tutar girin"); return; }
     if (!accountId) { setError("Bir kasa seçin"); return; }
@@ -187,10 +187,8 @@ export default function IncomeModal({ isOpen, onClose, onSuccess, accounts, bala
         {/* Tutar */}
         <Input
           label="Tutar"
-          type="number"
+          type="text"
           inputMode="decimal"
-          step="0.01"
-          min="0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
@@ -201,8 +199,8 @@ export default function IncomeModal({ isOpen, onClose, onSuccess, accounts, bala
         {/* Özet */}
         <div className="p-3.5 rounded-xl bg-gradient-to-br from-emerald-50 to-green-50 ring-2 ring-emerald-300 text-center">
           <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Kasaya Eklenecek</p>
-          <p className="mt-1 text-2xl font-black text-emerald-700">
-            + {Number(amount).toLocaleString("tr-TR") || "0"} {CURRENCY_SYMBOL[currency]}
+          <p className="mt-1 text-2xl font-black text-emerald-700 tabular-nums">
+            + {parseTrNumber(amount).toLocaleString("tr-TR", { maximumFractionDigits: 2 }) || "0"} {CURRENCY_SYMBOL[currency]}
           </p>
         </div>
 

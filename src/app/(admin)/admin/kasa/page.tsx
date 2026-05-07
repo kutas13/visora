@@ -19,6 +19,10 @@ export default function KasaPage() {
   const [showExpense, setShowExpense] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [historyAccount, setHistoryAccount] = useState<CashAccount | null>(null);
+  const [historySearch, setHistorySearch] = useState("");
+
+  // Global arama (kasa ana sayfasi)
+  const [search, setSearch] = useState("");
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -75,6 +79,26 @@ export default function KasaPage() {
     }
     return m;
   }, [accounts, balances]);
+
+  // Hizli erisim icin account haritasi
+  const accountById = useMemo(() => {
+    const m = new Map<string, CashAccount>();
+    accounts.forEach((a) => m.set(a.id, a));
+    return m;
+  }, [accounts]);
+
+  // Global arama: tum transactions icinde aciklama veya kasa adi ile eslesenler
+  const trimmedSearch = search.trim();
+  const matchedTransactions = useMemo(() => {
+    if (!trimmedSearch) return [];
+    const q = trimmedSearch.toLocaleLowerCase("tr");
+    return transactions.filter((t) => {
+      const desc = (t.description || "").toLocaleLowerCase("tr");
+      const acc = accountById.get(t.account_id);
+      const accName = (acc?.name || "").toLocaleLowerCase("tr");
+      return desc.includes(q) || accName.includes(q);
+    });
+  }, [trimmedSearch, transactions, accountById]);
 
   const renderCard = (a: CashAccount) => {
     const bal = balances.get(a.id) || 0;
@@ -217,6 +241,155 @@ export default function KasaPage() {
         </div>
       </section>
 
+      {/* GLOBAL ARAMA */}
+      <div className="rounded-2xl bg-white ring-1 ring-slate-200 p-3 shadow-sm">
+        <div className="relative">
+          <svg
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tüm kasalarda isim veya açıklama ile ara..."
+            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 ring-1 ring-slate-200 text-sm font-semibold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 hover:text-slate-800 flex items-center justify-center"
+              aria-label="Aramayı temizle"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ARAMA SONUCLARI */}
+      {trimmedSearch && (
+        <div className="rounded-2xl bg-white ring-1 ring-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-gradient-to-r from-indigo-50/60 to-violet-50/60">
+            <div className="flex items-center gap-2">
+              <span className="w-1 h-5 rounded-full bg-gradient-to-b from-indigo-500 to-violet-600" />
+              <h3 className="text-sm font-extrabold text-slate-900">
+                Arama Sonuçları
+              </h3>
+              <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
+                {matchedTransactions.length} kayıt
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-500 font-semibold truncate max-w-[60%]" title={trimmedSearch}>
+              &quot;{trimmedSearch}&quot;
+            </span>
+          </div>
+
+          {matchedTransactions.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 mx-auto mb-2 flex items-center justify-center">
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z" />
+                </svg>
+              </div>
+              <p className="text-xs font-semibold text-slate-700">
+                &quot;{trimmedSearch}&quot; için eşleşen kayıt yok
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Farklı bir kelime deneyin</p>
+            </div>
+          ) : (
+            <div className="max-h-[460px] overflow-y-auto divide-y divide-slate-100">
+              {matchedTransactions.map((t) => {
+                const acc = accountById.get(t.account_id);
+                const isIn = t.direction === "in";
+                const sourceLabel: Record<string, string> = {
+                  manual: "Manuel",
+                  payment: "Tahsilat",
+                  file_expense: "Dosya Gideri",
+                  transfer: "Transfer",
+                };
+                const sourceBadge: Record<string, string> = {
+                  manual: "bg-slate-100 text-slate-700 ring-slate-200",
+                  payment: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+                  file_expense: "bg-rose-50 text-rose-700 ring-rose-200",
+                  transfer: "bg-indigo-50 text-indigo-700 ring-indigo-200",
+                };
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      if (acc) {
+                        setHistorySearch(trimmedSearch);
+                        setHistoryAccount(acc);
+                      }
+                    }}
+                    className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-slate-50/80 transition-colors group"
+                  >
+                    <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center shadow-sm ${
+                      isIn ? "bg-gradient-to-br from-emerald-500 to-green-600" : "bg-gradient-to-br from-rose-500 to-red-600"
+                    }`}>
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {isIn ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        )}
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full ring-1 ${sourceBadge[t.source] || sourceBadge.manual}`}>
+                            {sourceLabel[t.source] || t.source}
+                          </span>
+                          {acc && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+                              {acc.kind === "cash" ? "Nakit" : "Banka"} · {acc.name}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10.5px] font-semibold text-slate-400 tabular-nums">
+                          {new Date(t.created_at).toLocaleString("tr-TR", {
+                            timeZone: "Europe/Istanbul",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[13px] font-bold text-slate-800 truncate" title={t.description ?? undefined}>
+                        {t.description || "—"}
+                      </p>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className={`text-base font-black tabular-nums ${isIn ? "text-emerald-700" : "text-rose-700"}`}>
+                          {isIn ? "+" : "−"} {Math.round(Number(t.amount) || 0).toLocaleString("tr-TR")} {CURRENCY_SYMBOL[t.currency]}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-indigo-600 group-hover:text-indigo-800 transition-colors">
+                          Kasayı Aç
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* NAKIT KASALAR */}
       <div>
         <div className="flex items-center gap-2 mb-3">
@@ -314,11 +487,15 @@ export default function KasaPage() {
       />
       <WalletHistoryModal
         isOpen={Boolean(historyAccount)}
-        onClose={() => setHistoryAccount(null)}
+        onClose={() => {
+          setHistoryAccount(null);
+          setHistorySearch("");
+        }}
         account={historyAccount}
         transactions={transactions}
         balances={balances}
         onChanged={loadAll}
+        initialSearch={historySearch}
       />
     </div>
   );

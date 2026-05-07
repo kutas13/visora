@@ -226,6 +226,12 @@ export default function VisoraCompaniesPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
 
+  // Sirket verilerini sifirlama (kullanicilar haric) modali
+  const [resetDataRow, setResetDataRow] = useState<CompanyRow | null>(null);
+  const [resetDataText, setResetDataText] = useState("");
+  const [resetDataBusy, setResetDataBusy] = useState(false);
+  const [resetDataMsg, setResetDataMsg] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setErr(null);
@@ -368,6 +374,46 @@ export default function VisoraCompaniesPage() {
     setDeleteRow(row);
     setDeleteText("");
     setDeleteMsg(null);
+  }
+
+  function openResetData(row: CompanyRow) {
+    setResetDataRow(row);
+    setResetDataText("");
+    setResetDataMsg(null);
+  }
+
+  async function handleResetData(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetDataRow) return;
+    setResetDataBusy(true);
+    setResetDataMsg(null);
+    try {
+      const res = await fetch("/api/visora/reset-organization-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId: resetDataRow.org.id,
+          confirmName: resetDataText.trim(),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setResetDataMsg(json.error || "Sıfırlama başarısız.");
+        return;
+      }
+      const counts: Record<string, number> = json.counts || {};
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      setResetDataMsg(json.message || `Sıfırlandı. Silinen kayıt: ${total}`);
+      await load();
+      setTimeout(() => {
+        setResetDataRow(null);
+        setResetDataMsg(null);
+      }, 1800);
+    } catch (e: unknown) {
+      setResetDataMsg(e instanceof Error ? e.message : "Bilinmeyen hata");
+    } finally {
+      setResetDataBusy(false);
+    }
   }
 
   async function handleDelete(e: React.FormEvent) {
@@ -565,6 +611,16 @@ export default function VisoraCompaniesPage() {
                       className="text-xs px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700"
                     >
                       Düzenle
+                    </button>
+                    <button
+                      onClick={() => openResetData(row)}
+                      className="text-xs px-3 py-1.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 ring-1 ring-amber-200 flex items-center gap-1 justify-center"
+                      title="Şirketin tüm operasyonel verilerini sil (kullanıcılar ve abonelik korunur)"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Verileri Sıfırla
                     </button>
                     <button
                       onClick={() => openDelete(row)}
@@ -801,6 +857,108 @@ export default function VisoraCompaniesPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* SIRKET VERILERINI SIFIRLA — onay metni: sirket adi */}
+      <Modal
+        isOpen={!!resetDataRow}
+        onClose={() => {
+          if (!resetDataBusy) {
+            setResetDataRow(null);
+            setResetDataText("");
+            setResetDataMsg(null);
+          }
+        }}
+        title={resetDataRow ? `Verileri Sıfırla: ${resetDataRow.org.name}` : "Verileri Sıfırla"}
+        size="md"
+      >
+        {resetDataRow && (
+          <form onSubmit={handleResetData} className="space-y-4">
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-1.5">
+              <p className="font-bold flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Bu işlem geri alınamaz.
+              </p>
+              <p>
+                <b>{resetDataRow.org.name}</b> şirketinin tüm operasyonel verileri silinir; ancak{" "}
+                <b>kullanıcılar (GM/personel)</b> ve <b>abonelik bilgileri</b> korunur.
+              </p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs pt-1">
+                <p className="font-bold uppercase tracking-wider text-rose-700">Silinecek</p>
+                <p className="font-bold uppercase tracking-wider text-emerald-700">Korunacak</p>
+                <ul className="list-disc pl-4 text-rose-700/90 space-y-0.5">
+                  <li>Vize dosyaları + giderler</li>
+                  <li>Tahsilat / ödemeler</li>
+                  <li>Cariler (firmalar)</li>
+                  <li>Vize grupları</li>
+                  <li>Randevu talepleri</li>
+                  <li>Banka hesapları</li>
+                  <li>Kasa hareketleri</li>
+                  <li>Komisyon oranları</li>
+                  <li>Referans logoları</li>
+                  <li>Günlük raporlar / aktivite logları</li>
+                </ul>
+                <ul className="list-disc pl-4 text-emerald-700/90 space-y-0.5">
+                  <li>Şirket kaydı</li>
+                  <li>Genel müdür hesabı</li>
+                  <li>Personel hesapları</li>
+                  <li>Şifreler</li>
+                  <li>Abonelik (plan, ücret, deneme)</li>
+                  <li>Platform faturaları</li>
+                  <li>Yeni boş TL/EUR/USD nakit kasaları kurulur</li>
+                </ul>
+              </div>
+            </div>
+            <div className="text-sm text-slate-700">
+              Onaylamak için şirket adını <b>aynen</b> yazın:{" "}
+              <code className="px-1.5 py-0.5 bg-slate-100 rounded font-mono text-xs">
+                {resetDataRow.org.name}
+              </code>
+            </div>
+            <input
+              value={resetDataText}
+              onChange={(e) => setResetDataText(e.target.value)}
+              placeholder={resetDataRow.org.name}
+              className="w-full px-3 py-2 rounded-lg border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+              disabled={resetDataBusy}
+              autoFocus
+            />
+            {resetDataMsg && (
+              <p
+                className={`text-sm ${
+                  resetDataMsg.includes("sıfırlandı") || resetDataMsg.includes("Silinen")
+                    ? "text-emerald-700"
+                    : "text-red-600"
+                }`}
+              >
+                {resetDataMsg}
+              </p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setResetDataRow(null);
+                  setResetDataText("");
+                  setResetDataMsg(null);
+                }}
+                disabled={resetDataBusy}
+              >
+                Vazgeç
+              </Button>
+              <Button
+                type="submit"
+                disabled={resetDataBusy || resetDataText.trim() !== resetDataRow.org.name}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {resetDataBusy ? "Sıfırlanıyor…" : "Verileri Sıfırla"}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* TEK SIRKET SILME — onay metni: sirket adi */}

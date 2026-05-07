@@ -16,6 +16,68 @@ export function fmtCurrencyDecimal(n: number, c: string) {
 }
 
 /**
+ * Turkce sayi formatindan parse eder. Once binlik ve ondalik ayraclari sezer.
+ *  - "260.479,50"  -> 260479.50  (TR klasik: nokta=binlik, virgul=ondalik)
+ *  - "1.234.567,89"-> 1234567.89
+ *  - "260,479"     -> 260.479    (sadece virgul -> ondalik)
+ *  - "260.479"     -> 260479     (tek nokta + sondaki grup 3 hane -> binlik)
+ *  - "260.5"       -> 260.5      (tek nokta + sondaki grup 3 hane degil -> ondalik)
+ *  - "1.234.567"   -> 1234567    (birden fazla nokta -> binlik)
+ *  - "1234.56"     -> 1234.56    (sondaki grup 2 hane -> ondalik)
+ */
+export function parseTrNumber(input: string | number | null | undefined): number {
+  if (input === null || input === undefined) return 0;
+  if (typeof input === "number") return Number.isFinite(input) ? input : 0;
+  let s = String(input).trim().replace(/\s+/g, "").replace(/[^\d,.\-]/g, "");
+  if (!s) return 0;
+
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+
+  if (lastComma >= 0 && lastDot >= 0) {
+    if (lastComma > lastDot) {
+      // Comma sondaysa ondalik, noktalar binlik
+      s = s.replace(/\./g, "").replace(",", ".");
+    } else {
+      // Dot sondaysa ondalik, virguller binlik
+      s = s.replace(/,/g, "");
+    }
+  } else if (lastComma >= 0) {
+    // Sadece virgul -> ondalik
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (lastDot >= 0) {
+    const dotCount = (s.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      // Birden fazla nokta -> hepsi binlik
+      s = s.replace(/\./g, "");
+    } else {
+      // Tek nokta. Sagdaki grup 3 hane ve solda 1-3 hane varsa binlik kabul et.
+      const parts = s.split(".");
+      const right = parts[1] || "";
+      if (right.length === 3) {
+        s = s.replace(/\./g, "");
+      }
+      // Aksi halde ondalik olarak birak (ornegin "260.5", "1234.56")
+    }
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Sayiyi input alani icin Turkce formatta yazar (binlik nokta, ondalik virgul).
+ * Kullanim: setAmount(formatNumberForInput(123456.7)) -> "123.456,7"
+ */
+export function formatNumberForInput(n: number, maxDecimals = 2): string {
+  if (!Number.isFinite(n)) return "";
+  return n.toLocaleString("tr-TR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDecimals,
+    useGrouping: true,
+  });
+}
+
+/**
  * Hesabin guncel bakiyesini hesaplar (in - out, transferler dahil).
  */
 export function calcBalance(transactions: CashTransaction[], accountId: string): number {

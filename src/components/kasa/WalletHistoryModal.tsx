@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Modal, Button } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { CashAccount, CashTransaction } from "@/lib/supabase/types";
@@ -13,6 +13,8 @@ interface WalletHistoryModalProps {
   transactions: CashTransaction[];
   balances: Map<string, number>;
   onChanged: () => void;
+  /** Modal acildiginda kullanilacak baslangic arama metni */
+  initialSearch?: string;
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -47,20 +49,39 @@ export default function WalletHistoryModal({
   transactions,
   balances,
   onChanged,
+  initialSearch = "",
 }: WalletHistoryModalProps) {
   const [filter, setFilter] = useState<"all" | "in" | "out">("all");
+  const [search, setSearch] = useState("");
   const [detailTx, setDetailTx] = useState<CashTransaction | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSearch(initialSearch);
+      setFilter("all");
+    } else {
+      setSearch("");
+      setFilter("all");
+    }
+  }, [isOpen, initialSearch]);
 
   const balance = account ? balances.get(account.id) || 0 : 0;
 
   const accountTransactions = useMemo(() => {
     if (!account) return [];
+    const q = search.trim().toLocaleLowerCase("tr");
     return transactions
       .filter((t) => t.account_id === account.id)
       .filter((t) => filter === "all" || t.direction === filter)
+      .filter((t) => {
+        if (!q) return true;
+        const desc = (t.description || "").toLocaleLowerCase("tr");
+        const accName = (account.name || "").toLocaleLowerCase("tr");
+        return desc.includes(q) || accName.includes(q);
+      })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [account, transactions, filter]);
+  }, [account, transactions, filter, search]);
 
   const totals = useMemo(() => {
     let totalIn = 0, totalOut = 0;
@@ -113,6 +134,37 @@ export default function WalletHistoryModal({
             </div>
           </div>
 
+          {/* Arama */}
+          <div className="relative">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="İsim veya açıklama ile ara..."
+              className="w-full pl-9 pr-9 py-2.5 rounded-xl ring-1 ring-slate-200 bg-white text-sm font-semibold placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center"
+                aria-label="Aramayı temizle"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
           {/* Filtre */}
           <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
             {(["all", "in", "out"] as const).map((f) => (
@@ -140,7 +192,9 @@ export default function WalletHistoryModal({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <p className="text-xs font-semibold text-slate-700">Bu kasada henüz işlem yok</p>
+                <p className="text-xs font-semibold text-slate-700">
+                  {search.trim() ? `"${search}" için eşleşen kayıt bulunamadı` : "Bu kasada henüz işlem yok"}
+                </p>
               </div>
             ) : (
               accountTransactions.map((t) => {

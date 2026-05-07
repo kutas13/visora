@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Modal, Input, Button } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import type { CashAccount } from "@/lib/supabase/types";
-import { CURRENCY_SYMBOL, fmtCurrency } from "@/lib/kasa/helpers";
+import { CURRENCY_SYMBOL, fmtCurrency, parseTrNumber, formatNumberForInput } from "@/lib/kasa/helpers";
 
 interface TransferModalProps {
   isOpen: boolean;
@@ -45,9 +45,10 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
   const toAccount = activeAccounts.find((a) => a.id === toId);
 
   const fromBalance = fromAccount ? balances.get(fromAccount.id) || 0 : 0;
-  const fa = Number(fromAmount) || 0;
+  const fa = parseTrNumber(fromAmount);
   const remaining = fromBalance - fa;
-  const insufficient = fa > 0 && remaining < 0;
+  // Floating-point hassasiyet toleransi: 1 kurus alti negatif farklar yetersiz sayilmaz.
+  const insufficient = fa > 0 && remaining < -0.005;
 
   const sameCurrency = fromAccount && toAccount && fromAccount.currency === toAccount.currency;
   const sameAccount = fromId && toId && fromId === toId;
@@ -61,7 +62,7 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
     if (fromRate > 0 && toRate > 0) {
       const tlAmount = fa * fromRate;
       const converted = tlAmount / toRate;
-      setToAmount((Math.round(converted * 100) / 100).toString());
+      setToAmount(formatNumberForInput(Math.round(converted * 100) / 100, 2));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromAmount, fromId, toId]);
@@ -78,7 +79,7 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
 
     if (!fromAccount || !toAccount) { setError("Hem kaynak hem hedef kasa seçilmeli"); return; }
     if (sameAccount) { setError("Aynı kasaya transfer yapılamaz"); return; }
-    const ta = Number(toAmount) || 0;
+    const ta = parseTrNumber(toAmount);
     if (!fa || fa <= 0) { setError("Geçerli bir kaynak tutarı girin"); return; }
     if (!ta || ta <= 0) { setError("Geçerli bir hedef tutarı girin"); return; }
     if (insufficient) {
@@ -186,21 +187,37 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
               ))}
             </select>
             {fromAccount && (
-              <p className="mt-2 text-[11px] font-bold text-slate-600">
-                Bakiye: <span className={`tabular-nums ${fromBalance >= 0 ? "text-slate-900" : "text-rose-600"}`}>{fmtCurrency(fromBalance, fromAccount.currency)}</span>
-              </p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold text-slate-600">
+                  Bakiye: <span className={`tabular-nums ${fromBalance >= 0 ? "text-slate-900" : "text-rose-600"}`}>{fmtCurrency(fromBalance, fromAccount.currency)}</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFromAmount(formatNumberForInput(Math.max(fromBalance, 0), 2))}
+                  className="text-[10.5px] font-extrabold uppercase tracking-wider px-2 py-1 rounded-lg bg-rose-100 text-rose-700 hover:bg-rose-200 ring-1 ring-rose-200 transition-colors"
+                  title="Mevcut bakiyenin tamamını kaynak tutarına yaz"
+                >
+                  Tümünü Aktar
+                </button>
+              </div>
             )}
             <div className="mt-2">
               <Input
-                type="number"
+                type="text"
                 inputMode="decimal"
-                step="0.01"
-                min="0"
                 value={fromAmount}
                 onChange={(e) => setFromAmount(e.target.value)}
                 onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
                 placeholder={`Tutar ${fromAccount ? CURRENCY_SYMBOL[fromAccount.currency] : ""}`}
               />
+              {fromAmount && (
+                <p className="mt-1 text-[10.5px] text-slate-500 font-semibold tabular-nums">
+                  = {Math.round(fa * 100) / 100 === fa
+                    ? fa.toLocaleString("tr-TR", { maximumFractionDigits: 2 })
+                    : fa.toLocaleString("tr-TR")}{" "}
+                  {fromAccount ? CURRENCY_SYMBOL[fromAccount.currency] : ""}
+                </p>
+              )}
             </div>
           </div>
 
@@ -240,10 +257,8 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
             )}
             <div className="mt-2">
               <Input
-                type="number"
+                type="text"
                 inputMode="decimal"
-                step="0.01"
-                min="0"
                 value={toAmount}
                 onChange={(e) => setToAmount(e.target.value)}
                 onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
