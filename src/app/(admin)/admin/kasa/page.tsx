@@ -77,6 +77,11 @@ interface DisplayRow {
   vize_ucreti_currency?: string;
   davetiye_ucreti?: number | null;
   davetiye_ucreti_currency?: string | null;
+  /** Firma cari satirlarinda dosya tahsil edildiyse hangi yontemle alindigi (gosterim notu) */
+  firmaCariCollectedYontem?: string | null;
+  /** Firma cari satirinda gercek tahsilat tutari (payment varsa) */
+  firmaCariCollectedAmount?: number | null;
+  firmaCariCollectedCurrency?: string | null;
 }
 
 const YONTEM_BADGES: Record<string, { label: string; bg: string; text: string }> = {
@@ -255,6 +260,22 @@ export default function KasaPage() {
     };
   }, [filterRange]);
 
+  // file_id -> en yeni odendi payment'i (firma cari satirinda gosterim icin)
+  const latestPaymentByFileId = useMemo(() => {
+    const map = new Map<string, PaymentRow>();
+    payments
+      .filter((p) => p.durum === "odendi")
+      .forEach((p) => {
+        const fid = p.visa_files?.id || p.file_id;
+        if (!fid) return;
+        const existing = map.get(fid);
+        if (!existing || new Date(p.created_at).getTime() > new Date(existing.created_at).getTime()) {
+          map.set(fid, p);
+        }
+      });
+    return map;
+  }, [payments]);
+
   // Kategori bazında gruplandırma
   const categoryData = useMemo(() => {
     const data: Record<CategoryKey, CategoryData> = {
@@ -274,6 +295,10 @@ export default function KasaPage() {
     // Payments tablosu (peşin satış + tahsilatlar)
     payments
       .filter((p) => p.durum === "odendi" && dateFilterFn(p.created_at))
+      // Firma cari dosyaların tahsilatları nakit/hesaba_eft kategorilerine
+      // gitmesin — sadece "firma_cari" kategorisinde, ek tahsilat notuyla
+      // gozuksun (duplicate engelleme).
+      .filter((p) => p.visa_files?.cari_tipi !== "firma_cari")
       .forEach((p) => {
         const baseRow: DisplayRow = {
           id: p.id,
@@ -310,6 +335,7 @@ export default function KasaPage() {
     firmaCariFiles
       .filter((f) => dateFilterFn(f.created_at))
       .forEach((f) => {
+        const collected = latestPaymentByFileId.get(f.id);
         const row: DisplayRow = {
           id: `firma_${f.id}`,
           file_id: f.id,
@@ -321,11 +347,15 @@ export default function KasaPage() {
           payment_type: "firma_cari",
           personel: f.profiles?.name || "—",
           created_at: f.created_at,
-          badge: "Firma Cari",
+          badge: collected ? "Tahsil Edildi" : "Fatura Kesildi",
           vize_ucreti: Number(f.ucret) || 0,
           vize_ucreti_currency: f.ucret_currency || "TL",
           davetiye_ucreti: typeof f.davetiye_ucreti === "number" ? f.davetiye_ucreti : null,
           davetiye_ucreti_currency: f.davetiye_ucreti_currency || null,
+          firmaCariCollectedYontem: collected ? collected.yontem : null,
+          firmaCariCollectedAmount: collected ? Number(collected.tutar) || 0 : null,
+          firmaCariCollectedCurrency: collected ? collected.currency || "TL" : null,
+          tl_karsilik: collected && typeof collected.tl_karsilik === "number" ? collected.tl_karsilik : null,
         };
         addRow("firma_cari", row);
       });
@@ -604,8 +634,12 @@ export default function KasaPage() {
                               </span>
                             )}
                             {r.payment_type === "firma_cari" && (
-                              <span className="inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-fuchsia-50 text-fuchsia-700">
-                                Firma Cari
+                              <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                r.firmaCariCollectedYontem
+                                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                                  : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                              }`}>
+                                {r.firmaCariCollectedYontem ? "Tahsil Edildi" : "Fatura Kesildi"}
                               </span>
                             )}
                             {r.payment_type !== "pesin_satis" && r.payment_type !== "firma_cari" && (
@@ -620,11 +654,38 @@ export default function KasaPage() {
                               </span>
                             )}
                           </div>
+                          {/* Firma cari dosya icin tahsilat bilgisi */}
+                          {r.payment_type === "firma_cari" && r.firmaCariCollectedYontem && (
+                            <div className="mt-1.5 inline-flex flex-wrap items-center gap-1 text-[10.5px] text-slate-600">
+                              <span className="font-bold text-emerald-700">
+                                {r.firmaCariCollectedYontem === "nakit" ? "Nakit" :
+                                 r.firmaCariCollectedYontem === "hesaba" ? "Hesaba" :
+                                 r.firmaCariCollectedYontem === "pos" ? "POS" : r.firmaCariCollectedYontem}
+                              </span>
+                              <span>olarak</span>
+                              <strong className="text-slate-800">
+                                {fmtCur(r.firmaCariCollectedAmount || 0, r.firmaCariCollectedCurrency || "TL")}
+                              </strong>
+                              <span>alındı</span>
+                              {typeof r.tl_karsilik === "number" && r.tl_karsilik > 0 && r.firmaCariCollectedCurrency !== "TL" && (
+                                <span className="text-amber-600 font-semibold">
+                                  · TL karşılığı {Math.round(r.tl_karsilik).toLocaleString("tr-TR")} ₺
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-slate-700 font-medium">{r.hedef_ulke}</td>
                         <td className="py-3 px-4 text-right">
                           <div className="font-extrabold text-slate-900">{fmtCur(r.tutar, r.currency)}</div>
-                          {r.currency !== "TL" && satisTl > 0 && (
+                          {/* TL karsiligi alindiysa (gercek TL kasaya girdi) net olarak goster */}
+                          {typeof r.tl_karsilik === "number" && r.tl_karsilik > 0 && r.currency !== "TL" && (
+                            <div className="text-[10.5px] font-bold text-emerald-700 mt-0.5">
+                              TL karşılığı {Math.round(r.tl_karsilik).toLocaleString("tr-TR")} ₺ alındı
+                            </div>
+                          )}
+                          {/* TL karsiligi yoksa ama dosya farkli currency ise sadece anlik kur cevirisi */}
+                          {(!r.tl_karsilik || r.tl_karsilik <= 0) && r.currency !== "TL" && satisTl > 0 && (
                             <div className="text-[10px] font-semibold text-amber-600 mt-0.5">
                               ≈ {Math.round(satisTl).toLocaleString("tr-TR")} ₺
                             </div>
