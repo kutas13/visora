@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS public.reference_logos (
 
 ALTER TABLE public.reference_logos ENABLE ROW LEVEL SECURITY;
 
+-- Idempotent: eski policy'leri once dusur, sonra yeniden olustur.
+DROP POLICY IF EXISTS "Anyone can view active reference logos" ON public.reference_logos;
+DROP POLICY IF EXISTS "Platform owner can manage reference logos" ON public.reference_logos;
+
 CREATE POLICY "Anyone can view active reference logos"
   ON public.reference_logos FOR SELECT
   USING (is_active = true);
