@@ -270,7 +270,9 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
             const selectedAcc = cashAccounts.find((a) => a.id === d.cash_account_id);
             const accBalance = selectedAcc ? (balances.get(selectedAcc.id) || 0) : 0;
             const amt = parseFloat(d.amount || "0");
-            const insufficient = amt > 0 && selectedAcc && amt > accBalance;
+            // Vize dosyasi giderlerinde bakiye yetersizligi BLOKE ETMEZ;
+            // sadece bilgi olarak gosterilir (kasa eksiye dusebilir).
+            const willGoNegative = amt > 0 && selectedAcc && amt > accBalance;
             return (
               <div
                 key={idx}
@@ -374,9 +376,10 @@ export default function ExpensesPanel({ fileId, drafts, onChange }: ExpensesPane
                     {d.currency} para biriminde aktif banka hesabı yok. <a className="underline font-bold" href="/admin/banka-hesaplari" target="_blank" rel="noreferrer">Banka Hesapları</a> sayfasından ekleyin.
                   </div>
                 )}
-                {selectedAcc && insufficient && (
-                  <div className="mt-2 px-3 py-2 rounded-lg bg-rose-50 ring-1 ring-rose-200 text-rose-800 text-[11px] font-semibold">
-                    ⚠ Yetersiz bakiye! Kasada {Math.round(accBalance).toLocaleString("tr-TR")} {SYM[d.currency]} var, {Math.round(amt).toLocaleString("tr-TR")} {SYM[d.currency]} düşülemez.
+                {selectedAcc && willGoNegative && (
+                  <div className="mt-2 px-3 py-2 rounded-lg bg-amber-50 ring-1 ring-amber-200 text-amber-800 text-[11px] font-semibold flex items-start gap-1.5">
+                    <svg className="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Kasada {Math.round(accBalance).toLocaleString("tr-TR")} {SYM[d.currency]} var, işlem yine de kaydedilecek; bakiye {Math.round(accBalance - amt).toLocaleString("tr-TR")} {SYM[d.currency]} olacak.</span>
                   </div>
                 )}
 
