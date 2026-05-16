@@ -167,9 +167,10 @@ async function callOpenAI(
     throw new Error("OPENAI_API_KEY tanimli degil.");
   }
 
-  // fast modunda detail=low + maks token kucuk → cok daha hizli
-  const detail: "high" | "low" = fast ? "low" : "high";
-  const maxTokens = fast ? 350 : 600;
+  // Fast modunda detay 'high' tutulur (MRZ tarihleri 'low' detayda okunamiyor)
+  // sadece retry kapatilir → tek cagri = ~%50 hizlanma + tam dogruluk.
+  const detail: "high" | "low" = "high";
+  const maxTokens = 600;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

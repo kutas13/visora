@@ -410,7 +410,7 @@ export default function RandevuListesi() {
   const [randevuSaving, setRandevuSaving] = useState(false);
   // Almanya ozel: odenen ucret + odeme yontemi
   const [randevuUcret, setRandevuUcret] = useState("");
-  const [randevuUcretCurrency, setRandevuUcretCurrency] = useState<ParaBirimi>("EUR");
+  const [randevuUcretCurrency, setRandevuUcretCurrency] = useState<ParaBirimi>("TL");
   const [randevuCashAccountId, setRandevuCashAccountId] = useState("");
   const [cashAccountsList, setCashAccountsList] = useState<CashAccount[]>([]);
   const [cashBalances, setCashBalances] = useState<Map<string, number>>(new Map());
@@ -766,10 +766,25 @@ export default function RandevuListesi() {
             }
           }
 
+          // Once dosyalarin olusumu kullaniciya bildirilsin
+          if (createdFileIds.length > 0) {
+            setBgJob({
+              label: `${createdFileIds.length}/${pasaportGorseller.length} dosya oluşturuldu`,
+              done: false,
+              ok: false,
+            });
+          }
+
+          // SONRA: Kasa hareketleri (Almanya icin gider kaydi → trigger ile cash_tx)
+          // Bu adim dosyalar olustuktan SONRA calisir; randevu butonuna basildiginda
+          // kasa anlik DUSMEZ — sadece bu adim tamamlaninca duser.
           if (isAlmanyaSnap && createdFileIds.length > 0 && perPassport > 0 && snap.cashAccountId) {
+            setBgJob({
+              label: "Kasa hareketleri kaydediliyor…",
+              done: false,
+              ok: false,
+            });
             const method = snap.cashAccountKind === "bank" ? "bank" : "cash";
-            // Secilen kasanin para birimi (ucret_currency yerine kasa currency baz alinir;
-            // boylece bakiye/cash_transactions tutarli olur).
             const acc = cashAccountsList.find((a) => a.id === snap.cashAccountId);
             const expCurrency = (acc?.currency || snap.ucretCurrency) as "TL" | "EUR" | "USD";
             await Promise.all(createdFileIds.map((fid) => (
@@ -791,7 +806,6 @@ export default function RandevuListesi() {
             done: true,
             ok: createdFileIds.length > 0,
           });
-          // Listeyi yenile
           loadData();
           setTimeout(() => setBgJob(null), 8000);
         } catch (autoErr) {
@@ -957,7 +971,7 @@ export default function RandevuListesi() {
         setRandevuDosyalari([]);
         setRandevuUlke("");
         setRandevuUcret("");
-        setRandevuUcretCurrency("EUR");
+        setRandevuUcretCurrency("TL");
         setRandevuCashAccountId("");
         setRandevuStatusMsg(null);
         setRandevuPasaportSayisi(0);
@@ -1384,7 +1398,7 @@ export default function RandevuListesi() {
             setRandevuDosyalari([]);
             setRandevuUlke("");
             setRandevuUcret("");
-            setRandevuUcretCurrency("EUR");
+            setRandevuUcretCurrency("TL");
             setRandevuCashAccountId("");
             setRandevuStatusMsg(null);
             setRandevuPasaportSayisi(0);
