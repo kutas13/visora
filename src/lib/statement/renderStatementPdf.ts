@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { createElement } from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import QRCode from "qrcode";
@@ -6,6 +8,21 @@ import { StatementPdfDocument } from "./StatementPdfDocument";
 import { buildStatement } from "./buildStatement";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { signStatementToken } from "./token";
+
+/** Sirket kasesi public/seal/company-stamp.png'den okunup data:url'e cevirilir.
+ *  Tum ekstreler ayni kase ile imzalanir (Visora platform kasesi). */
+let cachedStampDataUrl: string | null = null;
+function loadCompanyStamp(): string | null {
+  if (cachedStampDataUrl) return cachedStampDataUrl;
+  try {
+    const p = path.join(process.cwd(), "public", "seal", "company-stamp.png");
+    const buf = fs.readFileSync(p);
+    cachedStampDataUrl = `data:image/png;base64,${buf.toString("base64")}`;
+    return cachedStampDataUrl;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Bir banka hesabi icin imzali bir public ekstre URL'i + onu icinde QR olarak
@@ -41,6 +58,7 @@ export async function renderStatementPdf(args: {
   // 3) Ekstre verisi + PDF render
   registerReportPdfFonts();
   const data = await buildStatement(admin, bankAccountId, months, qrDataUrl);
+  data.stamp_data_url = loadCompanyStamp();
   const el = createElement(StatementPdfDocument, { data });
   const buffer = await renderToBuffer(el as never);
 

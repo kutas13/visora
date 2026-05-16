@@ -156,6 +156,7 @@ export async function buildStatement(
     total_out: Math.round(totalOut * 100) / 100,
     movements,
     qr_data_url: qrDataUrl,
+    stamp_data_url: null, // renderStatementPdf.ts icinde doldurulur
     doc_no: docNo,
     issued_at: issuedAt,
   };

@@ -72,6 +72,8 @@ export type StatementData = {
   total_out: number;
   movements: StatementMovement[];
   qr_data_url: string;
+  /** Sirket kasesi (data:image/png base64) — her sayfa altinda imzali muhur */
+  stamp_data_url?: string | null;
   doc_no: string;
   issued_at: string;
 };
@@ -277,10 +279,26 @@ const styles = StyleSheet.create({
   qrText: { fontSize: 7.5, color: C.muted, lineHeight: 1.45 },
   qrLink: { fontSize: 7, color: C.indigo, marginTop: 2 },
 
-  footerMeta: { alignItems: "flex-end" },
+  footerMeta: { alignItems: "flex-end", flexDirection: "row", gap: 10 },
+  footerMetaText: { alignItems: "flex-end" },
   pageNum: { fontSize: 8, color: C.slate, fontWeight: "bold" },
   footerOrg: { fontSize: 7.5, color: C.muted, marginTop: 3 },
   footerStamp: { fontSize: 7, color: C.muted, marginTop: 1 },
+
+  // ---- KAŞE / E-IMZA ----
+  stampBox: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stampImage: { width: 64, height: 64, opacity: 0.92 },
+  stampLabel: {
+    fontSize: 6.5,
+    color: C.muted,
+    marginTop: 2,
+    letterSpacing: 0.8,
+    textAlign: "center",
+    fontWeight: "bold",
+  },
 });
 
 function fmtDateShort(s: string): string {
@@ -517,12 +535,23 @@ export function StatementPdfDocument({ data }: { data: StatementData }) {
               </View>
             </View>
             <View style={styles.footerMeta}>
-              <Text
-                style={styles.pageNum}
-                render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`}
-              />
-              <Text style={styles.footerOrg}>{organization.name}</Text>
-              <Text style={styles.footerStamp}>Düzenlenme: {data.issued_at}</Text>
+              <View style={styles.footerMetaText}>
+                <Text
+                  style={styles.pageNum}
+                  render={({ pageNumber, totalPages }) => `Sayfa ${pageNumber} / ${totalPages}`}
+                />
+                <Text style={styles.footerOrg}>{organization.name}</Text>
+                <Text style={styles.footerStamp}>Düzenlenme: {data.issued_at}</Text>
+              </View>
+
+              {/* Sirket kasesi — her sayfada otomatik */}
+              {data.stamp_data_url && (
+                <View style={styles.stampBox}>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <Image src={data.stamp_data_url} style={styles.stampImage} />
+                  <Text style={styles.stampLabel}>E-İMZALI / MÜHÜRLÜ</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
