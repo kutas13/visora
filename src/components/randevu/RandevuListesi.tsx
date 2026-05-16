@@ -403,6 +403,11 @@ export default function RandevuListesi() {
   const [formHesapBilgileri, setFormHesapBilgileri] = useState<Record<string, HesapBilgileri>>({});
   const [editHesapBilgileri, setEditHesapBilgileri] = useState<Record<string, HesapBilgileri>>({});
 
+  // Almanya ozel: ucret + para birimi + ödeme kasasi (talep aninda)
+  const [formAlmanyaUcret, setFormAlmanyaUcret] = useState<string>("");
+  const [formAlmanyaUcretCurrency, setFormAlmanyaUcretCurrency] = useState<ParaBirimi>("TL");
+  const [formAlmanyaCashAccountId, setFormAlmanyaCashAccountId] = useState<string>("");
+
   // Randevu al
   const [randevuTarihi, setRandevuTarihi] = useState("");
   const [randevuDosyalari, setRandevuDosyalari] = useState<string[]>([]);
@@ -458,7 +463,7 @@ export default function RandevuListesi() {
 
     const { data, error } = await supabase
       .from("randevu_talepleri")
-      .select("id, ulkeler, vize_tipi, alt_kategori, dosya_adi, iletisim, randevu_tarihi, randevu_alan_id, hesap_bilgileri, notlar, arsivlendi, created_by, created_at, updated_at, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
+      .select("id, ulkeler, vize_tipi, alt_kategori, dosya_adi, iletisim, randevu_tarihi, randevu_alan_id, hesap_bilgileri, notlar, arsivlendi, created_by, created_at, updated_at, almanya_ucret, almanya_ucret_currency, almanya_cash_account_id, profiles:created_by(name), randevu_alan:randevu_alan_id(name)")
       .order("created_at", { ascending: false });
 
     if (!error && data) {
@@ -469,23 +474,28 @@ export default function RandevuListesi() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Randevu Al modal acildiginda cash_accounts + pasaport sayisini yukle
+  // Randevu Al veya Yeni Talep modali acildiginda cash_accounts (ve pasaport sayisi)
+  // yuklenir. Almanya ucret bilgileri her iki ekrandan da gerekebilir.
   useEffect(() => {
-    if (!showRandevuAlModal || !selectedTalep) return;
+    if (!showRandevuAlModal && !showCreateModal) return;
     let cancelled = false;
     (async () => {
       const supabase = createClient();
-      const [accRes, txRes, detailRes] = await Promise.all([
-        supabase.from("cash_accounts").select("*").eq("is_active", true).order("kind").order("currency"),
-        supabase.from("cash_transactions").select("account_id, direction, amount"),
-        supabase.from("randevu_talepleri").select("gorseller").eq("id", selectedTalep.id).single<{ gorseller: string[] | null }>(),
-      ]);
+      const accRes = await supabase.from("cash_accounts").select("*").eq("is_active", true).order("kind").order("currency");
       if (cancelled) return;
-      setRandevuPasaportSayisi((detailRes.data?.gorseller || []).length);
-      const accs = (accRes.data as CashAccount[] | null) || [];
+      const txRes = await supabase.from("cash_transactions").select("account_id, direction, amount");
+      if (cancelled) return;
+      const detailRes = (showRandevuAlModal && selectedTalep)
+        ? await supabase.from("randevu_talepleri").select("gorseller").eq("id", selectedTalep.id).single<{ gorseller: string[] | null }>()
+        : null;
+      if (cancelled) return;
+
+      if (detailRes) {
+        setRandevuPasaportSayisi((detailRes.data?.gorseller || []).length);
+      }
+      const accs = accRes.data || [];
       setCashAccountsList(accs);
-      type TxRow = { account_id: string; direction: "in" | "out"; amount: number | string };
-      const txs = (txRes.data as TxRow[] | null) || [];
+      const txs = txRes.data || [];
       const balanceMap = new Map<string, number>();
       for (const a of accs) balanceMap.set(a.id, 0);
       for (const t of txs) {
@@ -498,7 +508,7 @@ export default function RandevuListesi() {
       setCashBalances(balanceMap);
     })();
     return () => { cancelled = true; };
-  }, [showRandevuAlModal]);
+  }, [showRandevuAlModal, showCreateModal, selectedTalep]);
 
   const loadTalepDetail = useCallback(async (id: string) => {
     const supabase = createClient();
@@ -514,6 +524,7 @@ export default function RandevuListesi() {
     setFormUlkeler([]); setFormVizeTipi(""); setFormAltKategori("");
     setFormDosyaAdi(""); setFormIletisim(""); setFormGorseller([]);
     setFormNot(""); setFormHesapBilgileri({});
+    setFormAlmanyaUcret(""); setFormAlmanyaUcretCurrency("TL"); setFormAlmanyaCashAccountId("");
   };
 
   const handleFileUpload = (
@@ -534,6 +545,21 @@ export default function RandevuListesi() {
 
   const handleCreate = async () => {
     if (!formDosyaAdi || !formIletisim || formUlkeler.length === 0 || !formVizeTipi) return;
+
+    // Almanya secildiyse ucret + kasa ZORUNLU
+    const isAlmanyaForm = formUlkeler.includes("Almanya");
+    const almanyaUcretParsed = isAlmanyaForm ? parseTrNumber(formAlmanyaUcret) : 0;
+    if (isAlmanyaForm) {
+      if (!almanyaUcretParsed || almanyaUcretParsed <= 0) {
+        alert("Almanya için ödenen ücret girilmelidir.");
+        return;
+      }
+      if (!formAlmanyaCashAccountId) {
+        alert("Almanya için ödeme yapılacak kasa/banka hesabı seçilmelidir.");
+        return;
+      }
+    }
+
     setFormSaving(true);
     try {
       const gorselUrls = formGorseller.length > 0
@@ -543,7 +569,7 @@ export default function RandevuListesi() {
       const hesapData = Object.keys(formHesapBilgileri).length > 0 ? formHesapBilgileri : null;
 
       const supabase = createClient();
-      const { error } = await supabase.from("randevu_talepleri").insert({
+      const insertPayload: Record<string, unknown> = {
         ulkeler: formUlkeler,
         vize_tipi: formVizeTipi,
         alt_kategori: showAltKategori(formUlkeler, formVizeTipi) ? (formAltKategori || null) : null,
@@ -553,7 +579,21 @@ export default function RandevuListesi() {
         hesap_bilgileri: hesapData,
         notlar: formNot.trim() || null,
         created_by: currentUser?.id || null,
-      });
+      };
+      if (isAlmanyaForm) {
+        insertPayload.almanya_ucret = almanyaUcretParsed;
+        insertPayload.almanya_ucret_currency = formAlmanyaUcretCurrency;
+        insertPayload.almanya_cash_account_id = formAlmanyaCashAccountId;
+      }
+      let { error } = await supabase.from("randevu_talepleri").insert(insertPayload);
+      // 044 migration calismadan da calissin: schema cache eksikse Almanya alanlarini at
+      if (error && /almanya_ucret|almanya_cash_account|schema cache|Could not find/i.test(error.message || "")) {
+        const minimal = { ...insertPayload };
+        delete minimal.almanya_ucret;
+        delete minimal.almanya_ucret_currency;
+        delete minimal.almanya_cash_account_id;
+        ({ error } = await supabase.from("randevu_talepleri").insert(minimal));
+      }
       if (!error) {
         const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === formVizeTipi)?.label || formVizeTipi;
         const ulkelerStr = formUlkeler.join(", ");
@@ -632,6 +672,12 @@ export default function RandevuListesi() {
       // === OTOMATIK VIZE DOSYASI OLUSTURMA (fire-and-forget) =================
       // Pasaport OCR + visa_files olusturma uzun surebilir; modal'i bekletmeyelim.
       // Snapshot al, arka planda calistir, kullaniciya banner uzerinden bildir.
+      // Almanya icin ucret / kasa bilgisi artik TALEP uzerinden gelir (talep aninda girilir).
+      const talepAlmanyaUcret = Number(selectedTalep.almanya_ucret ?? 0) || 0;
+      const talepAlmanyaCurrency = (selectedTalep.almanya_ucret_currency ?? "TL") as ParaBirimi;
+      const talepAlmanyaCashAccountId = selectedTalep.almanya_cash_account_id ?? "";
+      const talepAlmanyaAccKind = cashAccountsList.find((a) => a.id === talepAlmanyaCashAccountId)?.kind || "cash";
+
       const snap = {
         talepId: selectedTalep.id,
         ulkeler: [...selectedTalep.ulkeler],
@@ -641,10 +687,10 @@ export default function RandevuListesi() {
         randevuTarihi,
         userId: currentUser.id,
         orgId: currentUser.organization_id || null,
-        ucret: parseTrNumber(randevuUcret),
-        ucretCurrency: randevuUcretCurrency,
-        cashAccountId: randevuCashAccountId,
-        cashAccountKind: cashAccountsList.find((a) => a.id === randevuCashAccountId)?.kind || "cash",
+        ucret: talepAlmanyaUcret,
+        ucretCurrency: talepAlmanyaCurrency,
+        cashAccountId: talepAlmanyaCashAccountId,
+        cashAccountKind: talepAlmanyaAccKind,
       };
       const isAlmanyaSnap = snap.effectiveUlke === "Almanya";
 
@@ -1372,6 +1418,93 @@ export default function RandevuListesi() {
             />
           )}
 
+          {/* ===== ALMANYA: ÖDENEN ÜCRET (talep aninda) ===== */}
+          {formUlkeler.includes("Almanya") && (() => {
+            const filteredAccs = cashAccountsList.filter((a) => a.currency === formAlmanyaUcretCurrency);
+            const accBalance = formAlmanyaCashAccountId ? (cashBalances.get(formAlmanyaCashAccountId) || 0) : null;
+            const ucretNum = parseTrNumber(formAlmanyaUcret);
+            const pasaportSayisi = formGorseller.length;
+            return (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-extrabold text-amber-900">Almanya Konsolosluk Ücreti</p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    Almanya'da randevu almıyoruz, talep ediyoruz. Ödenen ücreti girin; randevu alındığında
+                    pasaport başına bölünüp her vize dosyasına "konsolosluk gideri" olarak yazılır.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-navy-600 mb-1">ÖDENEN ÜCRET</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={formAlmanyaUcret}
+                      onChange={(e) => setFormAlmanyaUcret(e.target.value)}
+                      placeholder="0,00"
+                      className="w-full px-3 py-2 rounded-lg border border-amber-200 text-sm font-bold text-navy-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-navy-600 mb-1">PARA BİRİMİ</label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(["TL","EUR","USD"] as const).map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => { setFormAlmanyaUcretCurrency(c); setFormAlmanyaCashAccountId(""); }}
+                          className={`px-2 py-2 rounded-lg text-xs font-bold border-2 transition-all ${
+                            formAlmanyaUcretCurrency === c
+                              ? "border-amber-500 bg-amber-100 text-amber-800"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-navy-600 mb-1">ÖDEME YAPILACAK HESAP / KASA</label>
+                  <select
+                    value={formAlmanyaCashAccountId}
+                    onChange={(e) => setFormAlmanyaCashAccountId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-amber-200 text-sm focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+                  >
+                    <option value="">— Seçiniz —</option>
+                    {filteredAccs.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.currency})
+                      </option>
+                    ))}
+                    {filteredAccs.length === 0 && (
+                      <option value="" disabled>{formAlmanyaUcretCurrency} için hesap yok</option>
+                    )}
+                  </select>
+                  {formAlmanyaCashAccountId && accBalance !== null && (
+                    <p className="text-[10.5px] text-amber-700 mt-1">
+                      Mevcut bakiye: <span className="font-bold">{fmtCurrency(accBalance, formAlmanyaUcretCurrency)}</span>
+                    </p>
+                  )}
+                </div>
+
+                {pasaportSayisi > 0 && ucretNum > 0 && (
+                  <div className="rounded-lg bg-white border border-amber-200 px-3 py-2">
+                    <p className="text-[10.5px] text-amber-700">
+                      Yüklü pasaport: <span className="font-bold">{pasaportSayisi} adet</span> · Pasaport başına:{" "}
+                      <span className="font-extrabold text-amber-900">
+                        {fmtCurrency(ucretNum / pasaportSayisi, formAlmanyaUcretCurrency)}
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <Button onClick={handleCreate} disabled={formSaving || !formDosyaAdi || !formIletisim || formUlkeler.length === 0 || !formVizeTipi} className="w-full">
             {formSaving ? "Kaydediliyor..." : "Randevu Talebi Oluştur"}
           </Button>
@@ -1384,11 +1517,6 @@ export default function RandevuListesi() {
           ? (randevuUlke || (selectedTalep.ulkeler.length === 1 ? selectedTalep.ulkeler[0] : ""))
           : "";
         const isAlmanya = effUlke === "Almanya";
-        const filteredCashAccounts = cashAccountsList.filter((a) => a.currency === randevuUcretCurrency);
-        const selectedCashAccountBalance = randevuCashAccountId
-          ? (cashBalances.get(randevuCashAccountId) ?? 0)
-          : null;
-        const ucretNum = parseTrNumber(randevuUcret);
         return (
         <Modal
           isOpen={showRandevuAlModal}
@@ -1440,78 +1568,56 @@ export default function RandevuListesi() {
               className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
 
-          {/* ALMANYA OZEL: Odenen ucret + odeme yontemi */}
-          {isAlmanya && (
-            <div className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50/60 to-yellow-50/40 p-3.5 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="text-base">💰</span>
-                <p className="font-bold text-amber-900 text-sm">Ödenen Ücret (Almanya)</p>
-              </div>
-              <p className="text-[11px] text-amber-700 -mt-1">
-                Bu ücret pasaport sayısına bölünür ve her vize dosyasına otomatik "Konsolosluk Gideri" olarak işlenir.
-              </p>
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={randevuUcret}
-                  onChange={(e) => setRandevuUcret(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 py-2.5 rounded-lg border border-amber-300 text-base font-bold text-amber-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
-                />
-                <div className="flex gap-1">
-                  {(["TL","EUR","USD"] as ParaBirimi[]).map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => { setRandevuUcretCurrency(c); setRandevuCashAccountId(""); }}
-                      className={`px-2.5 py-2 rounded-lg text-xs font-bold transition-all ${
-                        randevuUcretCurrency === c
-                          ? "bg-amber-500 text-white shadow"
-                          : "bg-white text-amber-700 border border-amber-200 hover:bg-amber-100"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
+          {/* ALMANYA OZEL: Talep aninda kaydedilmis ucret bilgisini salt-okunur goster */}
+          {isAlmanya && selectedTalep && (() => {
+            const tUcret = Number(selectedTalep.almanya_ucret ?? 0) || 0;
+            const tCur = (selectedTalep.almanya_ucret_currency ?? "TL") as ParaBirimi;
+            const tAccId = selectedTalep.almanya_cash_account_id ?? "";
+            const acc = cashAccountsList.find((a) => a.id === tAccId);
+            const ps = randevuPasaportSayisi;
+            return (
+              <div className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50/60 to-yellow-50/40 p-3.5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">💰</span>
+                  <p className="font-bold text-amber-900 text-sm">Ödenen Ücret (talep aşamasında girildi)</p>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-amber-800 mb-1.5">Ödeme Yöntemi (hangi kasadan düşülecek?)</label>
-                <select
-                  value={randevuCashAccountId}
-                  onChange={(e) => setRandevuCashAccountId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg border border-amber-300 bg-white text-sm font-medium text-amber-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
-                >
-                  <option value="">Hesap seç...</option>
-                  {filteredCashAccounts.length === 0 && <option value="" disabled>{randevuUcretCurrency} için hesap yok</option>}
-                  {filteredCashAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.kind === "bank" ? "🏦" : "💵"} {a.name} ({a.currency} {CURRENCY_SYMBOL[a.currency]})
-                    </option>
-                  ))}
-                </select>
-                {selectedCashAccountBalance !== null && (
-                  <p className="text-[11px] text-amber-700 mt-1">
-                    Mevcut bakiye: <span className="font-bold">{fmtCurrency(selectedCashAccountBalance, randevuUcretCurrency)}</span>
+                {tUcret > 0 ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-2 text-[12px]">
+                      <div className="bg-white/70 rounded-lg p-2 border border-amber-200">
+                        <p className="text-[10px] text-amber-700 font-bold">TUTAR</p>
+                        <p className="font-extrabold text-amber-900 tabular-nums">{fmtCurrency(tUcret, tCur)}</p>
+                      </div>
+                      <div className="bg-white/70 rounded-lg p-2 border border-amber-200">
+                        <p className="text-[10px] text-amber-700 font-bold">ÖDENECEK HESAP</p>
+                        <p className="font-bold text-amber-900">
+                          {acc ? `${acc.kind === "bank" ? "🏦" : "💵"} ${acc.name}` : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    {ps > 0 && (
+                      <div className="bg-white/70 rounded-lg p-2.5 border border-amber-200 text-[12px] text-amber-900">
+                        <span className="font-semibold">Pasaport başına ({ps} pasaport):</span>{" "}
+                        <span className="font-bold tabular-nums">{fmtCurrency(tUcret / ps, tCur)}</span>
+                      </div>
+                    )}
+                    {ps === 0 && (
+                      <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 font-semibold">
+                        ⚠ Bu talepte pasaport görseli yok. Ücret bölünemez.
+                      </p>
+                    )}
+                    <p className="text-[10.5px] text-amber-700 mt-1">
+                      ℹ️ Kasa hareketi, vize dosyaları oluşturulduktan SONRA otomatik kaydedilir.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 font-semibold">
+                    ⚠ Bu talepte Almanya ücret bilgisi girilmemiş. Önce talebi düzenleyip ücret + hesap bilgisini girin.
                   </p>
                 )}
               </div>
-              {ucretNum > 0 && randevuPasaportSayisi > 0 && (
-                <div className="bg-white/70 rounded-lg p-2.5 border border-amber-200 text-[12px] text-amber-900">
-                  <span className="font-semibold">Pasaport başına ({randevuPasaportSayisi} pasaport):</span>{" "}
-                  <span className="font-bold tabular-nums">
-                    {fmtCurrency(ucretNum / randevuPasaportSayisi, randevuUcretCurrency)}
-                  </span>
-                </div>
-              )}
-              {ucretNum > 0 && randevuPasaportSayisi === 0 && (
-                <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 font-semibold">
-                  ⚠ Bu talepte pasaport görseli yok. Ücret bölünemez; önce talebi düzenleyip görsel ekleyin.
-                </p>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           <div>
             <label className="block text-sm font-bold text-navy-700 mb-2">
@@ -1564,7 +1670,7 @@ export default function RandevuListesi() {
               randevuSaving ||
               !randevuTarihi ||
               (!!selectedTalep && selectedTalep.ulkeler.length > 1 && !randevuUlke) ||
-              (isAlmanya && ucretNum > 0 && !randevuCashAccountId)
+              (isAlmanya && !Number(selectedTalep?.almanya_ucret || 0))
             }
             className={`w-full ${isAlmanya ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700"}`}
           >

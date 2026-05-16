@@ -296,6 +296,10 @@ export interface RandevuTalebi {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  // Almanya icin talep aninda girilen konsolosluk ucret bilgisi
+  almanya_ucret?: number | null;
+  almanya_ucret_currency?: ParaBirimi | null;
+  almanya_cash_account_id?: string | null;
 }
 
 export interface RandevuTalebiWithProfile extends RandevuTalebi {
