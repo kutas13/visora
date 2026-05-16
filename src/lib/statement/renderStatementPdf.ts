@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { createElement } from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import QRCode from "qrcode";
@@ -11,28 +9,16 @@ import { signStatementToken } from "./token";
 import { COMPANY_STAMP_DATA_URL } from "./companyStamp";
 
 /**
- * Sirket kasesini PDF'e gomulu base64 olarak dondurur.
+ * Sirket kasesi build-time'da `scripts/gen-company-stamp.mjs` ile
+ * public/seal/company-stamp.png'den uretilip src/lib/statement/companyStamp.ts
+ * dosyasina 240x240 optimize PNG olarak gomuluyor.
  *
- * Onceliklendirme:
- *  1) public/seal/company-stamp.png dosyasi runtime'da okunabiliyorsa (yerel dev),
- *     ondan okur. Bu sayede gelistirici PNG'yi degistirdiginde `node scripts/...` calistirmadan
- *     hemen yeni kaseyi gorur.
- *  2) Dosya bulunamiyorsa (Vercel/serverless gibi public/ runtime'a alinmiyorsa)
- *     build-time'da gomulu COMPANY_STAMP_DATA_URL kullanilir — bu her zaman vardir.
+ * Build sirasinda `prebuild` hook'u otomatik olarak yeniden uretiyor; yerelde
+ * `npm run gen:stamp` ile manuel de tetiklenebilir. Bu yontem Vercel/serverless
+ * gibi `public/` runtime'a alinmayan ortamlarda da %100 calisir.
  */
-let cachedStampDataUrl: string | null = null;
 function loadCompanyStamp(): string | null {
-  if (cachedStampDataUrl) return cachedStampDataUrl;
-  try {
-    const p = path.join(process.cwd(), "public", "seal", "company-stamp.png");
-    const buf = fs.readFileSync(p);
-    cachedStampDataUrl = `data:image/png;base64,${buf.toString("base64")}`;
-    return cachedStampDataUrl;
-  } catch {
-    // serverless ortamlar: build-time'da gomulu base64 ile devam et
-    cachedStampDataUrl = COMPANY_STAMP_DATA_URL || null;
-    return cachedStampDataUrl;
-  }
+  return COMPANY_STAMP_DATA_URL || null;
 }
 
 /**

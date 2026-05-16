@@ -40,6 +40,7 @@
     "pg": "^8.20.0",
     "png-to-ico": "^3.0.1",
     "postcss": "^8.4.39",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.5.3"
   }
