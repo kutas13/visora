@@ -8,9 +8,18 @@ import { StatementPdfDocument } from "./StatementPdfDocument";
 import { buildStatement } from "./buildStatement";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { signStatementToken } from "./token";
+import { COMPANY_STAMP_DATA_URL } from "./companyStamp";
 
-/** Sirket kasesi public/seal/company-stamp.png'den okunup data:url'e cevirilir.
- *  Tum ekstreler ayni kase ile imzalanir (Visora platform kasesi). */
+/**
+ * Sirket kasesini PDF'e gomulu base64 olarak dondurur.
+ *
+ * Onceliklendirme:
+ *  1) public/seal/company-stamp.png dosyasi runtime'da okunabiliyorsa (yerel dev),
+ *     ondan okur. Bu sayede gelistirici PNG'yi degistirdiginde `node scripts/...` calistirmadan
+ *     hemen yeni kaseyi gorur.
+ *  2) Dosya bulunamiyorsa (Vercel/serverless gibi public/ runtime'a alinmiyorsa)
+ *     build-time'da gomulu COMPANY_STAMP_DATA_URL kullanilir — bu her zaman vardir.
+ */
 let cachedStampDataUrl: string | null = null;
 function loadCompanyStamp(): string | null {
   if (cachedStampDataUrl) return cachedStampDataUrl;
@@ -20,7 +29,9 @@ function loadCompanyStamp(): string | null {
     cachedStampDataUrl = `data:image/png;base64,${buf.toString("base64")}`;
     return cachedStampDataUrl;
   } catch {
-    return null;
+    // serverless ortamlar: build-time'da gomulu base64 ile devam et
+    cachedStampDataUrl = COMPANY_STAMP_DATA_URL || null;
+    return cachedStampDataUrl;
   }
 }
 

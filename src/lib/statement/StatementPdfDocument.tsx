@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   qrText: { fontSize: 7.5, color: C.muted, lineHeight: 1.45 },
   qrLink: { fontSize: 7, color: C.indigo, marginTop: 2 },
 
-  footerMeta: { alignItems: "flex-end", flexDirection: "row", gap: 10 },
+  footerMeta: { alignItems: "flex-end", flexDirection: "row", gap: 12 },
   footerMetaText: { alignItems: "flex-end" },
   pageNum: { fontSize: 8, color: C.slate, fontWeight: "bold" },
   footerOrg: { fontSize: 7.5, color: C.muted, marginTop: 3 },
@@ -289,12 +289,15 @@ const styles = StyleSheet.create({
   stampBox: {
     alignItems: "center",
     justifyContent: "center",
+    paddingLeft: 6,
+    borderLeftWidth: 0.6,
+    borderLeftColor: C.border,
   },
-  stampImage: { width: 64, height: 64, opacity: 0.92 },
+  stampImage: { width: 86, height: 86 },
   stampLabel: {
     fontSize: 6.5,
     color: C.muted,
-    marginTop: 2,
+    marginTop: 3,
     letterSpacing: 0.8,
     textAlign: "center",
     fontWeight: "bold",
