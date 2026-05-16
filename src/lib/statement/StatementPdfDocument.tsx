@@ -248,7 +248,7 @@ export function StatementPdfDocument({ data }: { data: StatementData }) {
             </View>
             <View style={styles.acctRight}>
               <Text style={styles.acctRightLabel}>KAPANIŞ BAKİYESİ</Text>
-              <Text style={[styles.acctRightValue, data.closing_balance < 0 && { color: "#fda4af" }]}>
+              <Text style={data.closing_balance < 0 ? [styles.acctRightValue, { color: "#fda4af" }] : styles.acctRightValue}>
                 {fmtMoney(data.closing_balance, account.currency)}
               </Text>
               <Text style={styles.acctRightSub}>
@@ -299,7 +299,7 @@ export function StatementPdfDocument({ data }: { data: StatementData }) {
               movements.map((m, i) => (
                 <View
                   key={m.id}
-                  style={[styles.tr, i % 2 === 1 && styles.trStripe]}
+                  style={i % 2 === 1 ? [styles.tr, styles.trStripe] : styles.tr}
                   wrap={false}
                 >
                   <Text style={[styles.td, styles.tdDate]}>{fmtDateShort(m.created_at)}</Text>

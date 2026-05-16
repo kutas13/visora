@@ -36,9 +36,22 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
   // ilk aktif hesabin adi default olur (ilk fetch'ten sonra atanir).
   const [hesapSahibi, setHesapSahibi] = useState<HesapSahibi>("");
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const CURRENCY_SYM: Record<string, string> = { TL: "₺", EUR: "€", USD: "$" };
+  // value = hesap_id (UUID); ayni isimli iki hesabin (TL/EUR) ayrildigini
+  // garanti eder. payments.hesap_sahibi'ye yazarken name'e cevrilir.
   const hesapSahibiOptions = bankAccounts
     .filter((a) => a.is_active)
-    .map((a) => ({ value: a.name, label: a.bank_name ? `${a.name} — ${a.bank_name}` : a.name }));
+    .map((a) => {
+      const sym = CURRENCY_SYM[a.currency] || a.currency;
+      const base = a.bank_name ? `${a.name} — ${a.bank_name}` : a.name;
+      return { value: a.id, label: `${base} (${a.currency} ${sym})` };
+    });
+  // Secilen ID'den hesap adina cozumlemek icin helper
+  const resolveHesapName = (idOrName: string): string => {
+    const byId = bankAccounts.find((a) => a.id === idOrName);
+    if (byId) return byId.name;
+    return idOrName; // eski kayitlar / fallback
+  };
   const [notlar, setNotlar] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([{ amount: "", currency: "TL" }]);
@@ -68,7 +81,7 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         const accounts = (json.data || []) as BankAccount[];
         setBankAccounts(accounts);
         const firstActive = accounts.find((a) => a.is_active);
-        if (firstActive) setHesapSahibi(firstActive.name);
+        if (firstActive) setHesapSahibi(firstActive.id);
         else setHesapSahibi("");
       }
     } catch (err) {
@@ -149,6 +162,9 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         }
       }
 
+      // hesapSahibi state'i artik UUID; payments tablosuna name string olarak yazilir.
+      const hesapSahibiName = yontem === "hesaba" ? resolveHesapName(hesapSahibi) : null;
+
       // Dekont (yalniz hesaba): Storage'a yukle, payments.dekont_url'e yaz.
       let dekontUrlForPayment: string | null = null;
       if (dekontFile && yontem === "hesaba" && hesapSahibi) {
@@ -179,7 +195,7 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
 
       const { error: payErr } = await supabase.from("payments").insert({
         ...paymentPayload,
-        hesap_sahibi: yontem === "hesaba" ? hesapSahibi : null,
+        hesap_sahibi: hesapSahibiName,
         dekont_url: dekontUrlForPayment,
         tl_karsilik: tlKarsilikValue,
       });
@@ -221,7 +237,7 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
         tutar: primaryAmount,
         currency: effectiveCurrency,
         yontem,
-        hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
+        hesapSahibi: hesapSahibiName,
         tlKarsilik: tlKarsilikValue,
         notlar: notlar.trim() || null,
       });
@@ -249,7 +265,7 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
             tutar: primaryAmount,
             currency: effectiveCurrency,
             yontem,
-            hesapSahibi: yontem === "hesaba" ? hesapSahibi : null,
+            hesapSahibi: hesapSahibiName,
             notlar: notlar.trim() || null,
             dosyaCurrency: file.ucret_currency,
             dosyaTutar: getTotalDosyaAmount(file),
@@ -580,7 +596,7 @@ export default function TahsilatModal({ isOpen, onClose, file, onSuccess }: Tahs
                 ? "Nakit"
                 : yontem === "pos"
                 ? "POS"
-                : `Hesaba (${hesapSahibi || "-"})`}
+                : `Hesaba (${resolveHesapName(hesapSahibi) || "-"})`}
             </p>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">

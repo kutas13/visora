@@ -116,13 +116,16 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
   // "Hesaba" odeme yontemi secildiginde Hesap Sahibi listesi bu hesaplardan gelir.
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const hesapSahibiOptions = useMemo(
-    () =>
-      bankAccounts
+    () => {
+      const sym: Record<string, string> = { TL: "₺", EUR: "€", USD: "$" };
+      return bankAccounts
         .filter((a) => a.is_active)
-        .map((a) => ({
-          value: a.name,
-          label: a.bank_name ? `${a.name} — ${a.bank_name}` : a.name,
-        })),
+        .map((a) => {
+          const base = a.bank_name ? `${a.name} — ${a.bank_name}` : a.name;
+          // Para birimi ile birlikte goster (ayni isimde TL/EUR/USD hesabini ayirt et)
+          return { value: a.name, label: `${base} (${a.currency} ${sym[a.currency] || a.currency})` };
+        });
+    },
     [bankAccounts]
   );
   
