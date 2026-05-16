@@ -400,7 +400,7 @@ export function StatementPdfDocument({ data }: { data: StatementData }) {
                 </View>
                 <View style={styles.balanceFkv}>
                   <Text style={styles.balanceFkvLbl}>NET HAREKET</Text>
-                  <Text style={[styles.balanceFkvVal, net < 0 && { color: "#fda4af" }]}>
+                  <Text style={net < 0 ? [styles.balanceFkvVal, { color: "#fda4af" }] : styles.balanceFkvVal}>
                     {fmtMoney(net, account.currency)}
                   </Text>
                 </View>
