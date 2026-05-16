@@ -23,6 +23,8 @@ yarn-debug.log*
 yarn-error.log*
 build.log
 deploy.log
+.git-commit-msg.tmp
+.gitstatus.tmp
 
 # Local env files
 .env*.local
