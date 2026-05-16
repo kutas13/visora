@@ -59,6 +59,8 @@ export default function FilesPage() {
   const [manualCountryFilter, setManualCountryFilter] = useState("");
   const [stepFilter, setStepFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -126,10 +128,21 @@ export default function FilesPage() {
     if (ulkeFilter && ulkeFilter !== "all") {
       result = result.filter(f => f.hedef_ulke === ulkeFilter);
     }
+    if (dateFrom || dateTo) {
+      const fromT = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+      const toT = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null;
+      result = result.filter((f) => {
+        if (!f.created_at) return false;
+        const t = new Date(f.created_at).getTime();
+        if (fromT !== null && t < fromT) return false;
+        if (toT !== null && t > toT) return false;
+        return true;
+      });
+    }
     return result.sort(
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     );
-  }, [allFiles, deferredSearchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter]);
+  }, [allFiles, deferredSearchTerm, filterIslemTipi, filterUlke, isManualCountry, manualCountryFilter, dateFrom, dateTo]);
 
   // İstatistikler
   const stats = useMemo(() => {
@@ -180,9 +193,11 @@ export default function FilesPage() {
     setFilterUlke("all");
     setManualCountryFilter("");
     setIsManualCountry(false);
+    setDateFrom("");
+    setDateTo("");
   };
 
-  const hasActiveFilters = !!(searchTerm || filterIslemTipi !== "all" || filterUlke !== "all" || manualCountryFilter);
+  const hasActiveFilters = !!(searchTerm || filterIslemTipi !== "all" || filterUlke !== "all" || manualCountryFilter || dateFrom || dateTo);
 
   const islemTipiOptions = [{ value: "all", label: "Tümü" }, ...ISLEM_TIPLERI];
 
@@ -305,6 +320,38 @@ export default function FilesPage() {
                   <button type="button" onClick={() => setIsManualCountry(!isManualCountry)} className="text-xs text-primary-600 hover:text-primary-700 font-semibold">{isManualCountry ? "Listeden seç" : "Manuel giriş"}</button>
                 </div>
                 {isManualCountry ? <Input placeholder="Ülke adı..." value={manualCountryFilter} onChange={(e) => setManualCountryFilter(e.target.value)} /> : <Select options={TARGET_COUNTRIES} value={filterUlke} onChange={(e) => setFilterUlke(e.target.value)} />}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1">Tarih Aralığı (oluşturma)</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    title="Başlangıç tarihi"
+                    className="flex-1 px-2.5 py-2 rounded-lg border border-navy-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+                  />
+                  <span className="text-navy-400 text-xs">–</span>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    title="Bitiş tarihi"
+                    className="flex-1 px-2.5 py-2 rounded-lg border border-navy-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400"
+                  />
+                  {(dateFrom || dateTo) && (
+                    <button
+                      type="button"
+                      onClick={() => { setDateFrom(""); setDateTo(""); }}
+                      className="p-1.5 rounded-md text-rose-500 hover:bg-rose-50"
+                      title="Tarih filtresini temizle"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}

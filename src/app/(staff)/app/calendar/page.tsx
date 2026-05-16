@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { VisaFile, Profile } from "@/lib/supabase/types";
 
-type VisaFileWithProfile = VisaFile & { profiles: Pick<Profile, "name"> | null };
+type VisaFileWithProfile = VisaFile & {
+  profiles: Pick<Profile, "name"> | null;
+  __source?: "visa_file" | "randevu_talebi";
+};
 
 function fmtTime(d: string) { return new Date(d).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }); }
 function fmtDay(d: string) { return new Date(d).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" }); }
@@ -49,10 +52,80 @@ export default function CalendarPage() {
     const { data: { user } } = await sb.auth.getUser();
     if (user) setUid(user.id);
     const today = new Date(); today.setHours(0,0,0,0);
-    const { data } = await sb.from("visa_files").select("*, profiles:assigned_user_id(name)")
-      .eq("islem_tipi","randevulu").not("randevu_tarihi","is",null)
-      .gte("randevu_tarihi", today.toISOString()).order("randevu_tarihi",{ascending:true});
-    setAppointments(data||[]); setLoading(false);
+
+    const apptsP = sb
+      .from("visa_files")
+      .select("*, profiles:assigned_user_id(name)")
+      .eq("islem_tipi","randevulu")
+      .not("randevu_tarihi","is",null)
+      .gte("randevu_tarihi", today.toISOString())
+      .order("randevu_tarihi",{ascending:true});
+
+    const taleplerP = sb
+      .from("randevu_talepleri")
+      .select("id, dosya_adi, ulkeler, iletisim, randevu_tarihi, randevu_alan_id, profiles:randevu_alan_id(name)")
+      .not("randevu_tarihi","is",null)
+      .gte("randevu_tarihi", today.toISOString())
+      .order("randevu_tarihi",{ascending:true});
+
+    const [apptsRes, taleplerRes] = await Promise.all([apptsP, taleplerP]);
+
+    const apptList = (apptsRes.data || []) as VisaFileWithProfile[];
+    apptList.forEach((a) => { a.__source = "visa_file"; });
+
+    const linkedTalepIds = new Set<string>();
+    for (const a of apptList) {
+      const tid = (a as VisaFile & { randevu_talebi_id?: string | null }).randevu_talebi_id;
+      if (tid) linkedTalepIds.add(tid);
+    }
+
+    type TalepRow = {
+      id: string;
+      dosya_adi: string;
+      ulkeler: string[] | null;
+      iletisim: string | null;
+      randevu_tarihi: string | null;
+      randevu_alan_id: string | null;
+      profiles: { name: string } | null;
+    };
+    const talepList = ((taleplerRes.data as TalepRow[] | null) || [])
+      .filter((t) => !linkedTalepIds.has(t.id))
+      .map<VisaFileWithProfile>((t) => ({
+        id: `talep-${t.id}`,
+        musteri_ad: t.dosya_adi,
+        pasaport_no: "",
+        hedef_ulke: (t.ulkeler || []).join(", "),
+        ulke_manuel_mi: false,
+        islem_tipi: "randevulu",
+        randevu_tarihi: t.randevu_tarihi,
+        evrak_durumu: "geldi",
+        evrak_eksik_mi: false,
+        evrak_not: null,
+        eksik_kayit_tarihi: null,
+        dosya_hazir: false,
+        dosya_hazir_at: null,
+        basvuru_yapildi: false,
+        basvuru_yapildi_at: null,
+        islemden_cikti: false,
+        islemden_cikti_at: null,
+        sonuc: null,
+        sonuc_tarihi: null,
+        vize_bitis_tarihi: null,
+        assigned_user_id: t.randevu_alan_id,
+        arsiv_mi: false,
+        created_at: t.randevu_tarihi || new Date().toISOString(),
+        updated_at: t.randevu_tarihi || new Date().toISOString(),
+        musteri_telefon: t.iletisim,
+        profiles: t.profiles ? { name: t.profiles.name } : null,
+        __source: "randevu_talebi",
+      } as unknown as VisaFileWithProfile));
+
+    const merged = [...apptList, ...talepList].sort(
+      (a, b) => new Date(a.randevu_tarihi || 0).getTime() - new Date(b.randevu_tarihi || 0).getTime()
+    );
+
+    setAppointments(merged);
+    setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -91,7 +164,11 @@ export default function CalendarPage() {
     return appointments.filter(a => new Date(a.randevu_tarihi!)>=tm);
   }, [appointments]);
 
-  const onEdit = (f: VisaFile) => {
+  const onEdit = (f: VisaFileWithProfile) => {
+    if (f.__source === "randevu_talebi") {
+      router.push("/app/randevu-listesi");
+      return;
+    }
     if (f.assigned_user_id !== uid) { alert("Bu dosya size ait değil."); return; }
     router.push(`/app/files/${f.id}/edit`);
   };

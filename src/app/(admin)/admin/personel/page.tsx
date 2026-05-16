@@ -9,6 +9,7 @@ type ProfileRow = {
   name: string;
   role: string;
   organization_id: string | null;
+  is_active?: boolean | null;
 };
 
 const STAFF_LIMIT = 3;
@@ -52,12 +53,36 @@ export default function AdminPersonelPage() {
     }
     const { data: list } = await supabase
       .from("profiles")
-      .select("id, name, role, organization_id")
+      .select("id, name, role, organization_id, is_active")
       .order("role", { ascending: true })
       .order("name", { ascending: true });
     setProfiles((list as ProfileRow[]) || []);
     setLoading(false);
   }, [supabase]);
+
+  const [toggling, setToggling] = useState<string | null>(null);
+  async function handleToggle(p: ProfileRow) {
+    const next = !(p.is_active !== false);
+    const verb = next ? "aktifleştirilsin mi" : "devre dışı bırakılsın mı";
+    if (!confirm(`${p.name} ${verb}?`)) return;
+    setToggling(p.id);
+    try {
+      const res = await fetch("/api/org/toggle-staff-active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId: p.id, active: next }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg({ type: "err", text: json.error || "İşlem başarısız." });
+        return;
+      }
+      setMsg({ type: "ok", text: json.message || "Güncellendi." });
+      await load();
+    } finally {
+      setToggling(null);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -120,14 +145,45 @@ export default function AdminPersonelPage() {
       <Card className="p-6">
         <h2 className="font-semibold text-navy-900 mb-3">Mevcut kullanıcılar</h2>
         <ul className="divide-y divide-slate-100 text-sm">
-          {profiles.map((p) => (
-            <li key={p.id} className="py-2 flex justify-between gap-2">
-              <span className="font-medium text-navy-800">{p.name}</span>
-              <span className="text-navy-500 capitalize">
-                {p.role === "admin" ? "Genel müdür" : p.role === "staff" ? "Personel" : p.role}
-              </span>
-            </li>
-          ))}
+          {profiles.map((p) => {
+            const active = p.is_active !== false;
+            const isStaff = p.role === "staff";
+            return (
+              <li key={p.id} className="py-2.5 flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`font-medium ${active ? "text-navy-800" : "text-slate-400 line-through"}`}>
+                    {p.name}
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    p.role === "admin"
+                      ? "bg-indigo-100 text-indigo-700"
+                      : "bg-slate-100 text-slate-600"
+                  }`}>
+                    {p.role === "admin" ? "Genel müdür" : p.role === "staff" ? "Personel" : p.role}
+                  </span>
+                  {!active && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-50 text-rose-600 ring-1 ring-rose-200">
+                      Pasif
+                    </span>
+                  )}
+                </div>
+                {isStaff && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(p)}
+                    disabled={toggling === p.id}
+                    className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors font-semibold ${
+                      active
+                        ? "border-rose-200 text-rose-600 hover:bg-rose-50"
+                        : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                    } disabled:opacity-50`}
+                  >
+                    {toggling === p.id ? "..." : active ? "Devre Dışı Bırak" : "Aktifleştir"}
+                  </button>
+                )}
+              </li>
+            );
+          })}
           {profiles.length === 0 && <li className="text-navy-500 py-2">Kayıt yok.</li>}
         </ul>
         <p className="text-xs text-navy-500 mt-3">

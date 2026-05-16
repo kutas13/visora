@@ -361,12 +361,13 @@ export default function TopNav({ variant, userName = "Kullanıcı", orgName = ""
   const [profileOpen, setProfileOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Bildirim sayacı
+  // Bildirim sayacı: sadece sekme gorunurken polle (gizliyken durdur)
   useEffect(() => {
     if (!notifHref) return;
     let cancelled = false;
+    const supabase = createClient();
     const load = async () => {
-      const supabase = createClient();
+      if (typeof document !== "undefined" && document.hidden) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
       const { count } = await supabase
@@ -377,10 +378,13 @@ export default function TopNav({ variant, userName = "Kullanıcı", orgName = ""
       if (!cancelled) setUnread(count || 0);
     };
     load();
-    const it = setInterval(load, 30000);
+    const it = setInterval(load, 60000);
+    const onVis = () => { if (!document.hidden) load(); };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       cancelled = true;
       clearInterval(it);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [notifHref]);
 

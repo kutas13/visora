@@ -59,6 +59,8 @@ export default function AdminFilesPage() {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("active");
   const [islemdenCiktiCount, setIslemdenCiktiCount] = useState<number>(0);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const loadData = async (mode: ViewMode = viewMode) => {
     setLoading(true);
@@ -190,20 +192,39 @@ export default function AdminFilesPage() {
     }
   };
 
-  const filteredFiles = (
-    search.trim()
-      ? files.filter(f =>
-          f.musteri_ad.toLowerCase().includes(search.toLowerCase()) ||
-          f.pasaport_no.toLowerCase().includes(search.toLowerCase()) ||
-          f.hedef_ulke.toLowerCase().includes(search.toLowerCase()) ||
-          (f.profiles?.name || "").toLowerCase().includes(search.toLowerCase())
-        )
-      : files
-  ).sort(
-    (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-  );
+  const filteredFiles = files
+    .filter((f) => {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const match =
+          f.musteri_ad.toLowerCase().includes(q) ||
+          f.pasaport_no.toLowerCase().includes(q) ||
+          f.hedef_ulke.toLowerCase().includes(q) ||
+          (f.profiles?.name || "").toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      if (dateFrom || dateTo) {
+        // Aktif modda created_at, islemden cikan modda islemden_cikti_at
+        const base = viewMode === "islemden_cikti" ? (f.islemden_cikti_at || f.sonuc_tarihi) : f.created_at;
+        if (!base) return false;
+        const t = new Date(base).getTime();
+        if (dateFrom) {
+          const fromT = new Date(`${dateFrom}T00:00:00`).getTime();
+          if (t < fromT) return false;
+        }
+        if (dateTo) {
+          const toT = new Date(`${dateTo}T23:59:59`).getTime();
+          if (t > toT) return false;
+        }
+      }
+      return true;
+    })
+    .sort(
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    );
 
   const staffOptions = profiles
+    .filter((p) => (p as Profile & { is_active?: boolean | null }).is_active !== false)
     .slice()
     .sort((a, b) => {
       if (a.role === b.role) return (a.name || "").localeCompare(b.name || "");
@@ -283,7 +304,7 @@ export default function AdminFilesPage() {
           </button>
         </div>
 
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-[200px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -294,6 +315,40 @@ export default function AdminFilesPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-slate-50/60 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 focus:bg-white transition-all"
           />
+        </div>
+
+        {/* Tarih filtresi */}
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-50 ring-1 ring-slate-200">
+          <svg className="w-4 h-4 text-indigo-500 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            title="Başlangıç tarihi"
+            className="h-8 px-2 rounded-lg text-xs font-semibold text-slate-700 bg-white ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <span className="text-slate-400 text-xs">–</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            title="Bitiş tarihi"
+            className="h-8 px-2 rounded-lg text-xs font-semibold text-slate-700 bg-white ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="h-7 w-7 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center"
+              title="Tarih filtresini temizle"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <span className="hidden md:inline-flex items-center text-[11px] font-bold text-slate-500 bg-slate-50 ring-1 ring-slate-200 px-2.5 py-1 rounded-full">

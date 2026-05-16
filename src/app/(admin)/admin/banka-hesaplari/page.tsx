@@ -4,56 +4,67 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Button, Input, Select, Modal } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { PARA_BIRIMLERI } from "@/lib/constants";
-import type { BankAccount, ParaBirimi } from "@/lib/supabase/types";
+import type { BankAccount, CashAccount, CashTransaction, ParaBirimi } from "@/lib/supabase/types";
+import { CURRENCY_SYMBOL, fmtCurrency } from "@/lib/kasa/helpers";
 
 /**
  * Genel Mudur Banka Hesaplari sayfasi.
  *
- *   - Hesap olusturur (POST /api/bank-accounts)
- *   - Hesap pasiflestirir (DELETE /api/bank-accounts/:id)
- *   - Her hesap karti acilinca o hesaba yapilmis tum tahsilatlari gosterir:
- *     payments.hesap_sahibi = bank_account.name esleserek visa_files ile
- *     join'lenir; tarih, musteri, vize ulkesi, tutar listesi cikar.
+ * - Bakiye `cash_accounts` + `cash_transactions` uzerinden hesaplanir
+ *   (gelir tahsilat, manuel gider, dosya gideri, transferler).
+ * - Her banka hesabi card'inda kendi para birimindeki net bakiye, toplam giris/cikis
+ *   ve son hareketler listelenir.
  */
 
 type Movement = {
   id: string;
   created_at: string;
-  tutar: number;
+  direction: "in" | "out";
+  source: "manual" | "payment" | "file_expense" | "transfer";
+  amount: number;
   currency: ParaBirimi;
-  yontem: string;
-  payment_type: string | null;
-  dekont_url: string | null;
-  tl_karsilik: number | null;
-  visa_files: { musteri_ad: string | null; hedef_ulke: string | null } | null;
+  description: string | null;
 };
 
 type AccountWithStats = BankAccount & {
-  total_TL: number;
-  total_EUR: number;
-  total_USD: number;
+  /** O hesabin kendi para biriminde net bakiye */
+  balance: number;
+  totalIn: number;
+  totalOut: number;
   count: number;
   last_at: string | null;
 };
 
-const SYM: Record<string, string> = { TL: "₺", EUR: "€", USD: "$" };
-function fmtMoney(n: number, c: string) {
-  return `${Math.round(n).toLocaleString("tr-TR")} ${SYM[c] || c}`;
-}
+const SOURCE_LABEL: Record<Movement["source"], string> = {
+  manual: "Manuel",
+  payment: "Tahsilat",
+  file_expense: "Dosya Gideri",
+  transfer: "Transfer",
+};
+
+const SOURCE_BADGE: Record<Movement["source"], string> = {
+  manual: "bg-slate-100 text-slate-700 border-slate-200",
+  payment: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  file_expense: "bg-rose-50 text-rose-700 border-rose-200",
+  transfer: "bg-indigo-50 text-indigo-700 border-indigo-200",
+};
+
 function fmtDate(d: string | null) {
   if (!d) return "—";
   return new Date(d).toLocaleString("tr-TR", {
+    timeZone: "Europe/Istanbul",
     day: "2-digit", month: "2-digit", year: "2-digit",
     hour: "2-digit", minute: "2-digit",
   });
 }
 
 export default function AdminBankAccountsPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [movementsByAccount, setMovementsByAccount] = useState<Record<string, Movement[]>>({});
+  const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([]);
+  const [transactions, setTransactions] = useState<CashTransaction[]>([]);
   const [openAccountId, setOpenAccountId] = useState<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -65,81 +76,73 @@ export default function AdminBankAccountsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // 1) Hesaplari yukle
-  const loadAccounts = useCallback(async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/bank-accounts?active=false");
-      if (!res.ok) throw new Error("Banka hesaplari alinamadi");
-      const json = await res.json();
-      setAccounts((json.data || []) as BankAccount[]);
+      const [accRes, cashRes, txRes] = await Promise.all([
+        fetch("/api/bank-accounts?active=false").then((r) => r.json()).catch(() => ({ data: [] })),
+        supabase.from("cash_accounts").select("*").eq("kind", "bank"),
+        supabase
+          .from("cash_transactions")
+          .select("id, account_id, created_at, direction, source, amount, currency, description")
+          .order("created_at", { ascending: false }),
+      ]);
+
+      setAccounts((accRes.data || []) as BankAccount[]);
+      setCashAccounts((cashRes.data as CashAccount[] | null) || []);
+      setTransactions((txRes.data as CashTransaction[] | null) || []);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
-  // 2) Tum hesaplar icin hareketleri toplu cek (RLS: payments same org policy)
-  const loadMovements = useCallback(async () => {
-    if (accounts.length === 0) return;
-    const names = accounts.map((a) => a.name);
+  useEffect(() => { void loadAll(); }, [loadAll]);
 
-    // Personelin/admin'in icinde oldugu sirketin tum dosya odemeleri.
-    // payments tablosu RLS'i zaten organizasyon kapsamini koruyor —
-    // burada hesap_sahibi adlarina filtreliyoruz.
-    const { data, error } = await supabase
-      .from("payments")
-      .select(`
-        id, created_at, tutar, currency, yontem, payment_type,
-        hesap_sahibi, dekont_url, tl_karsilik,
-        visa_files ( musteri_ad, hedef_ulke )
-      `)
-      .in("hesap_sahibi", names)
-      .order("created_at", { ascending: false });
+  // bank_account.id -> cash_account.id eslestir
+  const cashAccByBankId = useMemo(() => {
+    const m = new Map<string, CashAccount>();
+    cashAccounts.forEach((ca) => {
+      if (ca.bank_account_id) m.set(ca.bank_account_id, ca);
+    });
+    return m;
+  }, [cashAccounts]);
 
-    if (error) {
-      console.error("Hareketler alinamadi", error);
-      return;
+  // bank_account.id -> Movement[]
+  const movementsByAccount = useMemo(() => {
+    const out: Record<string, Movement[]> = {};
+    for (const acc of accounts) {
+      const ca = cashAccByBankId.get(acc.id);
+      if (!ca) { out[acc.id] = []; continue; }
+      out[acc.id] = transactions
+        .filter((t) => t.account_id === ca.id)
+        .map((t) => ({
+          id: t.id,
+          created_at: t.created_at,
+          direction: t.direction,
+          source: t.source,
+          amount: Number(t.amount) || 0,
+          currency: t.currency as ParaBirimi,
+          description: t.description,
+        }));
     }
-
-    const grouped: Record<string, Movement[]> = {};
-    for (const row of (data as any[]) || []) {
-      const acc = accounts.find((a) => a.name === row.hesap_sahibi);
-      if (!acc) continue;
-      if (!grouped[acc.id]) grouped[acc.id] = [];
-      grouped[acc.id].push({
-        id: row.id,
-        created_at: row.created_at,
-        tutar: Number(row.tutar) || 0,
-        currency: row.currency as ParaBirimi,
-        yontem: row.yontem,
-        payment_type: row.payment_type,
-        dekont_url: row.dekont_url || null,
-        tl_karsilik: typeof row.tl_karsilik === "number" ? row.tl_karsilik : null,
-        visa_files: row.visa_files
-          ? { musteri_ad: row.visa_files.musteri_ad, hedef_ulke: row.visa_files.hedef_ulke }
-          : null,
-      });
-    }
-    setMovementsByAccount(grouped);
-  }, [accounts, supabase]);
-
-  useEffect(() => { void loadAccounts(); }, [loadAccounts]);
-  useEffect(() => { void loadMovements(); }, [loadMovements]);
+    return out;
+  }, [accounts, transactions, cashAccByBankId]);
 
   const accountsWithStats: AccountWithStats[] = useMemo(() => {
     return accounts.map((a) => {
       const moves = movementsByAccount[a.id] || [];
-      const tots: Record<ParaBirimi, number> = { TL: 0, EUR: 0, USD: 0 };
+      let totalIn = 0, totalOut = 0;
       for (const m of moves) {
-        tots[m.currency] = (tots[m.currency] || 0) + m.tutar;
+        if (m.direction === "in") totalIn += m.amount;
+        else totalOut += m.amount;
       }
       return {
         ...a,
-        total_TL: tots.TL,
-        total_EUR: tots.EUR,
-        total_USD: tots.USD,
+        balance: totalIn - totalOut,
+        totalIn,
+        totalOut,
         count: moves.length,
         last_at: moves[0]?.created_at || null,
       };
@@ -170,9 +173,10 @@ export default function AdminBankAccountsPage() {
       setMsg({ type: "ok", text: "Hesap oluşturuldu." });
       setName(""); setBankName(""); setIban(""); setCurrency("TL"); setNotes("");
       setShowCreate(false);
-      await loadAccounts();
-    } catch (err: any) {
-      setMsg({ type: "err", text: err?.message || "Hata oluştu" });
+      await loadAll();
+    } catch (err: unknown) {
+      const text = err instanceof Error ? err.message : "Hata oluştu";
+      setMsg({ type: "err", text });
     } finally {
       setSubmitting(false);
     }
@@ -192,9 +196,9 @@ export default function AdminBankAccountsPage() {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || "Hesap güncellenemedi");
       }
-      await loadAccounts();
-    } catch (err: any) {
-      alert(err?.message || "Hata");
+      await loadAll();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Hata");
     }
   };
 
@@ -204,8 +208,8 @@ export default function AdminBankAccountsPage() {
         <div>
           <h1 className="text-2xl font-black text-navy-900">Banka Hesapları</h1>
           <p className="text-sm text-navy-500 mt-1">
-            Tahsilat ve dosya formunda görünecek banka hesaplarınızı buradan yönetin.
-            Personeller ve siz bu hesapları seçebilirsiniz.
+            Tahsilat ve dosya formunda görünecek banka hesaplarınız. Bakiyeler kasa hareketleri (tahsilat,
+            gider, transfer) ile gerçek zamanlı eşleşir.
           </p>
         </div>
         <Button onClick={() => setShowCreate(true)} variant="primary">
@@ -239,6 +243,7 @@ export default function AdminBankAccountsPage() {
           {accountsWithStats.map((acc) => {
             const isOpen = openAccountId === acc.id;
             const moves = movementsByAccount[acc.id] || [];
+            const sym = CURRENCY_SYMBOL[acc.currency] || acc.currency;
             return (
               <Card
                 key={acc.id}
@@ -247,12 +252,12 @@ export default function AdminBankAccountsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-bold text-navy-900 truncate">{acc.name}</h3>
+                      <h3 className="text-lg font-bold text-navy-900 truncate">
+                        {acc.name}
+                        <span className="ml-1.5 text-base font-extrabold text-indigo-600">({acc.currency} {sym})</span>
+                      </h3>
                       <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${acc.is_active ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500 border border-slate-200"}`}>
                         {acc.is_active ? "Aktif" : "Pasif"}
-                      </span>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        {acc.currency}
                       </span>
                     </div>
                     <div className="mt-1.5 text-xs text-navy-500 space-y-0.5">
@@ -272,16 +277,22 @@ export default function AdminBankAccountsPage() {
                   </div>
                 </div>
 
+                {/* BAKIYE OZETI */}
                 <div className="grid grid-cols-3 gap-2 mt-4">
-                  {(["TL","EUR","USD"] as const).map((c) => {
-                    const v = c === "TL" ? acc.total_TL : c === "EUR" ? acc.total_EUR : acc.total_USD;
-                    return (
-                      <div key={c} className="px-3 py-2 rounded-lg bg-navy-50 border border-navy-100 text-center">
-                        <p className="text-[10px] uppercase tracking-wider text-navy-400 font-semibold">{c}</p>
-                        <p className="text-sm font-black text-navy-800 mt-0.5">{fmtMoney(v, c)}</p>
-                      </div>
-                    );
-                  })}
+                  <div className="px-3 py-2.5 rounded-lg bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-white/60 font-bold">Net Bakiye</p>
+                    <p className={`text-base font-black mt-0.5 tabular-nums ${acc.balance >= 0 ? "text-white" : "text-rose-300"}`}>
+                      {fmtCurrency(acc.balance, acc.currency)}
+                    </p>
+                  </div>
+                  <div className="px-3 py-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-bold">Giriş</p>
+                    <p className="text-sm font-extrabold text-emerald-700 mt-0.5 tabular-nums">+ {fmtCurrency(acc.totalIn, acc.currency)}</p>
+                  </div>
+                  <div className="px-3 py-2.5 rounded-lg bg-rose-50 border border-rose-200 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-rose-600 font-bold">Çıkış</p>
+                    <p className="text-sm font-extrabold text-rose-700 mt-0.5 tabular-nums">− {fmtCurrency(acc.totalOut, acc.currency)}</p>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-navy-100">
@@ -299,56 +310,36 @@ export default function AdminBankAccountsPage() {
                 </div>
 
                 {isOpen && (
-                  <div className="mt-3 max-h-72 overflow-y-auto rounded-lg border border-navy-100 bg-white">
+                  <div className="mt-3 max-h-80 overflow-y-auto rounded-lg border border-navy-100 bg-white">
                     {moves.length === 0 ? (
                       <div className="p-4 text-xs text-navy-400 text-center">Bu hesaba ait hareket yok.</div>
                     ) : (
-                      <table className="w-full text-xs">
-                        <thead className="bg-navy-50 sticky top-0">
-                          <tr className="text-left text-navy-500">
-                            <th className="px-2.5 py-2 font-semibold">Tarih</th>
-                            <th className="px-2.5 py-2 font-semibold">Müşteri</th>
-                            <th className="px-2.5 py-2 font-semibold">Vize</th>
-                            <th className="px-2.5 py-2 font-semibold text-right">Tutar</th>
-                            <th className="px-2.5 py-2 font-semibold text-center">Dekont</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {moves.map((m) => (
-                            <tr key={m.id} className="border-t border-navy-50 hover:bg-navy-50/50">
-                              <td className="px-2.5 py-1.5 whitespace-nowrap text-navy-500">{fmtDate(m.created_at)}</td>
-                              <td className="px-2.5 py-1.5 truncate max-w-[140px] font-medium text-navy-800">{m.visa_files?.musteri_ad || "—"}</td>
-                              <td className="px-2.5 py-1.5 truncate max-w-[100px] text-navy-600">{m.visa_files?.hedef_ulke || "—"}</td>
-                              <td className="px-2.5 py-1.5 text-right font-bold text-emerald-700">
-                                <div>{fmtMoney(m.tutar, m.currency)}</div>
-                                {typeof m.tl_karsilik === "number" && m.tl_karsilik > 0 && m.currency !== "TL" && (
-                                  <div className="text-[10px] font-semibold text-amber-600">
-                                    TL karşılığı: {Math.round(m.tl_karsilik).toLocaleString("tr-TR")} ₺
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-2.5 py-1.5 text-center">
-                                {m.dekont_url ? (
-                                  <a
-                                    href={m.dekont_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-semibold transition-colors"
-                                    title="Dekontu yeni sekmede aç"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 3h6v6M21 3l-7 7M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-4" />
-                                    </svg>
-                                    Dekont gör
-                                  </a>
-                                ) : (
-                                  <span className="text-navy-300">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <ul className="divide-y divide-slate-100">
+                        {moves.map((m) => {
+                          const isIn = m.direction === "in";
+                          return (
+                            <li key={m.id} className="flex items-start gap-2.5 px-3 py-2 hover:bg-slate-50/60">
+                              <div className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-white text-[10px] font-black ${isIn ? "bg-gradient-to-br from-emerald-500 to-green-600" : "bg-gradient-to-br from-rose-500 to-red-600"}`}>
+                                {isIn ? "+" : "−"}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`inline-block px-1.5 py-0.5 text-[9.5px] font-bold rounded-full border ${SOURCE_BADGE[m.source]}`}>
+                                    {SOURCE_LABEL[m.source]}
+                                  </span>
+                                  <span className="text-[10.5px] text-slate-400 font-semibold tabular-nums">{fmtDate(m.created_at)}</span>
+                                </div>
+                                <p className="mt-0.5 text-[12px] font-semibold text-slate-800 truncate" title={m.description ?? undefined}>
+                                  {m.description || "—"}
+                                </p>
+                              </div>
+                              <span className={`text-[13px] font-extrabold tabular-nums shrink-0 ${isIn ? "text-emerald-700" : "text-rose-700"}`}>
+                                {isIn ? "+" : "−"} {fmtCurrency(m.amount, m.currency)}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     )}
                   </div>
                 )}

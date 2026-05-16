@@ -6,8 +6,9 @@ import Modal from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
 import { STAFF_USERS, ADMIN_USER, MUHASEBE_USER } from "@/lib/constants";
 import { uploadMultipleToStorage } from "@/lib/supabase/storage";
-import type { RandevuTalebi, HesapBilgileri } from "@/lib/supabase/types";
+import type { RandevuTalebi, HesapBilgileri, CashAccount, ParaBirimi } from "@/lib/supabase/types";
 import { notifyEmail } from "@/lib/notifyEmail";
+import { CURRENCY_SYMBOL, fmtCurrency, parseTrNumber } from "@/lib/kasa/helpers";
 
 const SCHENGEN_ULKELERI = [
   "Fransa", "Hollanda", "Bulgaristan", "İtalya",
@@ -374,7 +375,7 @@ export default function RandevuListesi() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTalep, setSelectedTalep] = useState<RandevuRow | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; organization_id?: string | null } | null>(null);
   // Eski tek-firma kalintisi: ismi "SIRRI" olan kullaniciya bu sayfayi
   // kapatan hardcoded bir kontrol vardi. Cok-firma modelde anlami kalmadi —
   // erisim kontrolu artik rol/RLS ile yapiliyor. State korundu (false sabit)
@@ -407,6 +408,14 @@ export default function RandevuListesi() {
   const [randevuDosyalari, setRandevuDosyalari] = useState<string[]>([]);
   const [randevuUlke, setRandevuUlke] = useState("");
   const [randevuSaving, setRandevuSaving] = useState(false);
+  // Almanya ozel: odenen ucret + odeme yontemi
+  const [randevuUcret, setRandevuUcret] = useState("");
+  const [randevuUcretCurrency, setRandevuUcretCurrency] = useState<ParaBirimi>("EUR");
+  const [randevuCashAccountId, setRandevuCashAccountId] = useState("");
+  const [cashAccountsList, setCashAccountsList] = useState<CashAccount[]>([]);
+  const [cashBalances, setCashBalances] = useState<Map<string, number>>(new Map());
+  const [randevuStatusMsg, setRandevuStatusMsg] = useState<string | null>(null);
+  const [randevuPasaportSayisi, setRandevuPasaportSayisi] = useState<number>(0);
 
   // Edit form
   const [editUlkeler, setEditUlkeler] = useState<string[]>([]);
@@ -433,12 +442,16 @@ export default function RandevuListesi() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, name")
+      .select("id, name, organization_id")
       .eq("id", user.id)
       .single();
 
     if (profile) {
-      setCurrentUser({ id: profile.id, name: profile.name });
+      setCurrentUser({
+        id: profile.id,
+        name: profile.name,
+        organization_id: (profile as { organization_id?: string | null }).organization_id ?? null,
+      });
     }
 
     const { data, error } = await supabase
@@ -453,6 +466,49 @@ export default function RandevuListesi() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Randevu Al modal acildiginda cash_accounts + pasaport sayisini yukle
+  useEffect(() => {
+    if (!showRandevuAlModal || !selectedTalep) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const [accRes, txRes, detailRes] = await Promise.all([
+        supabase.from("cash_accounts").select("*").eq("is_active", true).order("kind").order("currency"),
+        supabase.from("cash_transactions").select("account_id, direction, amount"),
+        supabase.from("randevu_talepleri").select("gorseller").eq("id", selectedTalep.id).single<{ gorseller: string[] | null }>(),
+      ]);
+      if (cancelled) return;
+      setRandevuPasaportSayisi((detailRes.data?.gorseller || []).length);
+      const accs = (accRes.data as CashAccount[] | null) || [];
+      setCashAccountsList(accs);
+      type TxRow = { account_id: string; direction: "in" | "out"; amount: number | string };
+      const txs = (txRes.data as TxRow[] | null) || [];
+      const balanceMap = new Map<string, number>();
+      for (const a of accs) balanceMap.set(a.id, 0);
+      for (const t of txs) {
+        const amt = Number(t.amount) || 0;
+        balanceMap.set(
+          t.account_id,
+          (balanceMap.get(t.account_id) || 0) + (t.direction === "in" ? amt : -amt)
+        );
+      }
+      setCashBalances(balanceMap);
+    })();
+    return () => { cancelled = true; };
+  }, [showRandevuAlModal]);
+
+  /** Storage URL'sini base64 data:url'e cevirir (OCR API icin) */
+  async function urlToBase64(url: string): Promise<string> {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
 
   const loadTalepDetail = useCallback(async (id: string) => {
     const supabase = createClient();
@@ -565,6 +621,7 @@ export default function RandevuListesi() {
   const handleRandevuAl = async () => {
     if (!selectedTalep || !randevuTarihi || !currentUser) return;
     setRandevuSaving(true);
+    setRandevuStatusMsg(null);
     try {
       const dosyaUrls = randevuDosyalari.length > 0
         ? await uploadMultipleToStorage(randevuDosyalari, "randevu-mektubu")
@@ -581,6 +638,121 @@ export default function RandevuListesi() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", selectedTalep.id);
+
+      // === OTOMATIK VIZE DOSYASI OLUSTURMA (pasaport OCR ile) =================
+      // Pasaport gorsellerini OCR ile okuyup her bir pasaport icin visa_files satiri
+      // olustur. Almanya ise odenen ucret pasaport sayisina bolunup konsolosluk
+      // gideri olarak eklenir (cash_account_id ile birlikte → trigger otomatik
+      // cash_transactions olusturur).
+      try {
+        const detail = await loadTalepDetail(selectedTalep.id);
+        const pasaportGorseller = detail?.gorseller || [];
+        const effectiveUlke = (randevuUlke || (selectedTalep.ulkeler.length === 1 ? selectedTalep.ulkeler[0] : selectedTalep.ulkeler[0])) || "";
+        const isAlmanya = effectiveUlke === "Almanya";
+        const orgId = currentUser.organization_id || null;
+
+        if (pasaportGorseller.length > 0 && orgId) {
+          setRandevuStatusMsg(`Pasaportlar okunuyor (0/${pasaportGorseller.length})...`);
+          // OCR token'i bir kez al
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token || "";
+
+          type OcrResult = {
+            ad?: string;
+            soyad?: string;
+            pasaport_no?: string;
+            dogum_tarihi?: string;
+            son_kullanma?: string;
+            cinsiyet?: string;
+            uyruk?: string;
+          };
+
+          // Her gorseli paralel oku (zaman tasarrufu icin)
+          const ocrResults = await Promise.all(pasaportGorseller.map(async (gUrl, i) => {
+            try {
+              const b64 = await urlToBase64(gUrl);
+              const r = await fetch("/api/ocr/passport", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ base64: b64 }),
+              });
+              const j = await r.json().catch(() => null);
+              setRandevuStatusMsg(`Pasaportlar okunuyor (${i + 1}/${pasaportGorseller.length})...`);
+              if (j?.ok && j?.data) return { url: gUrl, idx: i, ocr: j.data as OcrResult };
+              return { url: gUrl, idx: i, ocr: null as OcrResult | null };
+            } catch {
+              return { url: gUrl, idx: i, ocr: null as OcrResult | null };
+            }
+          }));
+
+          // Almanya icin pasaport basina dusen ucret
+          const ucretParsed = isAlmanya ? parseTrNumber(randevuUcret) : 0;
+          const perPassport = isAlmanya && pasaportGorseller.length > 0 && ucretParsed > 0
+            ? Math.round((ucretParsed / pasaportGorseller.length) * 100) / 100
+            : 0;
+
+          // Olusan dosyalarin ID'lerini topla
+          const createdFileIds: string[] = [];
+          for (const r of ocrResults) {
+            const ad = (r.ocr?.ad || "").trim();
+            const soyad = (r.ocr?.soyad || "").trim();
+            const fullName = ad || soyad
+              ? [ad, soyad].filter(Boolean).join(" ")
+              : `${selectedTalep.dosya_adi}${pasaportGorseller.length > 1 ? ` ${r.idx + 1}` : ""}`;
+            const pasaportNo = r.ocr?.pasaport_no || `RANDEVU-${Date.now()}-${r.idx}`;
+
+            const fileRow = {
+              musteri_ad: fullName,
+              pasaport_no: pasaportNo,
+              hedef_ulke: effectiveUlke,
+              ulke_manuel_mi: false,
+              islem_tipi: "randevulu" as const,
+              randevu_tarihi: randevuTarihi,
+              assigned_user_id: currentUser.id,
+              organization_id: orgId,
+              randevu_talebi_id: selectedTalep.id,
+              pasaport_image_url: r.url,
+              pasaport_son_kullanma: r.ocr?.son_kullanma || null,
+              dogum_tarihi: r.ocr?.dogum_tarihi || null,
+              musteri_telefon: selectedTalep.iletisim,
+              evrak_durumu: "geldi" as const,
+              evrak_eksik_mi: false,
+              ucret: 0,
+              ucret_currency: "TL" as const,
+              odeme_plani: "pesin" as const,
+              odeme_durumu: "bekliyor" as const,
+              cari_tipi: "musteri" as const,
+            };
+            const { data: vf, error: vfErr } = await supabase
+              .from("visa_files")
+              .insert(fileRow)
+              .select("id")
+              .single<{ id: string }>();
+            if (!vfErr && vf?.id) createdFileIds.push(vf.id);
+          }
+
+          // Almanya: pasaport basina konsolosluk gideri ekle (kasaya otomatik dusulur)
+          if (isAlmanya && createdFileIds.length > 0 && perPassport > 0 && randevuCashAccountId) {
+            const cashAcc = cashAccountsList.find((a) => a.id === randevuCashAccountId);
+            const method = cashAcc?.kind === "bank" ? "bank" : "cash";
+            await Promise.all(createdFileIds.map((fid) => (
+              supabase.from("visa_file_expenses").insert({
+                file_id: fid,
+                expense_type: "konsolosluk",
+                amount: perPassport,
+                currency: randevuUcretCurrency,
+                cash_account_id: randevuCashAccountId,
+                method,
+                created_by: currentUser.id,
+                note: "Almanya randevu talep ücreti (otomatik bölündü)",
+              })
+            )));
+          }
+          setRandevuStatusMsg(`${createdFileIds.length} dosya otomatik oluşturuldu.`);
+        }
+      } catch (autoErr) {
+        console.warn("[randevu-al] otomatik dosya olusturma hatasi:", autoErr);
+      }
 
       if (!error) {
         // Eski hardcoded staff listesi kaldirildi; hitap/telefon yerine kullanici adini kullan.
@@ -737,6 +909,11 @@ export default function RandevuListesi() {
         setRandevuTarihi("");
         setRandevuDosyalari([]);
         setRandevuUlke("");
+        setRandevuUcret("");
+        setRandevuUcretCurrency("EUR");
+        setRandevuCashAccountId("");
+        setRandevuStatusMsg(null);
+        setRandevuPasaportSayisi(0);
         setSelectedTalep(null);
         loadData();
       }
@@ -1105,17 +1282,49 @@ export default function RandevuListesi() {
       </Modal>
 
       {/* ===== RANDEVU AL MODAL ===== */}
-      <Modal isOpen={showRandevuAlModal} onClose={() => { setShowRandevuAlModal(false); setRandevuTarihi(""); setRandevuDosyalari([]); setRandevuUlke(""); setSelectedTalep(null); }} title="Randevu Al" size="md">
+      {(() => {
+        const effUlke = selectedTalep
+          ? (randevuUlke || (selectedTalep.ulkeler.length === 1 ? selectedTalep.ulkeler[0] : ""))
+          : "";
+        const isAlmanya = effUlke === "Almanya";
+        const filteredCashAccounts = cashAccountsList.filter((a) => a.currency === randevuUcretCurrency);
+        const selectedCashAccountBalance = randevuCashAccountId
+          ? (cashBalances.get(randevuCashAccountId) ?? 0)
+          : null;
+        const ucretNum = parseTrNumber(randevuUcret);
+        return (
+        <Modal
+          isOpen={showRandevuAlModal}
+          onClose={() => {
+            setShowRandevuAlModal(false);
+            setRandevuTarihi("");
+            setRandevuDosyalari([]);
+            setRandevuUlke("");
+            setRandevuUcret("");
+            setRandevuUcretCurrency("EUR");
+            setRandevuCashAccountId("");
+            setRandevuStatusMsg(null);
+            setRandevuPasaportSayisi(0);
+            setSelectedTalep(null);
+          }}
+          title={isAlmanya ? "Randevu Talep Et (Almanya)" : "Randevu Al"}
+          size="md"
+        >
         <div className="space-y-4">
           {selectedTalep && (
-            <div className="bg-navy-50 rounded-xl p-4">
+            <div className={`rounded-xl p-4 ${isAlmanya ? "bg-gradient-to-br from-red-50 via-amber-50 to-yellow-50 border border-amber-200" : "bg-navy-50"}`}>
               <p className="font-bold text-navy-900">{selectedTalep.dosya_adi}</p>
               <p className="text-sm text-navy-500">{selectedTalep.ulkeler.join(", ")}</p>
+              {isAlmanya && (
+                <p className="text-[11px] mt-1.5 font-bold text-amber-800">
+                  ℹ️ Almanya için randevu <span className="underline">talep ediliyor</span> (henüz alınmamış).
+                </p>
+              )}
             </div>
           )}
           {selectedTalep && selectedTalep.ulkeler.length > 1 && (
             <div>
-              <label className="block text-sm font-bold text-navy-700 mb-2">Hangi ülkeye randevu aldınız? *</label>
+              <label className="block text-sm font-bold text-navy-700 mb-2">Hangi ülkeye {isAlmanya ? "randevu talep ediyorsunuz" : "randevu aldınız"}? *</label>
               <div className="grid grid-cols-2 gap-2">
                 {selectedTalep.ulkeler.map((ulke) => (
                   <button key={ulke} type="button" onClick={() => setRandevuUlke(ulke)}
@@ -1127,12 +1336,90 @@ export default function RandevuListesi() {
             </div>
           )}
           <div>
-            <label className="block text-sm font-bold text-navy-700 mb-2">Randevu Tarihi *</label>
+            <label className="block text-sm font-bold text-navy-700 mb-2">
+              {isAlmanya ? "Talep Tarihi *" : "Randevu Tarihi *"}
+            </label>
             <input type="datetime-local" value={randevuTarihi} onChange={(e) => setRandevuTarihi(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-navy-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all" />
           </div>
+
+          {/* ALMANYA OZEL: Odenen ucret + odeme yontemi */}
+          {isAlmanya && (
+            <div className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50/60 to-yellow-50/40 p-3.5 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">💰</span>
+                <p className="font-bold text-amber-900 text-sm">Ödenen Ücret (Almanya)</p>
+              </div>
+              <p className="text-[11px] text-amber-700 -mt-1">
+                Bu ücret pasaport sayısına bölünür ve her vize dosyasına otomatik "Konsolosluk Gideri" olarak işlenir.
+              </p>
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={randevuUcret}
+                  onChange={(e) => setRandevuUcret(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 py-2.5 rounded-lg border border-amber-300 text-base font-bold text-amber-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+                />
+                <div className="flex gap-1">
+                  {(["TL","EUR","USD"] as ParaBirimi[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => { setRandevuUcretCurrency(c); setRandevuCashAccountId(""); }}
+                      className={`px-2.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                        randevuUcretCurrency === c
+                          ? "bg-amber-500 text-white shadow"
+                          : "bg-white text-amber-700 border border-amber-200 hover:bg-amber-100"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-amber-800 mb-1.5">Ödeme Yöntemi (hangi kasadan düşülecek?)</label>
+                <select
+                  value={randevuCashAccountId}
+                  onChange={(e) => setRandevuCashAccountId(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-amber-300 bg-white text-sm font-medium text-amber-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none"
+                >
+                  <option value="">Hesap seç...</option>
+                  {filteredCashAccounts.length === 0 && <option value="" disabled>{randevuUcretCurrency} için hesap yok</option>}
+                  {filteredCashAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.kind === "bank" ? "🏦" : "💵"} {a.name} ({a.currency} {CURRENCY_SYMBOL[a.currency]})
+                    </option>
+                  ))}
+                </select>
+                {selectedCashAccountBalance !== null && (
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    Mevcut bakiye: <span className="font-bold">{fmtCurrency(selectedCashAccountBalance, randevuUcretCurrency)}</span>
+                  </p>
+                )}
+              </div>
+              {ucretNum > 0 && randevuPasaportSayisi > 0 && (
+                <div className="bg-white/70 rounded-lg p-2.5 border border-amber-200 text-[12px] text-amber-900">
+                  <span className="font-semibold">Pasaport başına ({randevuPasaportSayisi} pasaport):</span>{" "}
+                  <span className="font-bold tabular-nums">
+                    {fmtCurrency(ucretNum / randevuPasaportSayisi, randevuUcretCurrency)}
+                  </span>
+                </div>
+              )}
+              {ucretNum > 0 && randevuPasaportSayisi === 0 && (
+                <p className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1.5 font-semibold">
+                  ⚠ Bu talepte pasaport görseli yok. Ücret bölünemez; önce talebi düzenleyip görsel ekleyin.
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-bold text-navy-700 mb-2">Randevu Mektubu / Dosya</label>
+            <label className="block text-sm font-bold text-navy-700 mb-2">
+              {isAlmanya ? "Talep Belgesi / Dosya" : "Randevu Mektubu / Dosya"}
+            </label>
             <div className="border-2 border-dashed border-navy-200 rounded-xl p-3 text-center hover:border-green-400 transition-colors">
               <input type="file" multiple accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, setRandevuDosyalari)} className="hidden" id="randevu-dosya-upload" />
               <label htmlFor="randevu-dosya-upload" className="cursor-pointer">
@@ -1156,15 +1443,42 @@ export default function RandevuListesi() {
               </div>
             )}
           </div>
+
+          <div className="bg-indigo-50/60 border border-indigo-200 rounded-lg p-2.5 text-[11px] text-indigo-800 leading-relaxed">
+            ⚡ <span className="font-bold">Otomatik:</span> Pasaport görselleri arka planda OCR ile okunur ve her pasaport için
+            otomatik vize dosyası oluşur.{" "}
+            {isAlmanya && <span>Almanya için pasaport başına düşen ücret, "Konsolosluk Gideri" olarak ilgili kasaya işlenir.</span>}
+          </div>
+
+          {randevuStatusMsg && (
+            <div className="text-[11.5px] font-semibold text-indigo-700 bg-indigo-50 rounded-lg px-3 py-2 border border-indigo-100">
+              {randevuStatusMsg}
+            </div>
+          )}
+
           <p className="text-xs text-navy-400">
             Pasaport görselleri + randevu mektubu müşteriye WhatsApp ile gönderilecek.
             Genel müdür, oluşturan ve alan kişiye bildirim gidecek.
           </p>
-          <Button onClick={handleRandevuAl} disabled={randevuSaving || !randevuTarihi || (!!selectedTalep && selectedTalep.ulkeler.length > 1 && !randevuUlke)} className="w-full bg-green-600 hover:bg-green-700">
-            {randevuSaving ? "Randevu alınıyor..." : "Randevuyu Onayla"}
+
+          <Button
+            onClick={handleRandevuAl}
+            disabled={
+              randevuSaving ||
+              !randevuTarihi ||
+              (!!selectedTalep && selectedTalep.ulkeler.length > 1 && !randevuUlke) ||
+              (isAlmanya && ucretNum > 0 && !randevuCashAccountId)
+            }
+            className={`w-full ${isAlmanya ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700"}`}
+          >
+            {randevuSaving
+              ? (isAlmanya ? "Talep oluşturuluyor..." : "Randevu alınıyor...")
+              : (isAlmanya ? "Randevu Talebini Onayla" : "Randevuyu Onayla")}
           </Button>
         </div>
       </Modal>
+        );
+      })()}
 
       {/* ===== DELETE CONFIRM ===== */}
       <Modal isOpen={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setSelectedTalep(null); }} title="Silme Onayı" size="sm">
