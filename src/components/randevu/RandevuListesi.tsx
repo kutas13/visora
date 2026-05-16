@@ -662,6 +662,21 @@ export default function RandevuListesi() {
           const { data: { session } } = await sb2.auth.getSession();
           const token = session?.access_token || "";
 
+          // Cari sahibi = organizasyonun GM (admin rol) kullanicisinin adi
+          let gmName: string | null = null;
+          try {
+            const { data: gm } = await sb2
+              .from("profiles")
+              .select("name")
+              .eq("organization_id", snap.orgId)
+              .eq("role", "admin")
+              .limit(1)
+              .maybeSingle<{ name: string }>();
+            gmName = gm?.name?.trim() || null;
+          } catch {
+            gmName = null;
+          }
+
           type OcrResult = {
             ad?: string; soyad?: string; pasaport_no?: string;
             dogum_tarihi?: string; son_kullanma?: string;
@@ -719,13 +734,16 @@ export default function RandevuListesi() {
               pasaport_son_kullanma: r.ocr?.son_kullanma || null,
               dogum_tarihi: r.ocr?.dogum_tarihi || null,
               musteri_telefon: snap.iletisim,
-              evrak_durumu: "geldi" as const,
-              evrak_eksik_mi: false,
+              // Evrak henuz gelmedi (randevu talebi asamasinda)
+              evrak_durumu: "gelmedi" as const,
+              evrak_eksik_mi: null,
               ucret: 0,
               ucret_currency: "TL" as const,
-              odeme_plani: "pesin" as const,
-              odeme_durumu: "bekliyor" as const,
-              cari_tipi: "musteri" as const,
+              // Odeme plani: Genel Mudur'un kullanici cari'sine yazilir
+              odeme_plani: "cari" as const,
+              odeme_durumu: "odenmedi" as const,
+              cari_tipi: gmName ? ("kullanici_cari" as const) : null,
+              cari_sahibi: gmName,
             };
             const { data: vf, error: vfErr } = await sb2
               .from("visa_files")
@@ -734,6 +752,11 @@ export default function RandevuListesi() {
               .single<{ id: string }>();
             if (vfErr) {
               console.warn("[bg-randevu] visa_files insert hata:", vfErr);
+              setBgJob({
+                label: `Insert hatası: ${vfErr.message?.slice(0, 60) || "bilinmiyor"}`,
+                done: true,
+                ok: false,
+              });
               continue;
             }
             if (vf?.id) {
@@ -745,16 +768,20 @@ export default function RandevuListesi() {
 
           if (isAlmanyaSnap && createdFileIds.length > 0 && perPassport > 0 && snap.cashAccountId) {
             const method = snap.cashAccountKind === "bank" ? "bank" : "cash";
+            // Secilen kasanin para birimi (ucret_currency yerine kasa currency baz alinir;
+            // boylece bakiye/cash_transactions tutarli olur).
+            const acc = cashAccountsList.find((a) => a.id === snap.cashAccountId);
+            const expCurrency = (acc?.currency || snap.ucretCurrency) as "TL" | "EUR" | "USD";
             await Promise.all(createdFileIds.map((fid) => (
               sb2.from("visa_file_expenses").insert({
                 file_id: fid,
-                expense_type: "konsolosluk",
+                expense_type: "araci_kurum",
                 amount: perPassport,
-                currency: snap.ucretCurrency,
+                currency: expCurrency,
                 cash_account_id: snap.cashAccountId,
                 method,
                 created_by: snap.userId,
-                note: "Almanya randevu talep ücreti (otomatik bölündü)",
+                note: "Almanya Randevu Talebi Ödemesi",
               })
             )));
           }
