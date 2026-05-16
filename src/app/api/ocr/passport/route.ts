@@ -158,10 +158,18 @@ function parseMrz(line1Raw: string, line2Raw: string) {
 }
 
 /* ----------- AI cagrisi ----------------------------------------------- */
-async function callOpenAI(imageUrl: string, hi: boolean): Promise<AIRaw | null> {
+async function callOpenAI(
+  imageUrl: string,
+  hi: boolean,
+  fast: boolean = false
+): Promise<AIRaw | null> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY tanimli degil.");
   }
+
+  // fast modunda detail=low + maks token kucuk → cok daha hizli
+  const detail: "high" | "low" = fast ? "low" : "high";
+  const maxTokens = fast ? 350 : 600;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -171,7 +179,7 @@ async function callOpenAI(imageUrl: string, hi: boolean): Promise<AIRaw | null> 
     },
     body: JSON.stringify({
       model: "gpt-4o",
-      max_tokens: 600,
+      max_tokens: maxTokens,
       temperature: 0,
       response_format: { type: "json_object" },
       messages: [
@@ -190,7 +198,7 @@ JSON dondur.`,
             },
             {
               type: "image_url",
-              image_url: { url: imageUrl, detail: "high" },
+              image_url: { url: imageUrl, detail },
             },
           ],
         },
@@ -239,33 +247,39 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => null);
     const base64: string | undefined = body?.base64;
-    if (!base64 || typeof base64 !== "string") {
+    const urlInput: string | undefined = body?.url;
+    // fast=true → hız öncelikli (vize randevu akışı). max accuracy istemiyorsak retry kapatır.
+    const fast: boolean = body?.fast === true;
+
+    if (!base64 && !urlInput) {
       return NextResponse.json(
-        { error: "Görsel (base64) eksik." },
+        { error: "Görsel (base64) veya url eksik." },
         { status: 400 }
       );
     }
 
-    const imageUrl = base64.startsWith("data:")
-      ? base64
-      : `data:image/jpeg;base64,${base64}`;
+    // OpenAI image_url alanı HTTP URL'yi de kabul ediyor — base64 round-trip yapmaktan
+    // ~%70 daha hızlı (bandwidth ve serialization).
+    const imageUrl = urlInput
+      ? urlInput
+      : (base64!.startsWith("data:") ? base64! : `data:image/jpeg;base64,${base64!}`);
 
-    // 1. cagri
-    let ai = await callOpenAI(imageUrl, false);
+    // 1. cagri (fast modda detail=low)
+    let ai = await callOpenAI(imageUrl, false, fast);
     let parsed = ai && ai.mrz_line1 && ai.mrz_line2
       ? parseMrz(ai.mrz_line1, ai.mrz_line2)
       : null;
 
-    // Cagri 2 — eger MRZ alinamamissa veya checksum bozuksa retry
     const allChecksumsOk =
       parsed && parsed.checks.passport && parsed.checks.dob && parsed.checks.expiry;
-    if (!parsed || !allChecksumsOk) {
-      const ai2 = await callOpenAI(imageUrl, true);
+
+    // Fast modunda retry yapmıyoruz; sonuç ne ise onu döndür
+    if (!fast && (!parsed || !allChecksumsOk)) {
+      const ai2 = await callOpenAI(imageUrl, true, false);
       if (ai2 && ai2.mrz_line1 && ai2.mrz_line2) {
         const parsed2 = parseMrz(ai2.mrz_line1, ai2.mrz_line2);
         const ok2 =
           parsed2.checks.passport && parsed2.checks.dob && parsed2.checks.expiry;
-        // 2. okuma checksum'larda daha basariliysa onu kullan
         const score = (p: ReturnType<typeof parseMrz> | null) =>
           p ? Number(p.checks.passport) + Number(p.checks.dob) + Number(p.checks.expiry) : -1;
         if (score(parsed2) > score(parsed)) {

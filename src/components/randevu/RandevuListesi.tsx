@@ -416,6 +416,8 @@ export default function RandevuListesi() {
   const [cashBalances, setCashBalances] = useState<Map<string, number>>(new Map());
   const [randevuStatusMsg, setRandevuStatusMsg] = useState<string | null>(null);
   const [randevuPasaportSayisi, setRandevuPasaportSayisi] = useState<number>(0);
+  // Modal kapandiktan sonra arka planda calisan OCR + dosya olusturma akisi
+  const [bgJob, setBgJob] = useState<{ label: string; done: boolean; ok: boolean } | null>(null);
 
   // Edit form
   const [editUlkeler, setEditUlkeler] = useState<string[]>([]);
@@ -497,18 +499,6 @@ export default function RandevuListesi() {
     })();
     return () => { cancelled = true; };
   }, [showRandevuAlModal]);
-
-  /** Storage URL'sini base64 data:url'e cevirir (OCR API icin) */
-  async function urlToBase64(url: string): Promise<string> {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-  }
 
   const loadTalepDetail = useCallback(async (id: string) => {
     const supabase = createClient();
@@ -639,82 +629,96 @@ export default function RandevuListesi() {
         })
         .eq("id", selectedTalep.id);
 
-      // === OTOMATIK VIZE DOSYASI OLUSTURMA (pasaport OCR ile) =================
-      // Pasaport gorsellerini OCR ile okuyup her bir pasaport icin visa_files satiri
-      // olustur. Almanya ise odenen ucret pasaport sayisina bolunup konsolosluk
-      // gideri olarak eklenir (cash_account_id ile birlikte → trigger otomatik
-      // cash_transactions olusturur).
-      try {
-        const detail = await loadTalepDetail(selectedTalep.id);
-        const pasaportGorseller = detail?.gorseller || [];
-        const effectiveUlke = (randevuUlke || (selectedTalep.ulkeler.length === 1 ? selectedTalep.ulkeler[0] : selectedTalep.ulkeler[0])) || "";
-        const isAlmanya = effectiveUlke === "Almanya";
-        const orgId = currentUser.organization_id || null;
+      // === OTOMATIK VIZE DOSYASI OLUSTURMA (fire-and-forget) =================
+      // Pasaport OCR + visa_files olusturma uzun surebilir; modal'i bekletmeyelim.
+      // Snapshot al, arka planda calistir, kullaniciya banner uzerinden bildir.
+      const snap = {
+        talepId: selectedTalep.id,
+        ulkeler: [...selectedTalep.ulkeler],
+        dosyaAdi: selectedTalep.dosya_adi,
+        iletisim: selectedTalep.iletisim,
+        effectiveUlke: (randevuUlke || (selectedTalep.ulkeler.length === 1 ? selectedTalep.ulkeler[0] : selectedTalep.ulkeler[0])) || "",
+        randevuTarihi,
+        userId: currentUser.id,
+        orgId: currentUser.organization_id || null,
+        ucret: parseTrNumber(randevuUcret),
+        ucretCurrency: randevuUcretCurrency,
+        cashAccountId: randevuCashAccountId,
+        cashAccountKind: cashAccountsList.find((a) => a.id === randevuCashAccountId)?.kind || "cash",
+      };
+      const isAlmanyaSnap = snap.effectiveUlke === "Almanya";
 
-        if (pasaportGorseller.length > 0 && orgId) {
-          setRandevuStatusMsg(`Pasaportlar okunuyor (0/${pasaportGorseller.length})...`);
-          // OCR token'i bir kez al
-          const { data: { session } } = await supabase.auth.getSession();
+      void (async () => {
+        try {
+          setBgJob({ label: "Pasaportlar okunuyor…", done: false, ok: false });
+          const sb2 = createClient();
+          const detail = await loadTalepDetail(snap.talepId);
+          const pasaportGorseller = detail?.gorseller || [];
+          if (pasaportGorseller.length === 0 || !snap.orgId) {
+            setBgJob({ label: "Pasaport görseli yok — otomatik dosya oluşturulmadı", done: true, ok: false });
+            setTimeout(() => setBgJob(null), 5000);
+            return;
+          }
+          const { data: { session } } = await sb2.auth.getSession();
           const token = session?.access_token || "";
 
           type OcrResult = {
-            ad?: string;
-            soyad?: string;
-            pasaport_no?: string;
-            dogum_tarihi?: string;
-            son_kullanma?: string;
-            cinsiyet?: string;
-            uyruk?: string;
+            ad?: string; soyad?: string; pasaport_no?: string;
+            dogum_tarihi?: string; son_kullanma?: string;
           };
 
-          // Her gorseli paralel oku (zaman tasarrufu icin)
+          let doneCount = 0;
           const ocrResults = await Promise.all(pasaportGorseller.map(async (gUrl, i) => {
             try {
-              const b64 = await urlToBase64(gUrl);
+              // OCR route HTTP URL'yi de kabul eder → base64 round-trip yok = cok hizli.
+              // fast=true: detail=low + retry yok (randevu akisi icin hiz onerilir).
               const r = await fetch("/api/ocr/passport", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ base64: b64 }),
+                body: JSON.stringify({ url: gUrl, fast: true }),
               });
               const j = await r.json().catch(() => null);
-              setRandevuStatusMsg(`Pasaportlar okunuyor (${i + 1}/${pasaportGorseller.length})...`);
+              doneCount += 1;
+              setBgJob({
+                label: `Pasaportlar okunuyor (${doneCount}/${pasaportGorseller.length})…`,
+                done: false, ok: false,
+              });
               if (j?.ok && j?.data) return { url: gUrl, idx: i, ocr: j.data as OcrResult };
-              return { url: gUrl, idx: i, ocr: null as OcrResult | null };
+              return { url: gUrl, idx: i, ocr: null };
             } catch {
-              return { url: gUrl, idx: i, ocr: null as OcrResult | null };
+              return { url: gUrl, idx: i, ocr: null };
             }
           }));
 
-          // Almanya icin pasaport basina dusen ucret
-          const ucretParsed = isAlmanya ? parseTrNumber(randevuUcret) : 0;
-          const perPassport = isAlmanya && pasaportGorseller.length > 0 && ucretParsed > 0
-            ? Math.round((ucretParsed / pasaportGorseller.length) * 100) / 100
+          const perPassport = isAlmanyaSnap && pasaportGorseller.length > 0 && snap.ucret > 0
+            ? Math.round((snap.ucret / pasaportGorseller.length) * 100) / 100
             : 0;
 
-          // Olusan dosyalarin ID'lerini topla
           const createdFileIds: string[] = [];
           for (const r of ocrResults) {
             const ad = (r.ocr?.ad || "").trim();
             const soyad = (r.ocr?.soyad || "").trim();
-            const fullName = ad || soyad
+            const fullName = (ad || soyad)
               ? [ad, soyad].filter(Boolean).join(" ")
-              : `${selectedTalep.dosya_adi}${pasaportGorseller.length > 1 ? ` ${r.idx + 1}` : ""}`;
+              : `${snap.dosyaAdi}${pasaportGorseller.length > 1 ? ` ${r.idx + 1}` : ""}`;
             const pasaportNo = r.ocr?.pasaport_no || `RANDEVU-${Date.now()}-${r.idx}`;
 
+            // 041 migration calismadan da calissin diye randevu_talebi_id'yi
+            // insert'e koymuyoruz; basariyla yazildiktan sonra best-effort olarak
+            // update ile bagliyoruz (kolon yoksa hata sessizce yutulur).
             const fileRow = {
               musteri_ad: fullName,
               pasaport_no: pasaportNo,
-              hedef_ulke: effectiveUlke,
+              hedef_ulke: snap.effectiveUlke,
               ulke_manuel_mi: false,
               islem_tipi: "randevulu" as const,
-              randevu_tarihi: randevuTarihi,
-              assigned_user_id: currentUser.id,
-              organization_id: orgId,
-              randevu_talebi_id: selectedTalep.id,
+              randevu_tarihi: snap.randevuTarihi,
+              assigned_user_id: snap.userId,
+              organization_id: snap.orgId,
               pasaport_image_url: r.url,
               pasaport_son_kullanma: r.ocr?.son_kullanma || null,
               dogum_tarihi: r.ocr?.dogum_tarihi || null,
-              musteri_telefon: selectedTalep.iletisim,
+              musteri_telefon: snap.iletisim,
               evrak_durumu: "geldi" as const,
               evrak_eksik_mi: false,
               ucret: 0,
@@ -723,36 +727,52 @@ export default function RandevuListesi() {
               odeme_durumu: "bekliyor" as const,
               cari_tipi: "musteri" as const,
             };
-            const { data: vf, error: vfErr } = await supabase
+            const { data: vf, error: vfErr } = await sb2
               .from("visa_files")
               .insert(fileRow)
               .select("id")
               .single<{ id: string }>();
-            if (!vfErr && vf?.id) createdFileIds.push(vf.id);
+            if (vfErr) {
+              console.warn("[bg-randevu] visa_files insert hata:", vfErr);
+              continue;
+            }
+            if (vf?.id) {
+              createdFileIds.push(vf.id);
+              // Best-effort: 041 migration calistirildiysa randevu_talebi_id'yi doldur
+              await sb2.from("visa_files").update({ randevu_talebi_id: snap.talepId }).eq("id", vf.id);
+            }
           }
 
-          // Almanya: pasaport basina konsolosluk gideri ekle (kasaya otomatik dusulur)
-          if (isAlmanya && createdFileIds.length > 0 && perPassport > 0 && randevuCashAccountId) {
-            const cashAcc = cashAccountsList.find((a) => a.id === randevuCashAccountId);
-            const method = cashAcc?.kind === "bank" ? "bank" : "cash";
+          if (isAlmanyaSnap && createdFileIds.length > 0 && perPassport > 0 && snap.cashAccountId) {
+            const method = snap.cashAccountKind === "bank" ? "bank" : "cash";
             await Promise.all(createdFileIds.map((fid) => (
-              supabase.from("visa_file_expenses").insert({
+              sb2.from("visa_file_expenses").insert({
                 file_id: fid,
                 expense_type: "konsolosluk",
                 amount: perPassport,
-                currency: randevuUcretCurrency,
-                cash_account_id: randevuCashAccountId,
+                currency: snap.ucretCurrency,
+                cash_account_id: snap.cashAccountId,
                 method,
-                created_by: currentUser.id,
+                created_by: snap.userId,
                 note: "Almanya randevu talep ücreti (otomatik bölündü)",
               })
             )));
           }
-          setRandevuStatusMsg(`${createdFileIds.length} dosya otomatik oluşturuldu.`);
+
+          setBgJob({
+            label: `${createdFileIds.length}/${pasaportGorseller.length} vize dosyası oluşturuldu`,
+            done: true,
+            ok: createdFileIds.length > 0,
+          });
+          // Listeyi yenile
+          loadData();
+          setTimeout(() => setBgJob(null), 8000);
+        } catch (autoErr) {
+          console.warn("[randevu-al] otomatik dosya olusturma hatasi:", autoErr);
+          setBgJob({ label: "Otomatik dosya oluşturma hatası", done: true, ok: false });
+          setTimeout(() => setBgJob(null), 6000);
         }
-      } catch (autoErr) {
-        console.warn("[randevu-al] otomatik dosya olusturma hatasi:", autoErr);
-      }
+      })();
 
       if (!error) {
         // Eski hardcoded staff listesi kaldirildi; hitap/telefon yerine kullanici adini kullan.
@@ -1011,6 +1031,42 @@ export default function RandevuListesi() {
     <div className="space-y-6">
       {/* Fullscreen Image Viewer */}
       {viewerImage && <ImageViewer src={viewerImage} onClose={() => setViewerImage(null)} />}
+
+      {/* Arka plan is bildirim banner (OCR + otomatik dosya olusturma) */}
+      {bgJob && (
+        <div className="fixed bottom-4 right-4 z-[80] w-[300px] sm:w-[340px] rounded-2xl shadow-2xl ring-1 ring-slate-200/70 bg-white overflow-hidden">
+          <div className={`px-4 py-3 flex items-center gap-3 ${
+            !bgJob.done ? "bg-gradient-to-r from-indigo-50 to-violet-50" :
+            bgJob.ok ? "bg-gradient-to-r from-emerald-50 to-green-50" :
+            "bg-gradient-to-r from-amber-50 to-rose-50"
+          }`}>
+            {!bgJob.done ? (
+              <div className="w-6 h-6 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin shrink-0" />
+            ) : bgJob.ok ? (
+              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              </div>
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01" /></svg>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Arka Plan</p>
+              <p className={`text-[12.5px] font-bold ${bgJob.done && bgJob.ok ? "text-emerald-700" : bgJob.done ? "text-rose-700" : "text-indigo-700"}`}>{bgJob.label}</p>
+            </div>
+            {bgJob.done && (
+              <button
+                onClick={() => setBgJob(null)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                aria-label="Kapat"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* PAGE HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
