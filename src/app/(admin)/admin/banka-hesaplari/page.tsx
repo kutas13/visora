@@ -76,6 +76,11 @@ export default function AdminBankAccountsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // EKSTRE: secilen hesap + ay seceneği
+  const [stmtAccount, setStmtAccount] = useState<BankAccount | null>(null);
+  const [stmtMonths, setStmtMonths] = useState<3 | 6 | 12>(3);
+  const [stmtBusy, setStmtBusy] = useState(false);
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -202,6 +207,35 @@ export default function AdminBankAccountsPage() {
     }
   };
 
+  /** Ekstre indir: API'den PDF blob alip indir. */
+  const handleDownloadStatement = async () => {
+    if (!stmtAccount) return;
+    setStmtBusy(true);
+    try {
+      const res = await fetch(
+        `/api/bank-accounts/${stmtAccount.id}/statement?months=${stmtMonths}`
+      );
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || "Ekstre alınamadı");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ekstre_${stmtAccount.name.replace(/[^a-zA-Z0-9_-]+/g, "_")}_${stmtMonths}ay.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      setStmtAccount(null);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Ekstre indirilemedi");
+    } finally {
+      setStmtBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -267,13 +301,24 @@ export default function AdminBankAccountsPage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleActive(acc)}
-                      className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${acc.is_active ? "border-rose-200 text-rose-600 hover:bg-rose-50" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}
-                    >
-                      {acc.is_active ? "Pasifleştir" : "Aktifleştir"}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => { setStmtAccount(acc); setStmtMonths(3); }}
+                        className="text-[11px] px-2.5 py-1 rounded-md border border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-semibold inline-flex items-center gap-1"
+                        title="Hesap ekstresi al"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Ekstre
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(acc)}
+                        className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${acc.is_active ? "border-rose-200 text-rose-600 hover:bg-rose-50" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}
+                      >
+                        {acc.is_active ? "Pasifleştir" : "Aktifleştir"}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -348,6 +393,59 @@ export default function AdminBankAccountsPage() {
           })}
         </div>
       )}
+
+      {/* EKSTRE AL MODAL */}
+      <Modal
+        isOpen={!!stmtAccount}
+        onClose={() => !stmtBusy && setStmtAccount(null)}
+        title={stmtAccount ? `Ekstre Al — ${stmtAccount.name} (${stmtAccount.currency})` : "Ekstre Al"}
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-navy-600 leading-relaxed">
+            Aşağıdaki seçenekten ekstre dönemini seçin. PDF her sayfasının altında QR kod bulunur;
+            QR kodu mobil cihazınızla taratınca ekstre yeniden açılır.
+          </p>
+
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-navy-500">Dönem</label>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {([3, 6, 12] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setStmtMonths(m)}
+                  className={`px-3 py-2.5 rounded-xl border-2 text-sm font-bold transition-all ${
+                    stmtMonths === m
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm"
+                      : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  Son {m} ay
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <Button
+              variant="outline"
+              onClick={() => setStmtAccount(null)}
+              className="flex-1"
+              disabled={stmtBusy}
+            >
+              İptal
+            </Button>
+            <Button
+              onClick={handleDownloadStatement}
+              className="flex-1"
+              disabled={stmtBusy}
+            >
+              {stmtBusy ? "Hazırlanıyor…" : "PDF İndir"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Yeni Hesap Modal */}
       <Modal
