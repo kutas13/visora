@@ -495,7 +495,15 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
         davetiye_ucreti: showDavetiyeUcreti ? davetiyeNum : null,
         davetiye_ucreti_currency: showDavetiyeUcreti ? davetiyeUcretiCurrency : null,
         odeme_plani: odemePlani === "firma_cari" ? "cari" as OdemePlani : odemePlani as OdemePlani,
-        odeme_durumu: (odemePlani === "pesin" ? "odendi" : "odenmedi") as "odendi" | "odenmedi",
+        // Edit modunda plan degismediyse mevcut odeme_durumu KORUNUR (tahsilat alindiysa
+        // 'odendi' sifirlanmasin); plan degistirildiyse yeni plana gore re-evaluate edilir.
+        odeme_durumu: (() => {
+          const newPlanDb = (odemePlani === "firma_cari" ? "cari" : odemePlani) as OdemePlani;
+          if (isEdit && file && file.odeme_plani === newPlanDb && file.odeme_durumu) {
+            return file.odeme_durumu;
+          }
+          return (odemePlani === "pesin" ? "odendi" : "odenmedi");
+        })() as "odendi" | "odenmedi",
         // Yeni ödeme detayları
         hesap_sahibi: (odemePlani === "pesin" && pesinYontem === "hesaba" && hesapSahibi) ? hesapSahibi : null,
         cari_tipi: odemePlani === "firma_cari" ? "firma_cari" : (odemePlani === "cari" ? "kullanici_cari" : null),
