@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       console.error("Bank account create error:", error);
       const friendly =
         error.code === "23505"
-          ? "Bu isimde bir banka hesabı zaten mevcut."
+          ? `Bu isim + ${currency} para biriminde bir banka hesabı zaten mevcut.`
           : "Banka hesabı oluşturulamadı.";
       return NextResponse.json({ error: friendly }, { status: 400 });
     }
