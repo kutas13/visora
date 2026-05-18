@@ -585,15 +585,58 @@ export default function RandevuListesi() {
         insertPayload.almanya_ucret_currency = formAlmanyaUcretCurrency;
         insertPayload.almanya_cash_account_id = formAlmanyaCashAccountId;
       }
-      let { error } = await supabase.from("randevu_talepleri").insert(insertPayload);
+      let insertRes = await supabase
+        .from("randevu_talepleri")
+        .insert(insertPayload)
+        .select("id")
+        .single<{ id: string }>();
       // 044 migration calismadan da calissin: schema cache eksikse Almanya alanlarini at
-      if (error && /almanya_ucret|almanya_cash_account|schema cache|Could not find/i.test(error.message || "")) {
+      if (
+        insertRes.error &&
+        /almanya_ucret|almanya_cash_account|schema cache|Could not find/i.test(
+          insertRes.error.message || ""
+        )
+      ) {
         const minimal = { ...insertPayload };
         delete minimal.almanya_ucret;
         delete minimal.almanya_ucret_currency;
         delete minimal.almanya_cash_account_id;
-        ({ error } = await supabase.from("randevu_talepleri").insert(minimal));
+        insertRes = await supabase
+          .from("randevu_talepleri")
+          .insert(minimal)
+          .select("id")
+          .single<{ id: string }>();
       }
+      const error = insertRes.error;
+      const newTalepId = insertRes.data?.id || null;
+
+      // === ALMANYA: Kasa hareketi (ucret talep aninda dusurulur) ============
+      // Bu kayit cash_transactions tablosuna `source='manual'` ile yazilir.
+      // "Randevu Al" sirasinda artik tekrar dusurulmez (visa_file_expenses YOK).
+      if (!error && isAlmanyaForm && currentUser?.organization_id) {
+        const { error: txErr } = await supabase.from("cash_transactions").insert({
+          organization_id: currentUser.organization_id,
+          account_id: formAlmanyaCashAccountId,
+          direction: "out",
+          source: "manual",
+          amount: almanyaUcretParsed,
+          currency: formAlmanyaUcretCurrency,
+          description: `Almanya Randevu Talebi Ödemesi — ${formDosyaAdi}`,
+          created_by: currentUser.id,
+        });
+        if (txErr) {
+          console.warn("[randevu-talebi] Almanya kasa hareketi yazilamadi:", txErr);
+          alert(
+            "Talep oluşturuldu ancak Almanya ücreti kasadan düşürülemedi: " +
+            (txErr.message || "bilinmeyen hata")
+          );
+        }
+      }
+
+      // newTalepId loadData icin gereksiz (full reload yapacak) ama gelecekte
+      // baska bir referans icin tutuldu.
+      void newTalepId;
+
       if (!error) {
         const vizeTipiLabel = VIZE_TIPLERI.find(v => v.value === formVizeTipi)?.label || formVizeTipi;
         const ulkelerStr = formUlkeler.join(", ");
@@ -672,12 +715,8 @@ export default function RandevuListesi() {
       // === OTOMATIK VIZE DOSYASI OLUSTURMA (fire-and-forget) =================
       // Pasaport OCR + visa_files olusturma uzun surebilir; modal'i bekletmeyelim.
       // Snapshot al, arka planda calistir, kullaniciya banner uzerinden bildir.
-      // Almanya icin ucret / kasa bilgisi artik TALEP uzerinden gelir (talep aninda girilir).
-      const talepAlmanyaUcret = Number(selectedTalep.almanya_ucret ?? 0) || 0;
-      const talepAlmanyaCurrency = (selectedTalep.almanya_ucret_currency ?? "TL") as ParaBirimi;
-      const talepAlmanyaCashAccountId = selectedTalep.almanya_cash_account_id ?? "";
-      const talepAlmanyaAccKind = cashAccountsList.find((a) => a.id === talepAlmanyaCashAccountId)?.kind || "cash";
-
+      // Almanya icin ucret talep olusturulurken zaten kasadan dusurulduyu icin
+      // burada (Randevu Al asamasinda) ek bir kasa hareketi yapilmaz.
       const snap = {
         talepId: selectedTalep.id,
         ulkeler: [...selectedTalep.ulkeler],
@@ -687,12 +726,7 @@ export default function RandevuListesi() {
         randevuTarihi,
         userId: currentUser.id,
         orgId: currentUser.organization_id || null,
-        ucret: talepAlmanyaUcret,
-        ucretCurrency: talepAlmanyaCurrency,
-        cashAccountId: talepAlmanyaCashAccountId,
-        cashAccountKind: talepAlmanyaAccKind,
       };
-      const isAlmanyaSnap = snap.effectiveUlke === "Almanya";
 
       void (async () => {
         try {
@@ -751,9 +785,9 @@ export default function RandevuListesi() {
             }
           }));
 
-          const perPassport = isAlmanyaSnap && pasaportGorseller.length > 0 && snap.ucret > 0
-            ? Math.round((snap.ucret / pasaportGorseller.length) * 100) / 100
-            : 0;
+          // Almanya icin ucret bilgisi artik salt-bilgi: kasa hareketi
+          // talep olusturulurken yazildi, burada tekrar olusturulmaz.
+          // perPassport bilgisi sadece log/banner amacli (su an kullanilmiyor).
 
           const createdFileIds: string[] = [];
           for (const r of ocrResults) {
@@ -821,31 +855,12 @@ export default function RandevuListesi() {
             });
           }
 
-          // SONRA: Kasa hareketleri (Almanya icin gider kaydi → trigger ile cash_tx)
-          // Bu adim dosyalar olustuktan SONRA calisir; randevu butonuna basildiginda
-          // kasa anlik DUSMEZ — sadece bu adim tamamlaninca duser.
-          if (isAlmanyaSnap && createdFileIds.length > 0 && perPassport > 0 && snap.cashAccountId) {
-            setBgJob({
-              label: "Kasa hareketleri kaydediliyor…",
-              done: false,
-              ok: false,
-            });
-            const method = snap.cashAccountKind === "bank" ? "bank" : "cash";
-            const acc = cashAccountsList.find((a) => a.id === snap.cashAccountId);
-            const expCurrency = (acc?.currency || snap.ucretCurrency) as "TL" | "EUR" | "USD";
-            await Promise.all(createdFileIds.map((fid) => (
-              sb2.from("visa_file_expenses").insert({
-                file_id: fid,
-                expense_type: "araci_kurum",
-                amount: perPassport,
-                currency: expCurrency,
-                cash_account_id: snap.cashAccountId,
-                method,
-                created_by: snap.userId,
-                note: "Almanya Randevu Talebi Ödemesi",
-              })
-            )));
-          }
+          // NOT: Almanya ucreti talep olusturulurken kasadan dusurulduyu icin
+          // burada visa_file_expenses kayitlari YAPILMAZ. Aksi takdirde ucret
+          // iki kez dusulmus olur.
+          //
+          // Gecmis surumlerde burada her olusan visa dosyasi icin
+          // visa_file_expenses (expense_type='araci_kurum') insert ediliyordu.
 
           setBgJob({
             label: `${createdFileIds.length}/${pasaportGorseller.length} vize dosyası oluşturuldu`,
