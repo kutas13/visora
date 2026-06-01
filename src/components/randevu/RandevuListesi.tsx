@@ -614,6 +614,12 @@ export default function RandevuListesi() {
       // Bu kayit cash_transactions tablosuna `source='manual'` ile yazilir.
       // "Randevu Al" sirasinda artik tekrar dusurulmez (visa_file_expenses YOK).
       if (!error && isAlmanyaForm && currentUser?.organization_id) {
+        const acctRow = cashAccountsList.find((a) => a.id === formAlmanyaCashAccountId);
+        const acctLabel = acctRow ? `${acctRow.name} (${acctRow.currency})` : "";
+        const desc =
+          `🇩🇪 Almanya Randevu Talebi Ödemesi — ` +
+          `Müşteri: ${formDosyaAdi}` +
+          (acctLabel ? ` — Hesap: ${acctLabel}` : "");
         const { error: txErr } = await supabase.from("cash_transactions").insert({
           organization_id: currentUser.organization_id,
           account_id: formAlmanyaCashAccountId,
@@ -621,7 +627,7 @@ export default function RandevuListesi() {
           source: "manual",
           amount: almanyaUcretParsed,
           currency: formAlmanyaUcretCurrency,
-          description: `Almanya Randevu Talebi Ödemesi — ${formDosyaAdi}`,
+          description: desc,
           created_by: currentUser.id,
         });
         if (txErr) {
@@ -1062,6 +1068,15 @@ export default function RandevuListesi() {
         const acct = selectedTalep.almanya_cash_account_id ?? "";
         const cur = (selectedTalep.almanya_ucret_currency ?? "TL") as ParaBirimi;
         if (ucret > 0 && acct && currentUser?.organization_id) {
+          // Aciklama Kasa hareket gecmisinde okunacaktir; muvazene icin
+          // talep iptali oldugunu, musteri/dosya adini ve hangi hesaba iade
+          // edildigini net olarak yaziyoruz.
+          const acctRow = cashAccountsList.find((a) => a.id === acct);
+          const acctLabel = acctRow ? `${acctRow.name} (${acctRow.currency})` : "";
+          const desc =
+            `🇩🇪 Almanya Randevu Talebi İPTAL — Ücret İadesi — ` +
+            `Müşteri: ${selectedTalep.dosya_adi}` +
+            (acctLabel ? ` — Hesap: ${acctLabel}` : "");
           const { error: refundErr } = await supabase.from("cash_transactions").insert({
             organization_id: currentUser.organization_id,
             account_id: acct,
@@ -1069,7 +1084,7 @@ export default function RandevuListesi() {
             source: "manual",
             amount: ucret,
             currency: cur,
-            description: `Almanya Randevu Talebi İPTAL — Ücret İadesi — ${selectedTalep.dosya_adi}`,
+            description: desc,
             created_by: currentUser.id,
           });
           if (refundErr) {
