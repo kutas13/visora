@@ -47,8 +47,9 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
   const fromBalance = fromAccount ? balances.get(fromAccount.id) || 0 : 0;
   const fa = parseTrNumber(fromAmount);
   const remaining = fromBalance - fa;
-  // Floating-point hassasiyet toleransi: 1 kurus alti negatif farklar yetersiz sayilmaz.
-  const insufficient = fa > 0 && remaining < -0.005;
+  // Bakiye yetersizligi BLOKLAMAZ; transfere izin verilir, kullaniciya bakiyenin
+  // eksiye dusecegi bilgi olarak gosterilir. Tolerans: 1 kurus alti negatif farklar.
+  const willGoNegative = fa > 0 && remaining < -0.005;
 
   const sameCurrency = fromAccount && toAccount && fromAccount.currency === toAccount.currency;
   const sameAccount = fromId && toId && fromId === toId;
@@ -82,10 +83,7 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
     const ta = parseTrNumber(toAmount);
     if (!fa || fa <= 0) { setError("Geçerli bir kaynak tutarı girin"); return; }
     if (!ta || ta <= 0) { setError("Geçerli bir hedef tutarı girin"); return; }
-    if (insufficient) {
-      setError(`Kaynak kasada yeterli bakiye yok. Bakiye: ${fmtCurrency(fromBalance, fromAccount.currency)}`);
-      return;
-    }
+    // Bakiye yetersizligi kontrolu kaldirildi — eksiye dusmesine izin verilir.
 
     setSubmitting(true);
     try {
@@ -288,21 +286,21 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
           />
         </div>
 
-        {/* Bakiye uyarisi */}
+        {/* Bakiye uyarisi (bilgi amacli — eksiye dusmesi engellenmez) */}
         {fromAccount && fa > 0 && (
           <div className={`p-3 rounded-xl ring-1 text-sm font-semibold ${
-            insufficient ? "bg-rose-50 ring-rose-200 text-rose-700" : "bg-slate-50 ring-slate-200 text-slate-700"
+            willGoNegative ? "bg-amber-50 ring-amber-200 text-amber-800" : "bg-slate-50 ring-slate-200 text-slate-700"
           }`}>
             <div className="flex items-center justify-between">
               <span>Kaynak Sonrası Bakiye:</span>
-              <span className={`tabular-nums font-extrabold ${insufficient ? "text-rose-700" : "text-slate-900"}`}>
+              <span className={`tabular-nums font-extrabold ${willGoNegative ? "text-amber-800" : "text-slate-900"}`}>
                 {fmtCurrency(remaining, fromAccount.currency)}
               </span>
             </div>
-            {insufficient && (
+            {willGoNegative && (
               <p className="mt-2 text-[11.5px] font-bold flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Yetersiz bakiye! Bu transfer yapılamaz.
+                Bakiye eksiye düşecek. Transfer yine de yapılacak.
               </p>
             )}
           </div>
@@ -321,7 +319,7 @@ export default function TransferModal({ isOpen, onClose, onSuccess, accounts, ba
           <Button
             type="submit"
             className="flex-1 !bg-gradient-to-r !from-indigo-600 !to-violet-600 hover:!from-indigo-700 hover:!to-violet-700"
-            disabled={submitting || !fromAccount || !toAccount || sameAccount || insufficient}
+            disabled={submitting || !fromAccount || !toAccount || !!sameAccount}
           >
             {submitting ? "Aktarılıyor..." : "Transferi Yap"}
           </Button>

@@ -54,8 +54,9 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, accounts, bal
   const balance = selectedAccount ? balances.get(selectedAccount.id) || 0 : 0;
   const a = parseTrNumber(amount);
   const remaining = balance - a;
-  // Floating-point hassasiyet toleransi: 1 kurus alti negatif farklar yetersiz sayilmaz.
-  const insufficient = a > 0 && remaining < -0.005;
+  // Bakiye yetersizligi BLOKLAMAZ; sadece kullaniciya bakiyenin eksiye dusecegini bilgi verir.
+  // Floating-point hassasiyet toleransi: 1 kurus alti negatif farklar bilgi gostergesinden de muaftir.
+  const willGoNegative = a > 0 && remaining < -0.005;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +73,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, accounts, bal
       );
       return;
     }
-    if (insufficient) { setError(`Bu kasada yeterli bakiye yok. Bakiye: ${fmtCurrency(balance, currency)}`); return; }
+    // Bakiye yetersizligi kontrolu kaldirildi — eksiye dusmesine izin verilir.
 
     setSubmitting(true);
     try {
@@ -243,10 +244,10 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, accounts, bal
           required
         />
 
-        {/* Bakiye uyarisi */}
+        {/* Bakiye uyarisi (bilgi amacli — eksiye dusmesi engellenmez) */}
         {selectedAccount && a > 0 && (
           <div className={`p-3 rounded-xl ring-1 text-sm font-semibold ${
-            insufficient ? "bg-rose-50 ring-rose-200 text-rose-700" : "bg-slate-50 ring-slate-200 text-slate-700"
+            willGoNegative ? "bg-amber-50 ring-amber-200 text-amber-800" : "bg-slate-50 ring-slate-200 text-slate-700"
           }`}>
             <div className="flex items-center justify-between">
               <span>Mevcut Bakiye:</span>
@@ -254,14 +255,14 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, accounts, bal
             </div>
             <div className="flex items-center justify-between mt-1">
               <span>İşlem Sonrası:</span>
-              <span className={`tabular-nums font-extrabold ${insufficient ? "text-rose-700" : "text-emerald-700"}`}>
+              <span className={`tabular-nums font-extrabold ${willGoNegative ? "text-amber-800" : "text-emerald-700"}`}>
                 {fmtCurrency(remaining, currency)}
               </span>
             </div>
-            {insufficient && (
+            {willGoNegative && (
               <p className="mt-2 text-[11.5px] font-bold flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Yetersiz bakiye! Bu işlem yapılamaz.
+                Bakiye eksiye düşecek. İşlem yine de kaydedilecek.
               </p>
             )}
           </div>
@@ -280,7 +281,7 @@ export default function ExpenseModal({ isOpen, onClose, onSuccess, accounts, bal
           <Button
             type="submit"
             className="flex-1 !bg-gradient-to-r !from-rose-600 !to-red-600 hover:!from-rose-700 hover:!to-red-700"
-            disabled={submitting || !accountId || insufficient}
+            disabled={submitting || !accountId}
           >
             {submitting ? "Kaydediliyor..." : "Gideri Kaydet"}
           </Button>

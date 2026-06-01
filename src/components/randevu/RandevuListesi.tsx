@@ -474,10 +474,10 @@ export default function RandevuListesi() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Randevu Al veya Yeni Talep modali acildiginda cash_accounts (ve pasaport sayisi)
-  // yuklenir. Almanya ucret bilgileri her iki ekrandan da gerekebilir.
+  // Randevu Al / Yeni Talep / Silme modali acildiginda cash_accounts (ve pasaport sayisi)
+  // yuklenir. Almanya ucret bilgileri her ekranda gerekebilir.
   useEffect(() => {
-    if (!showRandevuAlModal && !showCreateModal) return;
+    if (!showRandevuAlModal && !showCreateModal && !showDeleteConfirm) return;
     let cancelled = false;
     (async () => {
       const supabase = createClient();
@@ -508,7 +508,7 @@ export default function RandevuListesi() {
       setCashBalances(balanceMap);
     })();
     return () => { cancelled = true; };
-  }, [showRandevuAlModal, showCreateModal, selectedTalep]);
+  }, [showRandevuAlModal, showCreateModal, showDeleteConfirm, selectedTalep]);
 
   const loadTalepDetail = useCallback(async (id: string) => {
     const supabase = createClient();
@@ -1044,10 +1044,45 @@ export default function RandevuListesi() {
     }
   };
 
-  const handleDelete = async () => {
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  /**
+   * Almanya talebinde girilen ucret talep aninda kasadan dusurulduyu icin
+   * (cash_transactions 'manual' out kaydi) talebi iptal ederken o kasaya geri
+   * iade etmek gerekiyor. `withRefund=true` ise iade hareketi eklenir, sonra
+   * talep silinir.
+   */
+  const handleDelete = async (withRefund: boolean = false) => {
     if (!selectedTalep) return;
     const supabase = createClient();
-    await supabase.from("randevu_talepleri").delete().eq("id", selectedTalep.id);
+    setDeleteBusy(true);
+    try {
+      if (withRefund) {
+        const ucret = Number(selectedTalep.almanya_ucret ?? 0) || 0;
+        const acct = selectedTalep.almanya_cash_account_id ?? "";
+        const cur = (selectedTalep.almanya_ucret_currency ?? "TL") as ParaBirimi;
+        if (ucret > 0 && acct && currentUser?.organization_id) {
+          const { error: refundErr } = await supabase.from("cash_transactions").insert({
+            organization_id: currentUser.organization_id,
+            account_id: acct,
+            direction: "in",
+            source: "manual",
+            amount: ucret,
+            currency: cur,
+            description: `Almanya Randevu Talebi İPTAL — Ücret İadesi — ${selectedTalep.dosya_adi}`,
+            created_by: currentUser.id,
+          });
+          if (refundErr) {
+            alert("Ücret iadesi yazılamadı: " + (refundErr.message || "bilinmeyen hata") + "\nTalep silinmedi.");
+            setDeleteBusy(false);
+            return;
+          }
+        }
+      }
+      await supabase.from("randevu_talepleri").delete().eq("id", selectedTalep.id);
+    } finally {
+      setDeleteBusy(false);
+    }
     setShowDeleteConfirm(false);
     setSelectedTalep(null);
     loadData();
@@ -1699,18 +1734,90 @@ export default function RandevuListesi() {
       })()}
 
       {/* ===== DELETE CONFIRM ===== */}
-      <Modal isOpen={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setSelectedTalep(null); }} title="Silme Onayı" size="sm">
-        <div className="space-y-4">
-          <div className="bg-red-50 rounded-xl p-4 text-center">
-            <div className="text-4xl mb-2">⚠️</div>
-            <p className="font-bold text-red-700">Bu talebi silmek istediğinize emin misiniz?</p>
-            <p className="text-sm text-red-500 mt-1">{selectedTalep?.dosya_adi}</p>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => { setShowDeleteConfirm(false); setSelectedTalep(null); }} className="flex-1">İptal</Button>
-            <Button onClick={handleDelete} className="flex-1 bg-red-600 hover:bg-red-700">Evet, Sil</Button>
-          </div>
-        </div>
+      <Modal isOpen={showDeleteConfirm} onClose={() => { if (!deleteBusy) { setShowDeleteConfirm(false); setSelectedTalep(null); } }} title="Talebi İptal Et" size="sm">
+        {(() => {
+          const ucret = Number(selectedTalep?.almanya_ucret ?? 0) || 0;
+          const acctId = selectedTalep?.almanya_cash_account_id ?? "";
+          const cur = (selectedTalep?.almanya_ucret_currency ?? "TL") as ParaBirimi;
+          const acct = cashAccountsList.find((a) => a.id === acctId);
+          const hasAlmanyaPayment =
+            (selectedTalep?.ulkeler.includes("Almanya") ?? false) && ucret > 0 && !!acctId;
+
+          return (
+            <div className="space-y-4">
+              <div className="bg-red-50 rounded-xl p-4 text-center">
+                <div className="text-4xl mb-2">⚠️</div>
+                <p className="font-bold text-red-700">Bu talebi silmek istediğinize emin misiniz?</p>
+                <p className="text-sm text-red-500 mt-1">{selectedTalep?.dosya_adi}</p>
+              </div>
+
+              {hasAlmanyaPayment && (
+                <div className="bg-amber-50 ring-1 ring-amber-200 rounded-xl p-4 space-y-2">
+                  <p className="text-[12px] font-extrabold text-amber-900">
+                    🇩🇪 Bu Almanya talebinde ödenmiş ücret var
+                  </p>
+                  <div className="text-[11.5px] text-amber-800 space-y-1">
+                    <p>Tutar: <span className="font-extrabold tabular-nums">{fmtCurrency(ucret, cur)}</span></p>
+                    <p>
+                      Hesap: <span className="font-bold">{acct ? `${acct.kind === "bank" ? "🏦" : "💵"} ${acct.name} (${acct.currency})` : "—"}</span>
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-amber-700 pt-1 border-t border-amber-200">
+                    Ücret iadesi seçerseniz, bu tutar otomatik olarak yukarıdaki hesaba geri gelir.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                {hasAlmanyaPayment ? (
+                  <>
+                    <Button
+                      onClick={() => handleDelete(true)}
+                      disabled={deleteBusy}
+                      className="w-full !bg-emerald-600 hover:!bg-emerald-700"
+                    >
+                      {deleteBusy ? "İşleniyor..." : "💰 İptal Et + Ücret İadesi Al"}
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(false)}
+                      disabled={deleteBusy}
+                      variant="outline"
+                      className="w-full !border-red-300 !text-red-700 hover:!bg-red-50"
+                    >
+                      Sadece Sil (İade Yapma)
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { setShowDeleteConfirm(false); setSelectedTalep(null); }}
+                      disabled={deleteBusy}
+                      className="w-full"
+                    >
+                      Vazgeç
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => { setShowDeleteConfirm(false); setSelectedTalep(null); }}
+                      disabled={deleteBusy}
+                      className="flex-1"
+                    >
+                      İptal
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(false)}
+                      disabled={deleteBusy}
+                      className="flex-1 bg-red-600 hover:bg-red-700"
+                    >
+                      {deleteBusy ? "Siliniyor..." : "Evet, Sil"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* ===== DETAIL MODAL ===== */}
