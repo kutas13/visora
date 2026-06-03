@@ -604,21 +604,20 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               pos_doviz_currency: pdc,
             };
 
-            // Pesin -> pesin (yontem/hesap/tutar degisti): mevcut payment'i UPDATE et.
-            // INSERT yerine UPDATE yapinca trigger cash_transactions'i guncel tutar
-            // ve description'a (Düzenlendi) eki yazar — eski kasa hareketi
-            // (orn. nakit) silinip yeni hesaba (orn. banka) yansir.
-            let existingPaymentId: string | null = null;
+            // Pesin -> pesin (yontem/hesap/tutar degisti): bu dosyaya ait
+            // butun eski pesin/null payment'leri SIL, sonra yenisini EKLE.
+            // Trigger DELETE'te ilgili cash_transactions kayitlarini sileceginden
+            // eski nakit hareketi otomatik kalkar; INSERT'te yeni hesap/banka
+            // kaydi eklenir. Bu yontem UPDATE'ten daha guvenli — kolon adlari/eski
+            // veriler farkliysa bile temiz bir state olusur.
             if (stillPesin) {
-              const { data: existing } = await supabase
+              // Bu dosyanin eski pesin_satis veya tip belirtilmemis odemelerini
+              // sil. Tahsilat (cari odemeler) silinmesin.
+              await supabase
                 .from("payments")
-                .select("id")
+                .delete()
                 .eq("file_id", file.id)
-                .eq("payment_type", "pesin_satis")
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle<{ id: string }>();
-              existingPaymentId = existing?.id || null;
+                .or("payment_type.eq.pesin_satis,payment_type.is.null");
             }
 
             const fullPayload = {
@@ -628,17 +627,9 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               tl_karsilik: tlKarsilikValue,
             };
 
-            let payErr: { message?: string } | null = null;
-            if (existingPaymentId) {
-              const { error: updErr } = await supabase
-                .from("payments")
-                .update(fullPayload)
-                .eq("id", existingPaymentId);
-              payErr = updErr;
-            } else {
-              const { error: insErr } = await supabase.from("payments").insert(fullPayload);
-              payErr = insErr;
-            }
+            const insertRes = await supabase.from("payments").insert(fullPayload).select("id").single<{ id: string }>();
+            const payErr = insertRes.error;
+            const newPaymentId = insertRes.data?.id || null;
 
             // Migration eksik / schema cache hatasi olursa minimum payload ile yine kaydet.
             if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz|tl_karsilik/i.test(payErr.message || "")) {
@@ -649,18 +640,32 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                 durum: paymentPayload.durum,
                 created_by: paymentPayload.created_by,
               };
-              if (existingPaymentId) {
-                const { error: legacyUpd } = await supabase
-                  .from("payments")
-                  .update(minimal)
-                  .eq("id", existingPaymentId);
-                if (legacyUpd) throw new Error(legacyUpd.message || "Peşin ödeme güncellenemedi");
-              } else {
-                const { error: legacyErr } = await supabase.from("payments").insert(minimal);
-                if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
-              }
+              const { error: legacyErr } = await supabase.from("payments").insert(minimal);
+              if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
             } else if (payErr) {
               throw new Error(payErr.message || "Peşin ödeme kaydı yapılamadı");
+            }
+
+            // stillPesin: bu bir DUZENLEME idi. Olusan cash_transactions kaydinin
+            // aciklamasina "(Düzenlendi)" eki yazip kullaniciya hareketin
+            // sonradan duzenlendigini belli edelim. (Trigger zaten cash_tx'i
+            // olusturdu — buradaki yalnizca metin update'idir.)
+            if (stillPesin && newPaymentId) {
+              try {
+                const { data: tx } = await supabase
+                  .from("cash_transactions")
+                  .select("id, description")
+                  .eq("related_payment_id", newPaymentId)
+                  .maybeSingle<{ id: string; description: string | null }>();
+                if (tx?.id && tx.description && !tx.description.includes("Düzenlendi")) {
+                  await supabase
+                    .from("cash_transactions")
+                    .update({ description: `${tx.description} (Düzenlendi)` })
+                    .eq("id", tx.id);
+                }
+              } catch {
+                // best-effort; hata sessizce yutulur
+              }
             }
             await fetch("/api/send-tahsilat-email", {
               method: "POST",
