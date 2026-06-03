@@ -532,6 +532,8 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
         const newCariTipi = fileData.cari_tipi;
         const changedToFirmaCari = prevCariTipi !== "firma_cari" && newCariTipi === "firma_cari";
         const changedToPesin = file.odeme_plani !== "pesin" && fileData.odeme_plani === "pesin";
+        // Peşin→peşin: yöntem/hesap/tutar değişti olabilir — mevcut payment'i UPDATE et
+        const stillPesin = file.odeme_plani === "pesin" && fileData.odeme_plani === "pesin";
 
         if (changedToFirmaCari && selectedCompany) {
           try {
@@ -556,7 +558,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
           }
         }
 
-        if (changedToPesin) {
+        if (changedToPesin || stillPesin) {
           try {
             const yDb = pesinYontem === "hesaba" ? "hesaba" : pesinYontem === "pos" ? "pos" : "nakit";
             const tKayit = pesinYontem === "pos" ? parseFloat(pesinPosTl) : totalDosyaAmount;
@@ -602,12 +604,41 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               pos_doviz_currency: pdc,
             };
 
-            const { error: payErr } = await supabase.from("payments").insert({
+            // Pesin -> pesin (yontem/hesap/tutar degisti): mevcut payment'i UPDATE et.
+            // INSERT yerine UPDATE yapinca trigger cash_transactions'i guncel tutar
+            // ve description'a (Düzenlendi) eki yazar — eski kasa hareketi
+            // (orn. nakit) silinip yeni hesaba (orn. banka) yansir.
+            let existingPaymentId: string | null = null;
+            if (stillPesin) {
+              const { data: existing } = await supabase
+                .from("payments")
+                .select("id")
+                .eq("file_id", file.id)
+                .eq("payment_type", "pesin_satis")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle<{ id: string }>();
+              existingPaymentId = existing?.id || null;
+            }
+
+            const fullPayload = {
               ...paymentPayload,
               hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
               dekont_url: dekontUrlForPayment,
               tl_karsilik: tlKarsilikValue,
-            });
+            };
+
+            let payErr: { message?: string } | null = null;
+            if (existingPaymentId) {
+              const { error: updErr } = await supabase
+                .from("payments")
+                .update(fullPayload)
+                .eq("id", existingPaymentId);
+              payErr = updErr;
+            } else {
+              const { error: insErr } = await supabase.from("payments").insert(fullPayload);
+              payErr = insErr;
+            }
 
             // Migration eksik / schema cache hatasi olursa minimum payload ile yine kaydet.
             if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz|tl_karsilik/i.test(payErr.message || "")) {
@@ -618,8 +649,16 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                 durum: paymentPayload.durum,
                 created_by: paymentPayload.created_by,
               };
-              const { error: legacyErr } = await supabase.from("payments").insert(minimal);
-              if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
+              if (existingPaymentId) {
+                const { error: legacyUpd } = await supabase
+                  .from("payments")
+                  .update(minimal)
+                  .eq("id", existingPaymentId);
+                if (legacyUpd) throw new Error(legacyUpd.message || "Peşin ödeme güncellenemedi");
+              } else {
+                const { error: legacyErr } = await supabase.from("payments").insert(minimal);
+                if (legacyErr) throw new Error(legacyErr.message || "Peşin ödeme kaydı yapılamadı");
+              }
             } else if (payErr) {
               throw new Error(payErr.message || "Peşin ödeme kaydı yapılamadı");
             }
