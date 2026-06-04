@@ -604,22 +604,6 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               pos_doviz_currency: pdc,
             };
 
-            // Pesin -> pesin (yontem/hesap/tutar degisti): bu dosyaya ait
-            // butun eski pesin/null payment'leri SIL, sonra yenisini EKLE.
-            // Trigger DELETE'te ilgili cash_transactions kayitlarini sileceginden
-            // eski nakit hareketi otomatik kalkar; INSERT'te yeni hesap/banka
-            // kaydi eklenir. Bu yontem UPDATE'ten daha guvenli — kolon adlari/eski
-            // veriler farkliysa bile temiz bir state olusur.
-            if (stillPesin) {
-              // Bu dosyanin eski pesin_satis veya tip belirtilmemis odemelerini
-              // sil. Tahsilat (cari odemeler) silinmesin.
-              await supabase
-                .from("payments")
-                .delete()
-                .eq("file_id", file.id)
-                .or("payment_type.eq.pesin_satis,payment_type.is.null");
-            }
-
             const fullPayload = {
               ...paymentPayload,
               hesap_sahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
@@ -627,9 +611,72 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
               tl_karsilik: tlKarsilikValue,
             };
 
-            const insertRes = await supabase.from("payments").insert(fullPayload).select("id").single<{ id: string }>();
+            // Pesin -> pesin: mevcut payment ile form arasinda ODEME bilgisi
+            // gercekten degisti mi kontrol et. SADECE odeme sekli/hesap/tutar/
+            // para birimi degistiyse kasa hareketini yeniden olusturuyoruz.
+            // Bu sayede dosyaya sadece randevu tarihi/notu vs. eklemek kasa
+            // hareketini DUPLICATE etmez.
+            let paymentChanged = changedToPesin; // odeme plani yeni pesin oldu
+            let prevPesinPaymentId: string | null = null;
+            if (stillPesin && !changedToPesin) {
+              const { data: prev } = await supabase
+                .from("payments")
+                .select("id, yontem, hesap_sahibi, tutar, currency")
+                .eq("file_id", file.id)
+                .or("payment_type.eq.pesin_satis,payment_type.is.null")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle<{
+                  id: string;
+                  yontem: string | null;
+                  hesap_sahibi: string | null;
+                  tutar: number | string | null;
+                  currency: string | null;
+                }>();
+              if (prev) {
+                prevPesinPaymentId = prev.id;
+                const prevAmount = Number(prev.tutar ?? 0);
+                const newAmount = Number(tKayit ?? 0);
+                const amountChanged = Math.abs(prevAmount - newAmount) > 0.005;
+                const yontemChanged = (prev.yontem || "") !== yDb;
+                const hesapChanged =
+                  (prev.hesap_sahibi || "") !== (pesinYontem === "hesaba" ? (hesapSahibi || "") : "");
+                const currencyChanged = (prev.currency || "TL") !== cKayit;
+                paymentChanged = amountChanged || yontemChanged || hesapChanged || currencyChanged;
+              } else {
+                // Eski pesin payment hic yok → yeni olustur (eskiden cari olabilir)
+                paymentChanged = true;
+              }
+            }
+
+            // Eger odeme bilgisi degismediyse hicbir sey yapma — kasa hareketi
+            // oldugu gibi kalir.
+            if (!paymentChanged) {
+              // sadece dosya alanlari (randevu tarihi vs.) guncellendi
+              // kasa duzenleme yok — sessizce gec.
+              // (asagidaki email bildirim ve diger calismalar yine calisir)
+            }
+
+            const insertRes = paymentChanged
+              ? await (async () => {
+                  // DELETE eski pesin payment(ler)i (tahsilat'a dokunma)
+                  if (stillPesin) {
+                    await supabase
+                      .from("payments")
+                      .delete()
+                      .eq("file_id", file.id)
+                      .or("payment_type.eq.pesin_satis,payment_type.is.null");
+                  }
+                  return await supabase
+                    .from("payments")
+                    .insert(fullPayload)
+                    .select("id")
+                    .single<{ id: string }>();
+                })()
+              : { data: null, error: null as { message?: string } | null };
             const payErr = insertRes.error;
             const newPaymentId = insertRes.data?.id || null;
+            void prevPesinPaymentId;
 
             // Migration eksik / schema cache hatasi olursa minimum payload ile yine kaydet.
             if (payErr && /Could not find|schema cache|hesap_sahibi|dekont_url|currency|payment_type|pos_doviz|tl_karsilik/i.test(payErr.message || "")) {
@@ -650,7 +697,7 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
             // aciklamasina "(Düzenlendi)" eki yazip kullaniciya hareketin
             // sonradan duzenlendigini belli edelim. (Trigger zaten cash_tx'i
             // olusturdu — buradaki yalnizca metin update'idir.)
-            if (stillPesin && newPaymentId) {
+            if (stillPesin && paymentChanged && newPaymentId) {
               try {
                 const { data: tx } = await supabase
                   .from("cash_transactions")
@@ -667,29 +714,33 @@ export default function VisaFileForm({ file, onSuccess, onCancel, onProgress }: 
                 // best-effort; hata sessizce yutulur
               }
             }
-            await fetch("/api/send-tahsilat-email", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                senderEmail: user.email,
-                senderName: userName,
-                musteriAd: musteriAd.trim(),
-                hedefUlke: finalUlke,
-                tutar: tKayit,
-                currency: cKayit,
-                yontem: yDb,
-                hesapSahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
-                emailType: "pesin_satis",
-                dosyaCurrency: ucretCurrency,
-                dosyaTutar: totalDosyaAmount,
-                ucretDetay: {
-                  vizeTutar: ucretNum,
-                  vizeCurrency: ucretCurrency,
-                  davetiyeTutar: showDavetiyeUcreti ? davetiyeNum : null,
-                  davetiyeCurrency: showDavetiyeUcreti ? davetiyeUcretiCurrency : null,
-                },
-              }),
-            });
+            // Email bildirimi: sadece odeme bilgisi gercekten degistiyse gonder
+            // (kullanici sadece randevu/not ekledigi icin spam yapmayalim).
+            if (paymentChanged) {
+              await fetch("/api/send-tahsilat-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  senderEmail: user.email,
+                  senderName: userName,
+                  musteriAd: musteriAd.trim(),
+                  hedefUlke: finalUlke,
+                  tutar: tKayit,
+                  currency: cKayit,
+                  yontem: yDb,
+                  hesapSahibi: pesinYontem === "hesaba" ? hesapSahibi : null,
+                  emailType: "pesin_satis",
+                  dosyaCurrency: ucretCurrency,
+                  dosyaTutar: totalDosyaAmount,
+                  ucretDetay: {
+                    vizeTutar: ucretNum,
+                    vizeCurrency: ucretCurrency,
+                    davetiyeTutar: showDavetiyeUcreti ? davetiyeNum : null,
+                    davetiyeCurrency: showDavetiyeUcreti ? davetiyeUcretiCurrency : null,
+                  },
+                }),
+              });
+            }
           } catch (pesinErr) {
             console.error("Peşin ödeme kaydı hatası:", pesinErr);
             throw pesinErr;

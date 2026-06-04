@@ -93,15 +93,29 @@ export default function WalletHistoryModal({
   }, [accountTransactions]);
 
   const handleDelete = async (tx: CashTransaction) => {
-    if (!confirm("Bu işlemi silmek istediğine emin misin? Bu işlem geri alınamaz.")) return;
+    const msg =
+      "Bu kasa hareketini silmek istediğine emin misin?\n\n" +
+      "• Sadece bu kasa kaydı silinecek\n" +
+      "• İlgili vize dosyası VEYA ödeme/gider kaydı SİLİNMEZ\n" +
+      "• Yalnızca bu kasa hareketinin etkisi (giriş/çıkış) kaldırılır\n\n" +
+      "Bu işlem geri alınamaz.";
+    if (!confirm(msg)) return;
     setDeleting(true);
     try {
       const supabase = createClient();
       // Transferse, eslesi de sil
       if (tx.source === "transfer" && tx.transfer_pair_id) {
-        await supabase.from("cash_transactions").delete().in("id", [tx.id, tx.transfer_pair_id]);
+        const { error } = await supabase
+          .from("cash_transactions")
+          .delete()
+          .in("id", [tx.id, tx.transfer_pair_id]);
+        if (error) throw error;
       } else {
-        await supabase.from("cash_transactions").delete().eq("id", tx.id);
+        const { error } = await supabase
+          .from("cash_transactions")
+          .delete()
+          .eq("id", tx.id);
+        if (error) throw error;
       }
       setDetailTx(null);
       onChanged();
@@ -299,20 +313,15 @@ export default function WalletHistoryModal({
             </div>
 
             <div className="flex gap-2 pt-1">
-              {detailTx.source === "manual" || detailTx.source === "transfer" ? (
-                <button
-                  type="button"
-                  onClick={() => handleDelete(detailTx)}
-                  disabled={deleting}
-                  className="px-4 py-2 text-sm font-bold rounded-xl bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100"
-                >
-                  {deleting ? "Siliniyor..." : "Sil"}
-                </button>
-              ) : (
-                <span className="text-[11px] text-slate-500 italic px-1">
-                  {detailTx.source === "payment" ? "Tahsilat ekranından silinmeli" : "Dosya gider ekranından silinmeli"}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={() => handleDelete(detailTx)}
+                disabled={deleting}
+                title="Sadece bu kasa hareketini siler — dosya/ödeme kaydı korunur"
+                className="px-4 py-2 text-sm font-bold rounded-xl bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100 disabled:opacity-50"
+              >
+                {deleting ? "Siliniyor..." : "🗑️ Bu Hareketi Sil"}
+              </button>
               <div className="flex-1" />
               <Button type="button" variant="outline" onClick={() => setDetailTx(null)}>Kapat</Button>
             </div>
